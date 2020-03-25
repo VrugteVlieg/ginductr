@@ -1,0 +1,10 @@
+grammar arithmetic;
+program     : expression EOF;
+expression  : term   (Addop term)* ;
+term        : factor   (Mulop factor)* ;
+factor      : constant | '('  expression ')';
+constant    : Digit Digit* ;
+Digit       : '0';
+Mulop       : '*' | '/';
+Addop       : '+' | '-';
+WS : [ \t\r\n]+ -> skip ;
