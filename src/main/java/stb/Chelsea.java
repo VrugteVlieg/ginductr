@@ -47,7 +47,6 @@ public class Chelsea {
             // Creating a new Tool object with org.antlr.v4.Tool
 
             Tool tool = new Tool(args);
-
             GrammarRootAST grast = tool.parseGrammarFromString(grammar.toString());
 
             // Create a new Grammar object from the tool
@@ -96,14 +95,21 @@ public class Chelsea {
         // Gettting a list of test cases from the database
         HashMap<String,LinkedList<Stack<String>>> errors = new HashMap<String,LinkedList<Stack<String>>>();
         try (Stream<Path> paths = Files.walk(Paths.get(Constants.TEST_DIR)).filter(Files::isRegularFile)) {
+            // System.out.println("Running " + paths.count() + " tests");
             paths.forEach(path -> {
+                String fileName = path.getFileName().toString();
+                System.out.println("Testing " + fileName);
                 try {
                     StringBuilder rawContent = new StringBuilder(Files.readString(path));
                     while (rawContent.indexOf("/*") != -1) {
                         rawContent.delete(rawContent.indexOf("/*"), rawContent.indexOf("*/") + 2);
                     }
-                    String content = rawContent.toString().trim();
-                    System.out.println("content of " + path.getFileName() + "\n" + content);
+                    /*
+                    TODO
+                    when implementing regex recognition, remove the space stripping here and add grammar rules to ignore spaces
+                    */
+                    String content = rawContent.toString().trim().replaceAll(" ","");
+                    // System.out.println("content of " + path.getFileName() + "\n" + content);
                     // Creating a new lexer constructor instance using the contents of the test case
                     Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(content));
 
@@ -124,13 +130,8 @@ public class Chelsea {
                     parseEntrypoint.invoke(parser);
                     
                     LinkedList<Stack<String>> fileErrors = testListen.getErrors();
-
-                    if(fileErrors.size() != 0) {
-                        System.err.println("Errors encountered = " + fileErrors.size());
-                        fileErrors.forEach(ErrorStack -> System.err.println(ErrorStack));
-                        errors.put(path.getFileName().toString(), fileErrors);
-
-                    }
+                    fileErrors.forEach(ErrorStack -> System.err.println(ErrorStack));
+                    errors.put(fileName.toString(), fileErrors);
                 } catch (Exception e) {
                     System.out.println("Exception lamda in Chelsea");
                     e.printStackTrace();

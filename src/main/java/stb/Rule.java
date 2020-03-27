@@ -10,7 +10,6 @@ import java.util.LinkedList;
 
 public class Rule {
     private String name;
-    private ArrayList<LinkedList<String>> productions = new ArrayList<LinkedList<String>>();
     private ArrayList<LinkedList<Rule>> subRules = new ArrayList<LinkedList<Rule>>();
     private boolean terminal;
     private boolean optional;
@@ -18,10 +17,12 @@ public class Rule {
     private boolean mainRule;
     private boolean singular;
     private int depth = 0;
+    private String ruleText;
 
     public Rule(String ruleText, int depth) {
         ruleText = ruleText.trim();
         this.name = ruleText;
+        this.ruleText = ruleText;
         printOut("New minor rule " + ruleText);
         this.mainRule = false;
         this.depth = depth;
@@ -34,16 +35,20 @@ public class Rule {
             if(ruleText.charAt(0) == '(') {
                 ruleText = ruleText.substring(1, ruleText.length()-2);
             } else {
-                ruleText = ruleText.substring(0, ruleText.length());
+                ruleText = ruleText.substring(0, ruleText.length()-1);
             }
             printOut("New rule text " + ruleText);
+            this.name = ruleText;
+            
         }
+        this.terminal = Character.isUpperCase(this.name.charAt(0));
         if(!singular) addRuleLookahead(ruleText);
     }
 
 
     public Rule(String name, String ruleText) {
         ruleText = ruleText.trim();
+        this.ruleText = ruleText;
         name = name.trim();
         this.name = name;
         printOut("New major rule " + name + " : " + ruleText);
@@ -54,37 +59,23 @@ public class Rule {
         addRuleLookahead(ruleText);
     }
 
-    public void addRule(String rule) {  //[ factor   ( Mulop factor )* | factor ]
-        String[] ruleArray = rule.split("\\|"); // { factor   ( Mulop factor )* , factor }
-        printOut("Adding greater { " + rule + " }");
-        Arrays.asList(ruleArray).forEach(subRule -> {
-            String workedRule = subRule.trim(); //{factor (Mulop factor)*}
-            printOut("Adding rule { " + workedRule + " } to " + name);
-            subRules.add(splitProduction(subRule));
-            // productions.add(splitSubRules(workedRule));
-        });
-    }
      public void addRuleLookahead(String rule) {
          int index = 0;
-         printOut("Adding " +  rule + " by lookahead");
+         printOut("Adding \'" +  rule + "\' by lookahead");
          LinkedList<Rule> currProduction = new LinkedList<Rule>();
          StringBuilder currString = new StringBuilder();
          boolean StringLiteral = false;
          int brackets = 0;
          while(index < rule.length()) {
-            printOut(rule.charAt(index) + " -> " + currString.toString().replaceAll(" ", "_SPACE_"));
+            // printOut(rule.charAt(index) + " -> " + currString.toString().replaceAll(" ", "_SPACE_"));
             switch(rule.charAt(index)) {
                case ' ':
                    if(currString.length() != 0 && !StringLiteral && brackets==0) {
-                       printOut("new production { " + currString.toString() + "}");
                        currProduction.add(new Rule(currString.toString(),depth+1));
-                       printOut("currProduction: " + currProduction.toString() );
                        currString = new StringBuilder(); 
                    } else if(StringLiteral || brackets!=0){
                        currString.append(" ");
-                   } else {
-                       printOut("Ignoring space");
-                   }
+                   } 
                    break;
                
                case '|':
@@ -92,17 +83,13 @@ public class Rule {
                        currString.append("|");
                    } else {
                        subRules.add(currProduction);
-                       printOut("Pre reassign " + subRules.toString());
                        currProduction = new LinkedList<Rule>();
-                       printOut("Post reassign " + subRules.toString());
                    }
                    break;
 
                 case ';':
                     if(currString.length() != 0) {
-                        printOut("new production { " + currString.toString() + "}");
                         currProduction.add(new Rule(currString.toString(),depth+1));
-                        printOut("currProduction: " + currProduction.toString());
                     }
                     subRules.add(currProduction);
                     break;
@@ -127,9 +114,12 @@ public class Rule {
          }
          printOut("Final subRules " + subRules.toString());
      }
+    /**
+     * @return The RHS of the rule
+     */
+    public String getRuleText() {
 
-    public String getRawRule() {
-        return this.toString().replace(name, "");
+        return ruleText;
     }
 
     @Override
@@ -149,32 +139,10 @@ public class Rule {
         return this.name.equals(c.name);
     }
 
-    private LinkedList<Rule> splitProduction(String input) {
-        input = input.trim();
-        LinkedList<Rule> out = new LinkedList<Rule>();
-        if(!input.contains("(")) {
-            String[] subRules = input.split(" ");
-            Arrays.asList(subRules).forEach(rule -> out.add(new Rule(rule,depth+1)));
-            return out;
-        } else {
-            StringBuilder inputBuilder =  new StringBuilder(input);
-            int index = inputBuilder.indexOf("(");
-            while(index != -1) {
-                int endIndex = inputBuilder.indexOf(")");
-                inputBuilder.replace(index, endIndex+1, inputBuilder.substring(index,endIndex+1).replaceAll(" ", "_"));
-                index = input.substring(endIndex).indexOf("(");
-            }
-            String[] subRules = inputBuilder.toString().split(" ");
-            printOut("Before passing to lamda " + Arrays.toString(subRules));
-            Arrays.asList(subRules).forEach(rule -> out.add(new Rule(rule.replaceAll("_", " "), depth+1)));
-            return out;
-        }
-    }
-
     
     public String toString() {
         if(!mainRule) {
-            return name;
+            return getName();
         }
         StringBuilder output = new StringBuilder();
         output.append(name + " : ");
@@ -190,8 +158,22 @@ public class Rule {
         return output.toString();
     }
 
-    String getName() {return name;}
-    ArrayList<LinkedList<String>> getProductions() {return productions;}
+    String getName() {
+        StringBuilder out = new StringBuilder(name);
+        if(name.contains(" ")) {
+            out.insert(0, "(");
+            out.append(")");
+        }
+        if(optional && iterative){
+            out.append("*");
+        } else if(optional) {
+            out.append("?");
+        } else if(iterative) {
+            out.append("+");
+        }
+        return out.toString();
+    }
+    ArrayList<LinkedList<Rule>> getSubRules() {return subRules;}
 
     public LinkedList<String> cartesianProduct(LinkedList<String> a, LinkedList<String> b) {
 
@@ -226,5 +208,26 @@ public class Rule {
 
     private void printOut(String toPrint) {
         if(Constants.DEBUG)System.out.println(" ".repeat(depth) + "Context " + name + ": " + toPrint);
+    }
+
+    public boolean setIterative(boolean setTo) {
+        this.iterative = setTo;
+        return this.iterative;
+    }
+
+    public boolean isIterative() {
+        return this.iterative;
+    }
+
+    public boolean isOptional() {
+        return this.optional;
+    }
+
+    public boolean setOptional(boolean setTo) {
+        this.optional = setTo;
+        return this.optional;
+    }
+    public boolean isTerminal() {
+        return this.terminal;
     }
 }
