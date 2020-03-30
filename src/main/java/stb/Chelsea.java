@@ -105,8 +105,7 @@ public class Chelsea {
                         rawContent.delete(rawContent.indexOf("/*"), rawContent.indexOf("*/") + 2);
                     }
                     /*
-                    TODO
-                    when implementing regex recognition, remove the space stripping here and add grammar rules to ignore spaces
+                    TODO  when implementing regex recognition, remove the space stripping here and add grammar rules to ignore spaces
                     */
                     String content = rawContent.toString().trim().replaceAll(" ","");
                     // System.out.println("content of " + path.getFileName() + "\n" + content);
@@ -130,7 +129,9 @@ public class Chelsea {
                     parseEntrypoint.invoke(parser);
                     
                     LinkedList<Stack<String>> fileErrors = testListen.getErrors();
-                    fileErrors.forEach(ErrorStack -> System.err.println(ErrorStack));
+                    filterLinkedList(fileErrors);
+                    // fileErrors.forEach(ErrorStack -> System.err.println(ErrorStack));
+                                        
                     errors.put(fileName.toString(), fileErrors);
                 } catch (Exception e) {
                     System.out.println("Exception lamda in Chelsea");
@@ -143,6 +144,17 @@ public class Chelsea {
         }
         return errors;
 
+    }
+
+    public static <T> void  filterLinkedList(LinkedList<T> input) {
+        LinkedList<T> out = new LinkedList<>();
+        input.forEach(element -> {
+            if(!out.contains(element)) {
+                out.add(element);
+            }
+        });
+        input.clear();
+        input.addAll(out);
     }
 
     

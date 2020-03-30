@@ -30,6 +30,7 @@ public class MyListener extends BaseErrorListener {
                             RecognitionException e)
     {
         List<String> stack = ((Parser)recognizer).getRuleInvocationStack(); Collections.reverse(stack);
+        System.out.println("From listener " + msg);
         Stack<String> toAdd = new Stack<String>();
         stack.forEach(rule -> toAdd.add(rule));
         errors.add(toAdd);

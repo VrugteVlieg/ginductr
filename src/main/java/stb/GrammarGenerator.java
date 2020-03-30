@@ -10,16 +10,20 @@ public class GrammarGenerator {
 
     public static LinkedList<GrammarReader> generatePopulation(int popSize) {
         GrammarReader terminalGrammar = new GrammarReader(Constants.GRAMMAR_PATH + Constants.CURR_GRAMMAR + ".terminals");
+        terminalGrammar.getAllRules().forEach(rule -> rule.getTotalProductions());
         LinkedList<GrammarReader> output = new LinkedList<GrammarReader>();
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + i;
             GrammarReader currGrammar = new GrammarReader(grammarName,terminalGrammar.getAllRules());
-            int grammarRuleCount = ThreadLocalRandom.current().nextInt(MAX_PROD_SIZE);
+            int grammarRuleCount = ThreadLocalRandom.current().nextInt(MAX_PROD_SIZE) + 1;
+
             System.out.println("Creating new grammar " + grammarName + " with " + grammarRuleCount + " rules");
             for (int j = 0; j < grammarRuleCount; j++) {
                 int currRuleLen = ThreadLocalRandom.current().nextInt(MAX_RHS_SIZE);
                 currGrammar.generateNewRule(currRuleLen);
             }
+            
+            currGrammar.flipRules();
             System.out.println("New grammar \n" + currGrammar.toString());
             output.add(currGrammar);
         }

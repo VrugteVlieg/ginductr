@@ -1,11 +1,7 @@
 package stb;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
-
-
-
 
 
 public class Rule {
@@ -19,39 +15,62 @@ public class Rule {
     private int depth = 0;
     private String ruleText;
 
+    /**
+     * Creates a deep-copy of a rule
+     * @param toCopy
+     */
+    public Rule(Rule toCopy) {
+        this.name = toCopy.name;
+        this.subRules = new ArrayList<LinkedList<Rule>>(toCopy.subRules);
+        this.terminal = toCopy.terminal;
+        this.optional = toCopy.optional;
+        this.iterative = toCopy.iterative;
+        this.mainRule = toCopy.mainRule;
+        this.singular = toCopy.singular;
+        this.depth = toCopy.depth;
+        this.ruleText = toCopy.ruleText;
+    }
+
+    /**
+     * Creates a minor rule, these are rules inside of major rules
+     * @param ruleText
+     * @param depth how many levels deep is this rule, used to format printOut
+     */
     public Rule(String ruleText, int depth) {
         ruleText = ruleText.trim();
         this.name = ruleText;
         this.ruleText = ruleText;
-        printOut("New minor rule " + ruleText);
+        // printOut("New minor rule " + ruleText);
         this.mainRule = false;
         this.depth = depth;
         singular = !ruleText.contains(" ");
         optional = ruleText.charAt(ruleText.length()-1) == '?' || ruleText.charAt(ruleText.length()-1) == '*';
         iterative = ruleText.charAt(ruleText.length()-1) == '+' || ruleText.charAt(ruleText.length()-1) == '*';
-        if(optional)printOut("Optional");
-        if(iterative)printOut("Iterative");
+        
+        //Strips away the additional information associated with the rule so the subrules can be parsed
         if(optional || iterative) {
-            if(ruleText.charAt(0) == '(') {
-                ruleText = ruleText.substring(1, ruleText.length()-2);
-            } else {
-                ruleText = ruleText.substring(0, ruleText.length()-1);
-            }
-            printOut("New rule text " + ruleText);
-            this.name = ruleText;
-            
+            ruleText = ruleText.substring(0, ruleText.length()-1);
         }
-        this.terminal = Character.isUpperCase(this.name.charAt(0));
+        if(ruleText.charAt(0) == '(') {
+            ruleText = ruleText.substring(1, ruleText.length()-1);
+        } 
+        this.name = ruleText.trim();
+        
+        this.terminal = false;
         if(!singular) addRuleLookahead(ruleText);
     }
 
-
+    /**
+     * Creates major rule from text, this is a rule which is present in thee EBNF with a LHS
+     * @param name LHS of the rule
+     * @param ruleText RHS of the rule
+     */
     public Rule(String name, String ruleText) {
         ruleText = ruleText.trim();
         this.ruleText = ruleText;
         name = name.trim();
         this.name = name;
-        printOut("New major rule " + name + " : " + ruleText);
+        // printOut("New major rule " + name + " : " + ruleText);
         mainRule = true;
         terminal = Character.isUpperCase(name.charAt(0));
         optional = name.charAt(name.length()-1) == '?' || name.charAt(name.length()-1) == '*';
@@ -61,7 +80,8 @@ public class Rule {
 
      public void addRuleLookahead(String rule) {
          int index = 0;
-         printOut("Adding \'" +  rule + "\' by lookahead");
+         if(!mainRule) rule = rule+";"; //adds ; to the end of the rule text to make parsing easier
+        //  printOut("Adding \'" +  rule + "\' by lookahead");
          LinkedList<Rule> currProduction = new LinkedList<Rule>();
          StringBuilder currString = new StringBuilder();
          boolean StringLiteral = false;
@@ -70,42 +90,43 @@ public class Rule {
             // printOut(rule.charAt(index) + " -> " + currString.toString().replaceAll(" ", "_SPACE_"));
             switch(rule.charAt(index)) {
                case ' ':
-                   if(currString.length() != 0 && !StringLiteral && brackets==0) {
-                       currProduction.add(new Rule(currString.toString(),depth+1));
-                       currString = new StringBuilder(); 
-                   } else if(StringLiteral || brackets!=0){
-                       currString.append(" ");
-                   } 
-                   break;
+                    if(currString.length() != 0 && !StringLiteral && brackets==0) {
+                        currProduction.add(new Rule(currString.toString(),depth+1));
+                        currString = new StringBuilder(); 
+                    } else if(StringLiteral || brackets!=0){
+                        currString.append(" ");
+                    } 
+                    break;
                
                case '|':
-                   if(StringLiteral) {
-                       currString.append("|");
-                   } else {
-                       subRules.add(currProduction);
-                       currProduction = new LinkedList<Rule>();
-                   }
-                   break;
+                    if(StringLiteral) {
+                        currString.append("|");
+                    } else {
+                        subRules.add(currProduction);
+                        currProduction = new LinkedList<Rule>();
+                    }
+                    break;
 
                 case ';':
                     if(currString.length() != 0) {
                         currProduction.add(new Rule(currString.toString(),depth+1));
+                        currString = new StringBuilder(); 
                     }
                     subRules.add(currProduction);
                     break;
 
                case '\'':
-                   StringLiteral = !StringLiteral;
-                   currString.append("\'");
-                   break;
+                    StringLiteral = !StringLiteral;
+                    currString.append("\'");
+                    break;
                case '(':
-                   if(!StringLiteral)brackets++;
-                   currString.append("(");
-                   break;
+                    if(!StringLiteral)brackets++;
+                    currString.append("(");
+                    break;
                case ')':
-               if(!StringLiteral)brackets--;
-               currString.append(")");
-               break;
+                    if(!StringLiteral)brackets--;
+                    currString.append(")");
+                    break;
                default:
                    currString.append(rule.charAt(index) + "");
                    break;
@@ -114,9 +135,12 @@ public class Rule {
          }
          printOut("Final subRules " + subRules.toString());
      }
+
     /**
      * @return The RHS of the rule
      */
+    //This might not be updated properly when a rule is mutated
+
     public String getRuleText() {
 
         return ruleText;
@@ -229,5 +253,63 @@ public class Rule {
     }
     public boolean isTerminal() {
         return this.terminal;
+    }
+    public void setProduction(int index, Rule toSet) {
+        Rule test = new Rule(toSet);
+        test.mainRule = false;
+        int counter = 0;
+        // System.out.println("Setting rule " + index + " in " + this + " to " + test);
+        int subSetIndex = 0;
+        for(LinkedList<Rule> subSet : subRules) {
+            int subRuleIndex = 0;
+            for(Rule subRule : subSet) {
+                int counterPre = counter;
+                if(counterPre == index-1) {
+                    printOut("Setting " + subRules.get(subSetIndex).get(subRuleIndex) + " to " + test.name);
+                    subRules.get(subSetIndex).set(subRuleIndex, test);
+                    if(!mainRule)resetName();
+                    return;
+                } else {
+                    counter += subRule.getTotalProductions();
+                    if(counter >= index) { //the rule to change was in the the last subrule
+                        int indexInRule = index - counterPre - 1; //position withing the rule
+                        subRule.setProduction(indexInRule, test);
+                        
+                        printOut(subRules.toString());
+                    }
+                }
+                subRuleIndex++;
+            }
+            subSetIndex++;
+        }
+    }
+
+    public void resetName() {
+        StringBuilder out = new StringBuilder();
+        subRules.forEach(subProd -> {
+            subProd.forEach(rule -> {
+                out.append(rule + " ");
+            });
+        });
+        printOut("Name set to " + out);
+        this.name = out.toString().trim();
+        this.ruleText = this.toString();
+    }
+
+	public int getTotalProductions() {
+        int out = 1; //always start at 1 so the rule itself can be selected as well
+        if(!ruleText.contains(" ")) {
+            return out;
+        }
+		for(LinkedList<Rule> subSet : subRules) {
+            for(Rule subRule : subSet) {
+                out += subRule.getTotalProductions();
+            }
+        }
+        return out;
+    }
+    
+    public void addAlternative(ArrayList<LinkedList<Rule>> toAdd) {
+        this.subRules.addAll(toAdd);
     }
 }
