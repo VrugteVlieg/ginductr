@@ -4,20 +4,24 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class GrammarReader {
 
     private File grammarFile;
     private String grammarName;
-    private ArrayList<Rule> allRules = new ArrayList<Rule>();
     private ArrayList<Rule> parserRules  = new ArrayList<Rule>();;
     private ArrayList<Rule> terminalRules;
     private boolean positiveAcceptance = false; //does this grammar accept all positive cases
     private double score = 0.0;
 
+    /**
+     * Constructs a grammar from a given file
+     * @param filePath
+     */
     public GrammarReader(String filePath) {
         grammarFile = new File(filePath);
         grammarName = grammarFile.getName().split("\\.")[0];
@@ -25,10 +29,18 @@ public class GrammarReader {
         readRules();
     }
 
+    /**
+     * Constructs a grammar with a given set of terminal rules
+     * @param name
+     * @param terminalRules
+     */
     public GrammarReader(String name, ArrayList<Rule> terminalRules) {
         grammarName = name;
         this.terminalRules = new ArrayList<Rule>(terminalRules);
-        this.allRules = new ArrayList<>(terminalRules);
+    }
+
+    public ArrayList<Rule> getAllRules() {
+        return new ArrayList<Rule>(Stream.of(parserRules, terminalRules).flatMap(x -> x.stream()).collect(Collectors.toList()));
     }
 
     private void readRules() {
@@ -47,9 +59,6 @@ public class GrammarReader {
                 } else {
                     parserRules.add(currRule);
                 }
-                
-                allRules.add(currRule);
-
             }
             
         } catch (Exception e) {
@@ -57,23 +66,14 @@ public class GrammarReader {
         }
     }
 
-    ArrayList<Rule> getAllRules() {
-        return allRules;
-    }
     public String getStartSymbol() {
-        return allRules.get(0).getName();
+        return parserRules.get(0).getName();
     }
 
-    public void flipRules() {
-        Collections.reverse(allRules);
-    }
-    
-
-    
     public String toString() {
         StringBuilder out = new StringBuilder();
         out.append("grammar " + grammarName + ";\n");
-        allRules.forEach(Rule -> out.append(Rule + "\n"));
+        getAllRules().forEach(Rule -> out.append(Rule + "\n"));
         return out.toString();
     }
 
@@ -84,14 +84,12 @@ public class GrammarReader {
     }
 
     public void setTerminalRules(ArrayList<Rule> newRules) {
-        allRules.removeAll(this.terminalRules);
         this.terminalRules =  newRules;
-        allRules.addAll(newRules);
     }
 
-    public void generateNewRule(int RHSLen) {
+    public void generateNewRule(String ruleName, int RHSLen) {
         if(RHSLen == 0) return;
-        String ruleName = "rule_" + allRules.size();
+        ArrayList<Rule> allRules = getAllRules();
         StringBuilder newRuleText = new StringBuilder();
         // System.out.println(allRules);
         for (int i = 0; i < RHSLen; i++) {
@@ -100,7 +98,13 @@ public class GrammarReader {
         }
         newRuleText.append(";");
         Rule toAdd =  new Rule(ruleName,newRuleText.toString());
-        allRules.add(toAdd);
+        for(Rule rule: parserRules) {
+            if(rule.getName().equals(ruleName)) {
+                System.out.println("generating " + toAdd.getSubRules() + " as an alternative to " + toAdd.getName());
+                rule.addAlternative(toAdd.getSubRules());
+                return;
+            }
+        }
         parserRules.add(toAdd);
     }
 
@@ -112,27 +116,32 @@ public class GrammarReader {
 
 	public void mutate(Double pM, Double pH) {
         if(Math.random() < pM || true) {
-            int ruleIndex  = randInt(parserRules.size());
-            Rule toMutate = parserRules.get(ruleIndex);
-            int productionIndex = randInt(toMutate.getTotalProductions());
-            productionIndex = 0;
-            System.out.println("Production index = " + productionIndex);
-            if(productionIndex == 0) { //this symbol is now becoming an alternative to another rule
-                int newRuleIndex = randInt(parserRules.size());
-                while(newRuleIndex == ruleIndex) newRuleIndex = randInt(parserRules.size());
-                Rule ruleToExtend = parserRules.get(newRuleIndex);
-                System.out.println("Adding " + toMutate + " as an alternative to " + ruleIndex);
-                ruleToExtend.addAlternative(toMutate.getSubRules());
-                parserRules.remove(toMutate);
-                allRules.remove(toMutate);
-            } 
-            else {
-            //     //TODO expand out all subrules in a given rule, even brackted sub rules, these can the individually be mutated
-                int toInsertIndex = randInt(parserRules.size());
-                while(toInsertIndex == ruleIndex) toInsertIndex = randInt(parserRules.size());
-                Rule toInsert = parserRules.get(toInsertIndex);
-                System.out.println("Setting rule " + productionIndex + " of " + toMutate + " to " + toInsert);
-                toMutate.setProduction(productionIndex,toInsert);
+            if(parserRules.size() == 1) {
+                System.out.println("Only 1 rule left in parser " + parserRules.get(0));
+            } else if(parserRules.size() == 0) {
+                System.out.println(this.grammarName + " has no parser rules");
+            } else {
+                System.err.println("parserSize " + parserRules.size());
+                int ruleIndex  = randInt(parserRules.size());
+                Rule toMutate = parserRules.get(ruleIndex);
+                int productionIndex = randInt(toMutate.getTotalProductions());
+                System.out.println("Production index = " + productionIndex);
+                if(productionIndex == 0) { //this symbol is now becoming an alternative to another rule
+                    int newRuleIndex = randInt(parserRules.size());
+                    while(newRuleIndex == ruleIndex) newRuleIndex = randInt(parserRules.size());
+                    Rule ruleToExtend = parserRules.get(newRuleIndex);
+                    System.out.println("Adding " + toMutate + " as an alternative to " + ruleToExtend.getName());
+                    ruleToExtend.addAlternative(toMutate.getSubRules());
+                    parserRules.remove(toMutate);
+                } 
+                else {
+                //     //TODO expand out all subrules in a given rule, even brackted sub rules, these can the individually be mutated
+                    int toInsertIndex = randInt(parserRules.size());
+                    while(toInsertIndex == ruleIndex) toInsertIndex = randInt(parserRules.size());
+                    Rule toInsert = parserRules.get(toInsertIndex);
+                    System.out.println("Setting rule " + productionIndex + " of " + toMutate .getName()+ " to " + toInsert.getName());
+                    toMutate.setProduction(productionIndex,toInsert);
+                }
             }
         }
     }

@@ -13,7 +13,7 @@ public class App {
             // GrammarReader myReader = new GrammarReader("./grammars/arithmetic.g4");
             // runTests(myReader);   
             LinkedList<GrammarReader> myGrammars = GrammarGenerator.generatePopulation(1);
-            for (int i = 0; i < 1; i++) {
+            for (int i = 0; i < 5; i++) {
                 myGrammars.forEach(grammar -> {
                     // runTests(grammar);
                     // grammar.getAllRules().forEach(rule -> rule.getTotalProductions());

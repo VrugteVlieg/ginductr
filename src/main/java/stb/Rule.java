@@ -44,6 +44,7 @@ public class Rule {
         this.mainRule = false;
         this.depth = depth;
         singular = !ruleText.contains(" ");
+        // System.out.println(singular ? "it is singular " : " it is not singular");
         optional = ruleText.charAt(ruleText.length()-1) == '?' || ruleText.charAt(ruleText.length()-1) == '*';
         iterative = ruleText.charAt(ruleText.length()-1) == '+' || ruleText.charAt(ruleText.length()-1) == '*';
         
@@ -70,6 +71,7 @@ public class Rule {
         this.ruleText = ruleText;
         name = name.trim();
         this.name = name;
+        singular = true;
         // printOut("New major rule " + name + " : " + ruleText);
         mainRule = true;
         terminal = Character.isUpperCase(name.charAt(0));
@@ -298,11 +300,13 @@ public class Rule {
 
 	public int getTotalProductions() {
         int out = 1; //always start at 1 so the rule itself can be selected as well
-        if(!ruleText.contains(" ")) {
+        System.out.println(singular ? this + " is singular " : this + " is not singular");
+        if(singular) {
             return out;
         }
 		for(LinkedList<Rule> subSet : subRules) {
             for(Rule subRule : subSet) {
+                printOut("Getting total productions for " + subRule);
                 out += subRule.getTotalProductions();
             }
         }
@@ -311,5 +315,13 @@ public class Rule {
     
     public void addAlternative(ArrayList<LinkedList<Rule>> toAdd) {
         this.subRules.addAll(toAdd);
+    }
+    public void addAlternative(LinkedList<Rule> toAdd) {
+        this.subRules.add(toAdd);
+    }
+    public void addAlternative(Rule toAdd) {
+        LinkedList<Rule> wrappedToAdd = new LinkedList<Rule>();
+        wrappedToAdd.add(toAdd);
+        this.subRules.add(wrappedToAdd);
     }
 }
