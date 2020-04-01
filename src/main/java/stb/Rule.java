@@ -44,6 +44,7 @@ public class Rule {
         this.mainRule = false;
         this.depth = depth;
         singular = !ruleText.contains(" ");
+
         // System.out.println(singular ? "it is singular " : " it is not singular");
         optional = ruleText.charAt(ruleText.length()-1) == '?' || ruleText.charAt(ruleText.length()-1) == '*';
         iterative = ruleText.charAt(ruleText.length()-1) == '+' || ruleText.charAt(ruleText.length()-1) == '*';
@@ -57,8 +58,11 @@ public class Rule {
         } 
         this.name = ruleText.trim();
         
-        this.terminal = false;
-        if(!singular) addRuleLookahead(ruleText);
+        if(singular) terminal = Character.isUpperCase(name.charAt(0)); 
+        if(!singular) {
+            terminal = false;
+            addRuleLookahead(ruleText);
+        }
     }
 
     /**
@@ -135,7 +139,7 @@ public class Rule {
             }
             index++;
          }
-         printOut("Final subRules " + subRules.toString());
+        //  printOut("Final subRules " + subRules.toString());
      }
 
     /**
@@ -236,9 +240,11 @@ public class Rule {
         if(Constants.DEBUG)System.out.println(" ".repeat(depth) + "Context " + name + ": " + toPrint);
     }
 
-    public boolean setIterative(boolean setTo) {
+    public void setIterative(boolean setTo) {
+        StringBuilder out = new StringBuilder(getName());
         this.iterative = setTo;
-        return this.iterative;
+        out.append(" -> " + getName());
+        printOut(out.toString());
     }
 
     public boolean isIterative() {
@@ -249,9 +255,11 @@ public class Rule {
         return this.optional;
     }
 
-    public boolean setOptional(boolean setTo) {
+    public void setOptional(boolean setTo) {
+        StringBuilder out = new StringBuilder(getName());
         this.optional = setTo;
-        return this.optional;
+        out.append(" -> " + getName());
+        printOut(out.toString());
     }
     public boolean isTerminal() {
         return this.terminal;
@@ -267,7 +275,7 @@ public class Rule {
             for(Rule subRule : subSet) {
                 int counterPre = counter;
                 if(counterPre == index-1) {
-                    printOut("Setting " + subRules.get(subSetIndex).get(subRuleIndex) + " to " + test.name);
+                    // printOut("Setting " + subRules.get(subSetIndex).get(subRuleIndex) + " to " + test.name);
                     subRules.get(subSetIndex).set(subRuleIndex, test);
                     if(!mainRule)resetName();
                     return;
@@ -286,6 +294,32 @@ public class Rule {
         }
     }
 
+    public Rule getProduction(int index) {
+        int counter = 0;
+        int subSetIndex = 0;
+        for(LinkedList<Rule> subSet : subRules) {
+            int subRuleIndex = 0;
+            for(Rule subRule : subSet) {
+                int counterPre = counter;
+                if(counterPre == index-1) {
+                    // printOut("Setting " + subRules.get(subSetIndex).get(subRuleIndex) + " to " + test.name);
+                    return subRules.get(subSetIndex).get(subRuleIndex);
+                } else {
+                    counter += subRule.getTotalProductions();
+                    if(counter >= index) { //the rule to change was in the the last subrule
+                        int indexInRule = index - counterPre - 1; //position withing the rule
+                        return subRule.getProduction(indexInRule);
+                    }
+                }
+                subRuleIndex++;
+            }
+            subSetIndex++;
+        }
+
+        return new Rule("Default", "Default");
+
+    }
+
     public void resetName() {
         StringBuilder out = new StringBuilder();
         subRules.forEach(subProd -> {
@@ -300,7 +334,7 @@ public class Rule {
 
 	public int getTotalProductions() {
         int out = 1; //always start at 1 so the rule itself can be selected as well
-        if(singular) {
+        if(singular && !mainRule) {
             return out;
         }
 		for(LinkedList<Rule> subSet : subRules) {
@@ -321,5 +355,41 @@ public class Rule {
         LinkedList<Rule> wrappedToAdd = new LinkedList<Rule>();
         wrappedToAdd.add(toAdd);
         this.subRules.add(wrappedToAdd);
+    }
+    /**
+     * Calculates which rules in parserRules can be reached from this rules, stores names of reachable rules in reachables
+     * @param parserRules 
+     * @param reachables
+     */
+	public void getReachables(ArrayList<Rule> parserRules, ArrayList<String> reachables) {
+        if(!terminal && singular && !reachables.contains(getName())) {
+            reachables.add(getName());
+            subRules.forEach(subRule -> {
+                subRule.forEach(production -> {
+                    production.getReachables(parserRules, reachables);
+                });
+            });
+        } 
+    }
+    
+    public void heuristic(double pH) {
+
+        if(!mainRule && Math.random() < pH) {
+            double choice = Math.random();
+            if(choice < 0.33) {
+                setIterative(!iterative);
+            } else if(choice < 0.66) {
+                setOptional(!optional);
+            } else {
+                setOptional(!optional);
+                setIterative(!iterative);
+            }
+        } else {
+            subRules.forEach(subRule -> {
+                subRule.forEach(production -> {
+                    production.heuristic(pH);
+                });
+            });
+        }            
     }
 }

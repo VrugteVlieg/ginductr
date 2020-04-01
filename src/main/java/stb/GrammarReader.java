@@ -105,7 +105,7 @@ public class GrammarReader {
                 return;
             }
         }
-        parserRules.add(toAdd);
+        parserRules.add(0,toAdd);
     }
 
 	public void setPositiveAcceptance(boolean toSet) {
@@ -161,7 +161,7 @@ public class GrammarReader {
             toSend.add(new Rule(parserRules.get(i)));
             toRecv.add(new Rule(toCrossover.parserRules.get(i)));
         }
-        System.out.println("Swapping " + toSend + " from " + this + "\nwith " + toRecv + " from " + toCrossover);
+        System.out.println("Swapping " + toSend + " from " + this.getName() + "\nwith " + toRecv + " from " + toCrossover.getName());
         for (int i = 0; i < indexToCut; i++) {
             parserRules.set(i, toRecv.get(i));
             toCrossover.parserRules.set(i, toSend.get(i));
@@ -170,7 +170,7 @@ public class GrammarReader {
         cleanupMergeRules();
         toCrossover.cleanupMergeRules();
         
-        System.out.println("Resulting in this " + this + "\nand " + toCrossover);
+        System.out.println("Resulting in " + this + "\nand\n" + toCrossover);
     }
     /**
      * Iterate through rules and merge rules with duplicate names
@@ -185,14 +185,35 @@ public class GrammarReader {
                 System.out.println("Merged to " + currRule);
                 parserRules.remove(toMergeIndex);
             } else {
-                System.out.println(currRule.getName() + " is not present in " + this);
-            }
-            for (int j = i; j < parserRules.size(); j++) {
-                Rule toCheck = parserRules.get(j);
-                if(toCheck.getName().equals(currRule.getName())) {
-
-                }
+                // System.out.println(currRule.getName() + " is not duplicated in " + this.getName());
             }
         }
     }
+    
+	public void removeUnreachable() {
+        Rule startSymbol = parserRules.get(0);
+        ArrayList<String> reachableRules = new ArrayList<String>();
+        startSymbol.getReachables(parserRules, reachableRules);
+        System.out.println("Reachable rules " + reachableRules);
+        parserRules.removeIf(rule -> !reachableRules.contains(rule.getName()));
+        System.out.println("Filtered parserRules " + parserRules);
+	}
+
+	public void heuristic(Double pH) {
+        int ruleIndex = randInt(parserRules.size());
+        Rule mainToChange = parserRules.get(ruleIndex);
+        System.out.println(mainToChange + " has " + mainToChange.getTotalProductions() + " productions");
+        int toChangeIndex = randInt(mainToChange.getTotalProductions());
+        Rule toChange = mainToChange.getProduction(toChangeIndex);
+        double choice = Math.random();
+        System.out.println("Changing rule " + toChangeIndex + " of " + mainToChange.getName());
+        if(choice < 0.33) {
+            toChange.setIterative(!toChange.isIterative());
+        } else if(choice < 0.66) {
+            toChange.setOptional(!toChange.isOptional());
+        } else {
+            toChange.setOptional(!toChange.isOptional());
+            toChange.setIterative(!toChange.isIterative());
+        }
+	}
 }

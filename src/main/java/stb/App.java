@@ -1,6 +1,5 @@
 package stb;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Stack;
@@ -20,18 +19,24 @@ public class App {
                     // runTests(grammar);
                     // grammar.getAllRules().forEach(rule -> rule.getTotalProductions());
                     // if(!grammar.getPositiveAcceptance()) {
-                    //TODO add crossover from mernik paper
-                        if(Math.random() < Constants.P_C || true) {
-                            if(toCrossover.size() == 0) {
-                                toCrossover.push(grammar);
-                            } else {
-                                toCrossover.pop().crossover(grammar);
-                            }
-                        }
+                        // if(Math.random() < Constants.P_C || true) {
+                        //     if(toCrossover.size() == 0) {
+                        //         toCrossover.push(grammar);
+                        //     } else {
+                        //         toCrossover.pop().crossover(grammar);
+                        //     }
+                        // }
                         
                         // System.out.println("Pre  mutation " + grammar);
                         // grammar.mutate(Constants.P_M, Constants.P_H);
-                        // System.out.println("Post mutation " +  grammar);
+                        // System.out.println("Post  mutation " + grammar);
+                        // System.out.println("Pre  Filter " + grammar);
+                        grammar.getParserRules().forEach(parserRule -> Chelsea.filterLinkedList(parserRule.getSubRules()));
+                        grammar.removeUnreachable();
+                        // System.out.println("Post Filter " +  grammar);
+                        grammar.heuristic(Constants.P_H);
+                        System.out.println(grammar);
+
                     // }
                 });
             }

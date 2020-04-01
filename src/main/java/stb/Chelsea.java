@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 import java.util.stream.Stream;
@@ -146,11 +147,13 @@ public class Chelsea {
 
     }
 
-    public static <T> void  filterLinkedList(LinkedList<T> input) {
-        LinkedList<T> out = new LinkedList<>();
+    public static <T> void filterLinkedList(List<T> input) {
+        List<T> out = new LinkedList<>();
         input.forEach(element -> {
             if(!out.contains(element)) {
                 out.add(element);
+            } else {
+                System.out.println("Not adding " + element + " to " + out);
             }
         });
         input.clear();

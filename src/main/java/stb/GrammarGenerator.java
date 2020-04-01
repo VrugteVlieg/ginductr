@@ -2,7 +2,6 @@ package stb;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -21,7 +20,6 @@ public class GrammarGenerator {
         } catch(Exception e ) {
             e.printStackTrace();
         }
-        System.out.println("Non terminals = " + Arrays.toString(nonTerminals));
         GrammarReader terminalGrammar = new GrammarReader(Constants.GRAMMAR_PATH + Constants.CURR_GRAMMAR + ".terminals");
 
         terminalGrammar.getAllRules().forEach(rule -> rule.getTotalProductions());
@@ -41,7 +39,7 @@ public class GrammarGenerator {
                 String ruleName = nonTerminals[randInt(nonTerminals.length)];
                 currGrammar.generateNewRule(ruleName, currRuleLen);
             }
-            
+            currGrammar.removeUnreachable();
             System.out.println("New grammar \n" + currGrammar.toString());
             output.add(currGrammar);
         }
