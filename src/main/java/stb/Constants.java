@@ -7,5 +7,6 @@ public class Constants {
     public static final String GRAMMAR_PATH = "./grammars/";
     public static final boolean DEBUG = true;
 	public static final Double P_M = 0.2;
-	public static final Double P_H = 0.8;
+	public static final Double P_H = 0.3;
+	public static final Double P_C = 0.65;
 }

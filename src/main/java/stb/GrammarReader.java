@@ -135,7 +135,6 @@ public class GrammarReader {
                     parserRules.remove(toMutate);
                 } 
                 else {
-                //     //TODO expand out all subrules in a given rule, even brackted sub rules, these can the individually be mutated
                     int toInsertIndex = randInt(parserRules.size());
                     while(toInsertIndex == ruleIndex) toInsertIndex = randInt(parserRules.size());
                     Rule toInsert = parserRules.get(toInsertIndex);
@@ -152,4 +151,48 @@ public class GrammarReader {
 
     public void setScore(double newScore) {score = newScore;}
     public double getScore() {return score;}
+
+	public void crossover(GrammarReader toCrossover) {
+        boolean currShortest = this.parserRules.size() < toCrossover.parserRules.size();
+        int indexToCut = 1 + randInt(currShortest ? this.parserRules.size() : toCrossover.parserRules.size());
+        ArrayList<Rule> toSend = new ArrayList<Rule>();
+        ArrayList<Rule> toRecv = new ArrayList<Rule>();
+        for (int i = 0; i < indexToCut; i++) {
+            toSend.add(new Rule(parserRules.get(i)));
+            toRecv.add(new Rule(toCrossover.parserRules.get(i)));
+        }
+        System.out.println("Swapping " + toSend + " from " + this + "\nwith " + toRecv + " from " + toCrossover);
+        for (int i = 0; i < indexToCut; i++) {
+            parserRules.set(i, toRecv.get(i));
+            toCrossover.parserRules.set(i, toSend.get(i));
+        }
+
+        cleanupMergeRules();
+        toCrossover.cleanupMergeRules();
+        
+        System.out.println("Resulting in this " + this + "\nand " + toCrossover);
+    }
+    /**
+     * Iterate through rules and merge rules with duplicate names
+     */
+    public void cleanupMergeRules() {
+        for (int i = 0; i < parserRules.size(); i++) {
+            Rule currRule = parserRules.get(i);
+            int toMergeIndex = parserRules.lastIndexOf(currRule);
+            if(toMergeIndex != i) {
+                System.out.println(currRule.getName() + " is already present in " + this.getName() + " as " + parserRules.get(toMergeIndex));
+                currRule.addAlternative(parserRules.get(toMergeIndex).getSubRules());
+                System.out.println("Merged to " + currRule);
+                parserRules.remove(toMergeIndex);
+            } else {
+                System.out.println(currRule.getName() + " is not present in " + this);
+            }
+            for (int j = i; j < parserRules.size(); j++) {
+                Rule toCheck = parserRules.get(j);
+                if(toCheck.getName().equals(currRule.getName())) {
+
+                }
+            }
+        }
+    }
 }

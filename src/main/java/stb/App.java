@@ -1,5 +1,6 @@
 package stb;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Stack;
@@ -12,15 +13,25 @@ public class App {
             System.out.println("Hello World!");
             // GrammarReader myReader = new GrammarReader("./grammars/arithmetic.g4");
             // runTests(myReader);   
-            LinkedList<GrammarReader> myGrammars = GrammarGenerator.generatePopulation(1);
-            for (int i = 0; i < 5; i++) {
+            LinkedList<GrammarReader> myGrammars = GrammarGenerator.generatePopulation(2);
+            for (int i = 0; i < 1; i++) {
+                Stack<GrammarReader> toCrossover = new Stack<GrammarReader>();
                 myGrammars.forEach(grammar -> {
                     // runTests(grammar);
                     // grammar.getAllRules().forEach(rule -> rule.getTotalProductions());
                     // if(!grammar.getPositiveAcceptance()) {
-                        System.out.println("Pre  mutation " + grammar);
-                        grammar.mutate(Constants.P_M, Constants.P_H);
-                        System.out.println("Post mutation " +  grammar);
+                    //TODO add crossover from mernik paper
+                        if(Math.random() < Constants.P_C || true) {
+                            if(toCrossover.size() == 0) {
+                                toCrossover.push(grammar);
+                            } else {
+                                toCrossover.pop().crossover(grammar);
+                            }
+                        }
+                        
+                        // System.out.println("Pre  mutation " + grammar);
+                        // grammar.mutate(Constants.P_M, Constants.P_H);
+                        // System.out.println("Post mutation " +  grammar);
                     // }
                 });
             }
@@ -28,8 +39,7 @@ public class App {
             e.printStackTrace();
         }
     }
-    //TODO implement scoring system followed by mutations
-
+    
     public static void runTests(GrammarReader myReader) {
         Chelsea.generateSources(myReader);
         double incScore = myReader.getScore();

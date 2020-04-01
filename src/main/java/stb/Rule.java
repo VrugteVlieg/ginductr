@@ -300,13 +300,11 @@ public class Rule {
 
 	public int getTotalProductions() {
         int out = 1; //always start at 1 so the rule itself can be selected as well
-        System.out.println(singular ? this + " is singular " : this + " is not singular");
         if(singular) {
             return out;
         }
 		for(LinkedList<Rule> subSet : subRules) {
             for(Rule subRule : subSet) {
-                printOut("Getting total productions for " + subRule);
                 out += subRule.getTotalProductions();
             }
         }

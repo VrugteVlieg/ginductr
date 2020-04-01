@@ -34,6 +34,10 @@ public class GrammarGenerator {
             System.out.println("Creating new grammar " + grammarName + " with " + grammarRuleCount + " rules");
             for (int j = 0; j < grammarRuleCount; j++) {
                 int currRuleLen = ThreadLocalRandom.current().nextInt(MAX_RHS_SIZE);
+
+                while(currGrammar.getParserRules().size() == 0 && currRuleLen == 0)
+                    currRuleLen = ThreadLocalRandom.current().nextInt(MAX_RHS_SIZE);
+                    
                 String ruleName = nonTerminals[randInt(nonTerminals.length)];
                 currGrammar.generateNewRule(ruleName, currRuleLen);
             }
@@ -47,4 +51,6 @@ public class GrammarGenerator {
     public static int randInt(int bound) {
         return ThreadLocalRandom.current().nextInt(bound);
     }
+
+    
 }
