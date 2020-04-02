@@ -34,13 +34,17 @@ public class Chelsea {
     static Constructor<?> parserConstructor;
     static GrammarReader myReader;
 
+    /**
+     * Generates the source files to be used by the following call to runTests
+     * @param grammar
+     */
     public static void generateSources(GrammarReader grammar) {
         myReader = grammar;
-
+        String finName = "default";
         try {
 
             // Name of the file, for example ampl.g4
-            String finName = grammar.getName();
+            finName = grammar.getName();
             // Setting up the arguments for th e ANTLR Tool. outputDir is in this case
             // generated-sources/
             String[] args = { "-o", Constants.OUTPUT_DIR };
@@ -79,7 +83,9 @@ public class Chelsea {
             parserConstructor = parser.getConstructor(TokenStream.class);
 
         } catch (Exception e) {
+            System.err.println(e.getCause() + " for " + finName);
             e.printStackTrace();
+            System.exit(1);
         }
     }
     /**
@@ -91,7 +97,7 @@ public class Chelsea {
      * @throws InstantiationException
      * @throws NoSuchMethodException
      */
-    public static HashMap<String, LinkedList<Stack<String>>> runTestcases() throws IOException, IllegalAccessException, InvocationTargetException,
+    public static HashMap<String, LinkedList<Stack<String>>> runTestcases(lamdaArg removeCurr) throws IOException, IllegalAccessException, InvocationTargetException,
             InstantiationException, NoSuchMethodException {
         // Gettting a list of test cases from the database
         HashMap<String,LinkedList<Stack<String>>> errors = new HashMap<String,LinkedList<Stack<String>>>();
@@ -99,7 +105,7 @@ public class Chelsea {
             // System.out.println("Running " + paths.count() + " tests");
             paths.forEach(path -> {
                 String fileName = path.getFileName().toString();
-                System.out.println("Testing " + fileName);
+                // System.out.println("Testing " + fileName);
                 try {
                     StringBuilder rawContent = new StringBuilder(Files.readString(path));
                     while (rawContent.indexOf("/*") != -1) {
@@ -134,13 +140,15 @@ public class Chelsea {
                     // fileErrors.forEach(ErrorStack -> System.err.println(ErrorStack));
                                         
                     errors.put(fileName.toString(), fileErrors);
+                } catch(NoSuchMethodException e) {
+                    // System.out.println("Removing " + myReader.getName() + " from grammar");
+                    removeCurr.removeGrammar();
                 } catch (Exception e) {
-                    System.out.println("Exception lamda in Chelsea");
-                    e.printStackTrace();
+                    System.err.println("Exception lamda in Chelsea " + e.getMessage());
                 }
             });
         } catch (Exception e) {
-            System.out.println("Exception in filewalker in Chelsea");
+            System.err.println("Exception filewalker in Chelsea " + e.getMessage());
             e.printStackTrace();
         }
         return errors;
@@ -153,7 +161,7 @@ public class Chelsea {
             if(!out.contains(element)) {
                 out.add(element);
             } else {
-                System.out.println("Not adding " + element + " to " + out);
+                // System.out.println("Not adding " + element + " to " + out);
             }
         });
         input.clear();

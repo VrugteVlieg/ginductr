@@ -17,6 +17,7 @@ public class GrammarReader {
     private ArrayList<Rule> terminalRules;
     private boolean positiveAcceptance = false; //does this grammar accept all positive cases
     private double score = 0.0;
+    private boolean remove = false;
 
     /**
      * Constructs a grammar from a given file
@@ -27,6 +28,12 @@ public class GrammarReader {
         grammarName = grammarFile.getName().split("\\.")[0];
         this.terminalRules = new ArrayList<Rule>();
         readRules();
+    }
+
+    public GrammarReader(GrammarReader toCopy) {
+        grammarName = toCopy.grammarName;
+        parserRules = new ArrayList<Rule>(toCopy.parserRules);
+        terminalRules = new ArrayList<Rule>(toCopy.terminalRules);
     }
 
     /**
@@ -100,7 +107,7 @@ public class GrammarReader {
         Rule toAdd =  new Rule(ruleName,newRuleText.toString());
         for(Rule rule: parserRules) {
             if(rule.getName().equals(ruleName)) {
-                System.out.println("generating " + toAdd.getSubRules() + " as an alternative to " + toAdd.getName());
+                // System.out.println("generating " + toAdd.getSubRules() + " as an alternative to " + toAdd.getName());
                 rule.addAlternative(toAdd.getSubRules());
                 return;
             }
@@ -117,20 +124,18 @@ public class GrammarReader {
 	public void mutate(Double pM, Double pH) {
         if(Math.random() < pM || true) {
             if(parserRules.size() == 1) {
-                System.out.println("Only 1 rule left in parser " + parserRules.get(0));
+                // System.out.println("Only 1 rule left in parser " + parserRules.get(0));
             } else if(parserRules.size() == 0) {
-                System.out.println(this.grammarName + " has no parser rules");
+                // System.out.println(this.grammarName + " has no parser rules");
             } else {
-                System.err.println("parserSize " + parserRules.size());
                 int ruleIndex  = randInt(parserRules.size());
                 Rule toMutate = parserRules.get(ruleIndex);
                 int productionIndex = randInt(toMutate.getTotalProductions());
-                System.out.println("Production index = " + productionIndex);
                 if(productionIndex == 0) { //this symbol is now becoming an alternative to another rule
                     int newRuleIndex = randInt(parserRules.size());
                     while(newRuleIndex == ruleIndex) newRuleIndex = randInt(parserRules.size());
                     Rule ruleToExtend = parserRules.get(newRuleIndex);
-                    System.out.println("Adding " + toMutate + " as an alternative to " + ruleToExtend.getName());
+                    // System.out.println("Adding " + toMutate + " as an alternative to " + ruleToExtend.getName());
                     ruleToExtend.addAlternative(toMutate.getSubRules());
                     parserRules.remove(toMutate);
                 } 
@@ -138,7 +143,7 @@ public class GrammarReader {
                     int toInsertIndex = randInt(parserRules.size());
                     while(toInsertIndex == ruleIndex) toInsertIndex = randInt(parserRules.size());
                     Rule toInsert = parserRules.get(toInsertIndex);
-                    System.out.println("Setting rule " + productionIndex + " of " + toMutate .getName()+ " to " + toInsert.getName());
+                    // System.out.println("Setting rule " + productionIndex + " of " + toMutate .getName()+ " to " + toInsert.getName());
                     toMutate.setProduction(productionIndex,toInsert);
                 }
             }
@@ -161,7 +166,7 @@ public class GrammarReader {
             toSend.add(new Rule(parserRules.get(i)));
             toRecv.add(new Rule(toCrossover.parserRules.get(i)));
         }
-        System.out.println("Swapping " + toSend + " from " + this.getName() + "\nwith " + toRecv + " from " + toCrossover.getName());
+        // System.out.println("Swapping " + toSend + " from " + this.getName() + "\nwith " + toRecv + " from " + toCrossover.getName());
         for (int i = 0; i < indexToCut; i++) {
             parserRules.set(i, toRecv.get(i));
             toCrossover.parserRules.set(i, toSend.get(i));
@@ -170,7 +175,7 @@ public class GrammarReader {
         cleanupMergeRules();
         toCrossover.cleanupMergeRules();
         
-        System.out.println("Resulting in " + this + "\nand\n" + toCrossover);
+        // System.out.println("Resulting in " + this + "\nand\n" + toCrossover);
     }
     /**
      * Iterate through rules and merge rules with duplicate names
@@ -180,9 +185,9 @@ public class GrammarReader {
             Rule currRule = parserRules.get(i);
             int toMergeIndex = parserRules.lastIndexOf(currRule);
             if(toMergeIndex != i) {
-                System.out.println(currRule.getName() + " is already present in " + this.getName() + " as " + parserRules.get(toMergeIndex));
+                // System.out.println(currRule.getName() + " is already present in " + this.getName() + " as " + parserRules.get(toMergeIndex));
                 currRule.addAlternative(parserRules.get(toMergeIndex).getSubRules());
-                System.out.println("Merged to " + currRule);
+                // System.out.println("Merged to " + currRule);
                 parserRules.remove(toMergeIndex);
             } else {
                 // System.out.println(currRule.getName() + " is not duplicated in " + this.getName());
@@ -194,19 +199,19 @@ public class GrammarReader {
         Rule startSymbol = parserRules.get(0);
         ArrayList<String> reachableRules = new ArrayList<String>();
         startSymbol.getReachables(parserRules, reachableRules);
-        System.out.println("Reachable rules " + reachableRules);
+        // System.out.println("Reachable rules " + reachableRules);
         parserRules.removeIf(rule -> !reachableRules.contains(rule.getName()));
-        System.out.println("Filtered parserRules " + parserRules);
+        // System.out.println("Filtered parserRules " + parserRules);
 	}
 
 	public void heuristic(Double pH) {
         int ruleIndex = randInt(parserRules.size());
         Rule mainToChange = parserRules.get(ruleIndex);
-        System.out.println(mainToChange + " has " + mainToChange.getTotalProductions() + " productions");
+        // System.out.println(mainToChange + " has " + mainToChange.getTotalProductions() + " productions");
         int toChangeIndex = randInt(mainToChange.getTotalProductions());
         Rule toChange = mainToChange.getProduction(toChangeIndex);
         double choice = Math.random();
-        System.out.println("Changing rule " + toChangeIndex + " of " + mainToChange.getName());
+        // System.out.println("Changing rule " + toChangeIndex + " of " + mainToChange.getName());
         if(choice < 0.33) {
             toChange.setIterative(!toChange.isIterative());
         } else if(choice < 0.66) {
@@ -215,5 +220,13 @@ public class GrammarReader {
             toChange.setOptional(!toChange.isOptional());
             toChange.setIterative(!toChange.isIterative());
         }
-	}
+    }
+    
+    public void flagForRemoval() {
+        this.remove = true;
+    }
+
+    public boolean toRemove() {
+        return remove;
+    }
 }
