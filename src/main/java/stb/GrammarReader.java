@@ -55,7 +55,6 @@ public class GrammarReader {
             String input;
             in.readLine();
             while((input = in.readLine()) != null) {
-                System.out.println(input);
                 input = input.replaceAll("[ ]+", " ").trim();
                 String RuleName = input.substring(0,input.indexOf(":")).trim();
                 String RuleString = input.substring(input.indexOf(":")+1); //cuts off the ; at the end
@@ -84,6 +83,13 @@ public class GrammarReader {
         return out.toString();
     }
 
+    public void printParserRules() {
+        StringBuilder out = new StringBuilder();
+        out.append(grammarName + "\n");
+        parserRules.forEach(Rule -> out.append(Rule + "\n"));
+        System.err.println(out);
+    }
+
     public String getName() {return grammarName;}
 
     ArrayList<Rule> getParserRules() {
@@ -98,7 +104,6 @@ public class GrammarReader {
         if(RHSLen == 0) return;
         ArrayList<Rule> allRules = getAllRules();
         StringBuilder newRuleText = new StringBuilder();
-        // System.out.println(allRules);
         for (int i = 0; i < RHSLen; i++) {
             int newRulesIndex = ThreadLocalRandom.current().nextInt(allRules.size());
             newRuleText.append(allRules.get(newRulesIndex).getName() + " ");
@@ -107,7 +112,6 @@ public class GrammarReader {
         Rule toAdd =  new Rule(ruleName,newRuleText.toString());
         for(Rule rule: parserRules) {
             if(rule.getName().equals(ruleName)) {
-                // System.out.println("generating " + toAdd.getSubRules() + " as an alternative to " + toAdd.getName());
                 rule.addAlternative(toAdd.getSubRules());
                 return;
             }
@@ -197,9 +201,9 @@ public class GrammarReader {
     
 	public void removeUnreachable() {
         Rule startSymbol = parserRules.get(0);
-        ArrayList<String> reachableRules = new ArrayList<String>();
-        startSymbol.getReachables(parserRules, reachableRules);
-        // System.out.println("Reachable rules " + reachableRules);
+        ArrayList<String> reachableRules = startSymbol.getReachables(parserRules);
+        System.out.println(this);
+        System.out.println("Reachable rules " + reachableRules);
         parserRules.removeIf(rule -> !reachableRules.contains(rule.getName()));
         // System.out.println("Filtered parserRules " + parserRules);
 	}
@@ -229,4 +233,49 @@ public class GrammarReader {
     public boolean toRemove() {
         return remove;
     }
+
+	public void injectEOF() {
+        Rule wrapperRule = new Rule("program", getStartSymbol() + " EOF;");
+        parserRules.add(0, wrapperRule);
+    }
+    
+    public void stripEOF() {
+        parserRules.remove(0);
+    }
+
+    public ArrayList<String> getUndefined() {
+        ArrayList<String> undefined = parserRules.get(0).getReachables(parserRules);
+        undefined.removeIf(name -> !name.contains("Undefined "));
+        ArrayList<String> out = new ArrayList<String>();
+        undefined.forEach(rawText -> out.add(rawText.replace("Undefined ","")));
+        return out;
+    }
+
+    /**
+     * Goes through grammar and transforms references to undefined rules to defined rules
+     */
+	public void ensureValidity() {
+        ArrayList<String> undefined = getUndefined();
+        if(undefined.size() == 0) { 
+            System.out.println(getName() + " contains no undefined rules");
+        } else {
+            System.out.println("Repairing " + getName() + " with undefined rules " + undefined);
+            undefined.forEach(undefText -> {
+                String ruleName = undefText.replace("Undefined ", "");
+                int currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
+                while(currRuleLen == 0) currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
+                generateNewRule(ruleName, currRuleLen);
+
+            });
+            undefined = getUndefined();
+            if(undefined.size() == 0) {
+                System.out.println("Repair successful " + this);
+            } else {
+                System.out.println(undefined);
+                System.out.println("Repair fucked up " + this);
+            }
+        }
+
+
+	}
 }

@@ -3,42 +3,43 @@ package stb;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
+import java.util.Scanner;
 import java.util.Stack;
-
-import com.ibm.icu.util.CharsTrie.Iterator;
 
 public class App {
     
-    static LinkedList<GrammarReader> scores = new LinkedList<>();
+    static GrammarReader bestGrammar;
+    static double bestScore = -1.0;
     static LinkedList<GrammarReader> myGrammars;
     public static void main(String[] args) {
         try {
             System.out.println("Hello World!");
-            // GrammarReader myReader = new GrammarReader("./grammars/arithmetic.g4");
+            GrammarReader goldenGrammar = new GrammarReader("./grammars/arithmetic.g4");
+            // GrammarReader seededGrammar = new GrammarReader("./grammars/seededArithmetic.g4");
+            // runTests(seededGrammar);
             // runTests(myReader);   
-            myGrammars = GrammarGenerator.generatePopulation(5);
+            myGrammars = GrammarGenerator.generatePopulation(50);
+            // myGrammars.add(seededGrammar);
             for (int i = 0; i < 50; i++) {
                 Stack<GrammarReader> toCrossover = new Stack<GrammarReader>();
                 System.out.println("\n\n\nGeneration " + i + "\n\n\n");
                 myGrammars.forEach(grammar -> {
+                    grammar.ensureValidity();
                     runTests(grammar);
                     if(grammar.toRemove()) return;
-                    // grammar.getAllRules().forEach(rule -> rule.getTotalProductions());
-                    // if(!grammar.getPositiveAcceptance()) {
-                    if(Math.random() < Constants.P_C) {
-                        if(toCrossover.size() == 0) {
-                            toCrossover.push(grammar);
-                        } else {
-                            toCrossover.pop().crossover(grammar);
-                        }
-                    }
+                    // if(Math.random() < Constants.P_C) {
+                    //     if(toCrossover.size() == 0) {
+                    //         toCrossover.push(grammar);
+                    //     } else {
+                    //         toCrossover.pop().crossover(grammar);
+                    //     }
+                    // }
                     
                     // System.out.println("Pre  mutation " + grammar);
                     grammar.mutate(Constants.P_M, Constants.P_H);
                     // System.out.println("Post  mutation " + grammar);
                     // System.out.println("Pre  Filter " + grammar);
-                    grammar.getParserRules().forEach(parserRule -> Chelsea.filterLinkedList(parserRule.getSubRules()));
+                    grammar.getParserRules().forEach(parserRule -> Chelsea.removeDuplicates(parserRule.getSubRules()));
                     grammar.removeUnreachable();
                     // System.out.println("Post Filter " +  grammar);
                     grammar.heuristic(Constants.P_H);
@@ -46,28 +47,38 @@ public class App {
 
                     // }
                 });
+                // StringBuilder grammarList = new StringBuilder();
+                // myGrammars.forEach(grammar -> grammarList.append(grammar.getName() + ","));
+                // System.out.println("Pre removal grammars "  + grammarList);
                 myGrammars.removeIf(grammar -> grammar.toRemove());
+                // grammarList.delete(0, grammarList.length());
+                // myGrammars.forEach(grammar -> grammarList.append(grammar.getName() + ","));
+                // System.out.println("Post removal " + grammarList);
+                // Scanner in = new Scanner(System.in);
+                // in.nextLine();
 
             }
         myGrammars.forEach(grammar -> {
             System.out.println(grammar.getName() + " score = " + grammar.getScore() + "\n" + grammar);
         });
-        System.out.println("Best Grammar");
-        scores.forEach(grammar -> {
-            System.out.println(grammar.getName() + " score = " + grammar.getScore() + "\n" + grammar);
-        });
+        System.out.println("Best Grammar \n");
+        System.out.println(bestGrammar.getName() + " score = " + bestGrammar.getScore() + "\n" + bestGrammar);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Exception in mainApp loop " + e.getCause());
+            // e.printStackTrace();
         }
     }
     
     public static void runTests(GrammarReader myReader) {
+        myReader.injectEOF();
         Chelsea.generateSources(myReader);
+        System.out.println(myReader);
         double incScore = myReader.getScore();
         //TODO fix the scoring system
         try {
             lamdaArg removeCurr = () ->  myReader.flagForRemoval();;
             HashMap<String,LinkedList<Stack<String>>> errors = Chelsea.runTestcases(removeCurr);
+            myReader.stripEOF();
             if(myReader.toRemove()) {
                 return;
             }
@@ -76,28 +87,24 @@ public class App {
             errors.forEach((key,value) -> {
                 errorArr.add(value);
             });
-            double numPass = 0.0;
-            if(totalTests > 0) {
-                for(LinkedList<Stack<String>> currErr : errorArr) {
-                    if(currErr.size() == 0) numPass++;
-                }
-            }
+            System.out.println("Pre Filter errorCount for " + myReader.getName() + " " + errorArr);
+            errorArr.removeIf(element -> element.size() == 0);
+            System.out.println("Post Filter errorCount for " + myReader.getName() + " " + errorArr);
+            double numPass = totalTests - 1.0*errorArr.size();
             myReader.setScore(numPass/totalTests);
             if(incScore != myReader.getScore())
                 System.out.println(myReader.getName() + " score " + incScore + " -> " + myReader.getScore());   
 
             if(myReader.getScore() > incScore) {
-                System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore());
-                if(scores.size() == 0 && myReader.getScore() > 0.0) scores.add(new GrammarReader(myReader));
-                if(scores.size() == 1 && scores.get(0).getScore() < myReader.getScore()) {
+                System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore() + " top score " + bestScore);
+                if(bestScore < myReader.getScore()) {
                     System.out.println("New top scorer " + myReader.getScore() + "\n" + myReader);
-                    scores.clear();
-                    scores.add(new GrammarReader(myReader));
+                    bestGrammar = new GrammarReader(myReader);
+                    bestScore = myReader.getScore();
                 }
-
             }
         } catch(Exception e) {
-            e.printStackTrace();
+            System.err.println("Exception in runTests " + e.getCause());
         }
     }
 }

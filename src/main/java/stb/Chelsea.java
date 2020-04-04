@@ -8,10 +8,13 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Stack;
 import java.util.stream.Stream;
 
@@ -22,8 +25,10 @@ import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.Tool;
 
 import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.ast.GrammarRootAST;
 
@@ -41,6 +46,7 @@ public class Chelsea {
     public static void generateSources(GrammarReader grammar) {
         myReader = grammar;
         String finName = "default";
+        Map<String, Class<?>> hm = null;
         try {
 
             // Name of the file, for example ampl.g4
@@ -66,7 +72,7 @@ public class Chelsea {
 
             dynamicClassCompiler.compile(new File(Constants.OUTPUT_DIR));
 
-            Map<String, Class<?>> hm = new DynamicClassLoader().load(new File(Constants.OUTPUT_DIR));
+            hm = new DynamicClassLoader().load(new File(Constants.OUTPUT_DIR));
 
             // Manually creates lexer.java file in outputDir
             Class<?> lexer = hm.get(finName + "Lexer");
@@ -76,6 +82,7 @@ public class Chelsea {
             String.class.getConstructor(String.class);
 
             // Manually creates parser.java file in outputDir
+            //FIXME this parserFile is not showing up for left recursive rules  term: bla bla | term | bla bla
             Class<?> parser = hm.get(finName + "Parser");
 
             // Manually creates the parserConstructor for use later
@@ -83,7 +90,9 @@ public class Chelsea {
             parserConstructor = parser.getConstructor(TokenStream.class);
 
         } catch (Exception e) {
-            System.err.println(e.getCause() + " for " + finName);
+            System.err.println(e.getLocalizedMessage() + " for " + finName);
+            System.err.println(grammar);
+            System.err.println(hm.keySet());
             e.printStackTrace();
             System.exit(1);
         }
@@ -112,7 +121,7 @@ public class Chelsea {
                         rawContent.delete(rawContent.indexOf("/*"), rawContent.indexOf("*/") + 2);
                     }
                     /*
-                    TODO  when implementing regex recognition, remove the space stripping here and add grammar rules to ignore spaces
+                    FIXME  when implementing regex recognition, remove the space stripping here and add grammar rules to ignore spaces
                     */
                     String content = rawContent.toString().trim().replaceAll(" ","");
                     // System.out.println("content of " + path.getFileName() + "\n" + content);
@@ -123,12 +132,14 @@ public class Chelsea {
 
                     // Creating a new parser constructor instance using the lexer tokens
                     Parser parser = (Parser) parserConstructor.newInstance(tokens);
-                    MyListener testListen = new MyListener();
+                    MyListener testListen = new MyListener(parser.getGrammarFileName());
                     parser.addErrorListener(testListen);
+                    // parser.setErrorHandler(new myErrorStrategy());
                     
                     // Begin parsing at the first rule of the grammar. In this case it was *program*
                     // but you might need to
                     // figure out how to tell your parser what the entry point is.
+                    System.err.println("Testing " + myReader.getName() + " on " + fileName + " entrypoint " + myReader.getStartSymbol());
                     Method parseEntrypoint = parser.getClass().getMethod(myReader.getStartSymbol());
                     
                     // Finally, this will run the parser with the provided test case. Yay! Ignore
@@ -136,37 +147,79 @@ public class Chelsea {
                     parseEntrypoint.invoke(parser);
                     
                     LinkedList<Stack<String>> fileErrors = testListen.getErrors();
-                    filterLinkedList(fileErrors);
+                    // if(fileErrors.isEmpty()) {
+                    //     System.out.println(fileErrors);
+                    //     System.err.println(myReader.getName() + " passes for " + content);
+                    //     System.out.println(myReader.getName() + " passes for " + content);
+                    // } else {
+                    //     System.err.println(myReader.getName() + " fails for " + content);
+                    //     System.out.println(myReader.getName() + " fails for " + content);
+                    // }
+                    removeDuplicates(fileErrors);
                     // fileErrors.forEach(ErrorStack -> System.err.println(ErrorStack));
                                         
                     errors.put(fileName.toString(), fileErrors);
-                } catch(NoSuchMethodException e) {
-                    // System.out.println("Removing " + myReader.getName() + " from grammar");
-                    removeCurr.removeGrammar();
-                } catch (Exception e) {
-                    System.err.println("Exception lamda in Chelsea " + e.getMessage());
+
+                }   catch(NoSuchMethodException e) {
+                        // System.err.println("No  such method exception " + e.getCause());
+                        System.out.println("Removing " + myReader.getName() + " from grammar");
+                        removeCurr.removeGrammar();
+                }   catch (ParseCancellationException e) {
+                        System.out.println("Parse cancelled for " + myReader.getName());
+                }   catch (Exception e) {
+                        // e.printStackTrace();
+                        System.err.println("Exception lamda in Chelsea " + e.getCause());
                 }
             });
         } catch (Exception e) {
             System.err.println("Exception filewalker in Chelsea " + e.getMessage());
             e.printStackTrace();
         }
+        cleanDirectory(new File(Constants.OUTPUT_DIR));
         return errors;
 
     }
 
-    public static <T> void filterLinkedList(List<T> input) {
+    public static <T> void removeDuplicates(List<T> input) {
         List<T> out = new LinkedList<>();
         input.forEach(element -> {
             if(!out.contains(element)) {
                 out.add(element);
-            } else {
-                // System.out.println("Not adding " + element + " to " + out);
-            }
+            } 
         });
         input.clear();
         input.addAll(out);
     }
 
+    /**
+     * Recurses output instrumented directory and returns list of class files.
+     *
+     * @param directory Input directory.
+     * @return ArrayList of class files.
+     */
+    private static List<File> getDirectoryFiles(File directory) {
+        List<File> fileList = new ArrayList<>();
+        if (directory.isDirectory()) {
+            for (File file : directory.listFiles()) {
+                fileList.addAll(getDirectoryFiles(file));
+            }
+        } else {
+                return Collections.singletonList(directory);
+        }
+        return fileList;
+    }
+
+    /**
+     * Removes all the generated files to keep future hashmaps manageable
+     * @param directory
+     */
+    public static void cleanDirectory(File directory) {
+        assert directory.isDirectory();
+        List<File> files = getDirectoryFiles(directory);
+        for (int i = 0; i < files.size(); i++) {
+            String fileName = files.get(i).getName();
+            files.get(i).delete();
+        }
+    }
     
 }

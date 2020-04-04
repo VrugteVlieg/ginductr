@@ -76,7 +76,7 @@ public class Rule {
         name = name.trim();
         this.name = name;
         singular = true;
-        // printOut("New major rule " + name + " : " + ruleText);
+        printOut("New major rule " + name + " : " + ruleText);
         mainRule = true;
         terminal = Character.isUpperCase(name.charAt(0));
         optional = name.charAt(name.length()-1) == '?' || name.charAt(name.length()-1) == '*';
@@ -205,37 +205,6 @@ public class Rule {
     }
     ArrayList<LinkedList<Rule>> getSubRules() {return subRules;}
 
-    public LinkedList<String> cartesianProduct(LinkedList<String> a, LinkedList<String> b) {
-
-        if(a.size() == 0) {
-            return b;
-        } else if(b.size() == 0) {
-            return a;
-        } else {
-
-            LinkedList<String> output = new LinkedList<String>();
-            a.forEach(elementA -> {
-                b.forEach(elementB -> {
-                    output.add(elementA + "" + elementB);
-                });
-            });
-            System.out.println("Taking cart prod of " + a.size() + "\n and \n" + b.size() + "\n is \n" + output.size());
-            return output;
-        }
-    }
-
-    public LinkedList<String> filterLinkedList(LinkedList<String> input,  double filter) {
-        LinkedList<String> out = new LinkedList<>();
-        input.forEach(string -> {
-            if(Math.random() < filter)out.add(string);
-        });
-        return out;
-    }
-
-    public void cartesianProduct(LinkedList<String> a, LinkedList<String> b, LinkedList<String> out) {
-        out.addAll(cartesianProduct(a, b));
-    }
-
     private void printOut(String toPrint) {
         if(Constants.DEBUG)System.out.println(" ".repeat(depth) + "Context " + name + ": " + toPrint);
     }
@@ -362,14 +331,40 @@ public class Rule {
      * @param reachables
      */
 	public void getReachables(ArrayList<Rule> parserRules, ArrayList<String> reachables) {
-        if(!terminal && singular && !reachables.contains(getName())) {
-            reachables.add(getName());
-            subRules.forEach(subRule -> {
-                subRule.forEach(production -> {
-                    production.getReachables(parserRules, reachables);
+        if(reachables.contains(getName())) return;
+        if(singular && !terminal && !parserRules.contains(this)) {
+            //This is a singular rule that is not part of parserRules nor is it terminal so it is undefined
+            reachables.add("Undefined " + this.getName());
+        }   else if(mainRule && !terminal) {
+                //This is a main rule, add its name to reachable and check what can be reach from its productions
+                reachables.add(getName());
+                subRules.forEach(subRule -> {
+                    subRule.forEach(production -> {
+                        if(parserRules.contains(production)) {
+                            parserRules.get(parserRules.indexOf(production)).getReachables(parserRules, reachables);
+                        } else {
+                            production.getReachables(parserRules, reachables);
+                        }
+                    });
                 });
-            });
-        } 
+            } else {
+                //This is a bracketed rule (Addop term) and each subRule is now being evalled
+                subRules.forEach(subRule -> {
+                    subRule.forEach(production -> {
+                        if(parserRules.contains(production)) {
+                            parserRules.get(parserRules.indexOf(production)).getReachables(parserRules, reachables);
+                        } else {
+                            production.getReachables(parserRules, reachables);
+                        }
+                    });
+                });
+            }
+    }
+
+    public ArrayList<String> getReachables(ArrayList<Rule> parserRules) {
+        ArrayList<String> reachables =  new ArrayList<String>();
+        getReachables(parserRules,reachables);
+        return reachables;
     }
     
     public void heuristic(double pH) {
