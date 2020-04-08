@@ -3,7 +3,6 @@ package stb;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Scanner;
 import java.util.Stack;
 
 public class App {
@@ -14,11 +13,13 @@ public class App {
     public static void main(String[] args) {
         try {
             System.out.println("Hello World!");
-            GrammarReader goldenGrammar = new GrammarReader("./grammars/arithmetic.g4");
-            // GrammarReader seededGrammar = new GrammarReader("./grammars/seededArithmetic.g4");
+            // GrammarReader goldenGrammar = new GrammarReader("./grammars/arithmetic.g4");
+            // System.out.println(goldenGrammar);
+            GrammarReader seededGrammar = new GrammarReader("./grammars/seededArithmetic.g4");
+            seededGrammar.removeDirectLeftRecursion();
             // runTests(seededGrammar);
             // runTests(myReader);   
-            myGrammars = GrammarGenerator.generatePopulation(50);
+            myGrammars = GrammarGenerator.generatePopulation(0);
             // myGrammars.add(seededGrammar);
             for (int i = 0; i < 50; i++) {
                 Stack<GrammarReader> toCrossover = new Stack<GrammarReader>();
@@ -64,8 +65,8 @@ public class App {
         System.out.println("Best Grammar \n");
         System.out.println(bestGrammar.getName() + " score = " + bestGrammar.getScore() + "\n" + bestGrammar);
         } catch (Exception e) {
-            System.err.println("Exception in mainApp loop " + e.getCause());
-            // e.printStackTrace();
+            // System.err.println("Exception in mainApp loop " + e.getCause());
+            e.printStackTrace();
         }
     }
     

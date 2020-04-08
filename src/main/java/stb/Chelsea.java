@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.Stack;
 import java.util.stream.Stream;
 
@@ -25,7 +24,6 @@ import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.Tool;
 
 import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -83,6 +81,16 @@ public class Chelsea {
 
             // Manually creates parser.java file in outputDir
             //FIXME this parserFile is not showing up for left recursive rules  term: bla bla | term | bla bla
+            //TODO implement left recursion removal from https://en.wikipedia.org/wiki/Left_recursion#Removing_all_left_recursion
+            // The following sets of rules are mutually left-recursive [factor, term]
+            // program : factor EOF ;
+            // factor : term term Digit ;
+            // term : factor? ;
+            // Digit : '0' ;
+            // Mulop : '*' | '/' ;
+            // Addop : '+' | '-' ;
+            // LPAR : '(' ;
+            // RPAR : ')' ;
             Class<?> parser = hm.get(finName + "Parser");
 
             // Manually creates the parserConstructor for use later

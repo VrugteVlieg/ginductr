@@ -37,13 +37,17 @@ public class Rule {
      * @param depth how many levels deep is this rule, used to format printOut
      */
     public Rule(String ruleText, int depth) {
-        ruleText = ruleText.trim();
+        if(!ruleText.equals(" "))  {
+            ruleText = ruleText.trim();
+            singular = !ruleText.contains(" ");
+        } else {
+            singular = true;
+        }
         this.name = ruleText;
         this.ruleText = ruleText;
         // printOut("New minor rule " + ruleText);
         this.mainRule = false;
         this.depth = depth;
-        singular = !ruleText.contains(" ");
 
         // System.out.println(singular ? "it is singular " : " it is not singular");
         optional = ruleText.charAt(ruleText.length()-1) == '?' || ruleText.charAt(ruleText.length()-1) == '*';
@@ -56,9 +60,10 @@ public class Rule {
         if(ruleText.charAt(0) == '(') {
             ruleText = ruleText.substring(1, ruleText.length()-1);
         } 
-        this.name = ruleText.trim();
+        if(!ruleText.equals(" ")) this.name = ruleText.trim();
         
-        if(singular) terminal = Character.isUpperCase(name.charAt(0)); 
+        
+        if(singular) terminal = Character.isUpperCase(name.charAt(0)) || this.name.equals(" "); 
         if(!singular) {
             terminal = false;
             addRuleLookahead(ruleText);
@@ -99,7 +104,7 @@ public class Rule {
                     if(currString.length() != 0 && !StringLiteral && brackets==0) {
                         currProduction.add(new Rule(currString.toString(),depth+1));
                         currString = new StringBuilder(); 
-                    } else if(StringLiteral || brackets!=0){
+                    } else if(StringLiteral || brackets!=0 || rule.charAt(index+1) == ';' || rule.charAt(index+1) == ';'){
                         currString.append(" ");
                     } 
                     break;
@@ -117,7 +122,7 @@ public class Rule {
                     if(currString.length() != 0) {
                         currProduction.add(new Rule(currString.toString(),depth+1));
                         currString = new StringBuilder(); 
-                    }
+                    } 
                     subRules.add(currProduction);
                     break;
 
@@ -179,7 +184,7 @@ public class Rule {
         
         subRules.forEach(ruleLL -> {
             ruleLL.forEach(rule -> {
-                output.append(rule + " ");
+                if(!rule.getName().equals(" ")) output.append(rule + " ");
             });
             output.append("| ");
         });
@@ -189,6 +194,7 @@ public class Rule {
     }
 
     String getName() {
+        if(name.equals(" ")) return name; //this is nullToken 
         StringBuilder out = new StringBuilder(name);
         if(name.contains(" ")) {
             out.insert(0, "(");
@@ -386,5 +392,16 @@ public class Rule {
                 });
             });
         }            
+    }
+
+    public boolean containLeftRecursiveProd() {
+        for(LinkedList<Rule> prod : subRules) {
+            if(prod.getFirst().getName().equals(getName())) {
+                System.out.println(this.getName() + " contains a left recursive production " + prod);
+                return true;
+            }
+        }
+        System.out.println(this.getName() + " does not contains a left recursive production ");
+        return false;
     }
 }

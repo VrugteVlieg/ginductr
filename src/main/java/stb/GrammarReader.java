@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -277,5 +278,72 @@ public class GrammarReader {
         }
 
 
-	}
+    }
+    
+    public void removeLR() {
+        removeDirectLeftRecursion();
+    }
+
+    public void removeDirectLeftRecursion() {
+        if(!containsLeftRecursive()) {
+            System.out.println(this + " does not contain left recursive rules");
+            return;
+        }
+        ArrayList<Rule> rulesToAdd = new ArrayList<Rule>();
+        parserRules.forEach(rule -> {
+            if(rule.containLeftRecursiveProd()) 
+                rule.getSubRules().removeIf(subProduction -> subProduction.size() == 1 && subProduction.get(0).getName().equals(rule.getName()));
+        });
+        System.out.println("After removing all single len LR " + this);
+        parserRules.forEach(rule -> {
+            if(rule.containLeftRecursiveProd()) {
+                String ruleName = rule.getName();
+                String newRuleName = ruleName + "_prime";
+                ArrayList<LinkedList<Rule>> cleanRules = new ArrayList<LinkedList<Rule>>();
+                ArrayList<LinkedList<Rule>> dirtyRules = new ArrayList<LinkedList<Rule>>();
+                rule.getSubRules().forEach(subRule -> {
+                    System.out.println(subRule.getFirst().getName().split(" ")[0]);
+                    if(!subRule.getFirst().getName().split(" ")[0].equals(ruleName)) {
+                        System.out.println(subRule + " is clean");
+                        subRule.add(new Rule(newRuleName,newRuleName));
+                        cleanRules.add(subRule);
+                    } else {
+                        //TODO add handling if the first rule is bracketed term: (term addop) : factor
+                        LinkedList<Rule> toAdd = new LinkedList<Rule>(subRule.subList(1, subRule.size()));
+                        toAdd.add(new Rule(newRuleName,newRuleName));
+                        dirtyRules.add(toAdd);
+                        System.out.println("Direct left recursion in " + ruleName + " for " + subRule);
+                    }
+                });
+                StringBuilder newRuleText = new StringBuilder();
+                dirtyRules.forEach(subProduction -> {
+                    subProduction.forEach(subRule -> {
+                        newRuleText.append(subRule + " ");
+                    });
+                    newRuleText.append("| ");
+                });
+                newRuleText.append(";");
+                Rule dirtyRule = new Rule(newRuleName,newRuleText.toString());
+                rule.getSubRules().clear();
+                if(cleanRules.size() == 0) {
+                    LinkedList<Rule> listAdd = new LinkedList<Rule>();
+                    listAdd.add(new Rule(dirtyRule.getName(), dirtyRule.getName()));
+                    cleanRules.add(listAdd);
+                }
+                rule.getSubRules().addAll(cleanRules);
+                rulesToAdd.add(dirtyRule);
+                System.out.println("Modified rule " + dirtyRule);
+            }
+        });
+        System.out.println("Grammar goes from " + this);
+        parserRules.addAll(rulesToAdd);
+        System.out.println("To " + this);
+    }
+
+    public boolean containsLeftRecursive() {
+        for (int i = 0; i < parserRules.size(); i++) {
+            if(parserRules.get(i).containLeftRecursiveProd()) return true;
+        }
+        return false;
+    }
 }
