@@ -41,7 +41,7 @@ public class Chelsea {
      * Generates the source files to be used by the following call to runTests
      * @param grammar
      */
-    public static void generateSources(GrammarReader grammar) {
+    public static void generateSources(GrammarReader grammar, lamdaArg removeCurr) {
         myReader = grammar;
         String finName = "default";
         Map<String, Class<?>> hm = null;
@@ -101,8 +101,8 @@ public class Chelsea {
             System.err.println(e.getLocalizedMessage() + " for " + finName);
             System.err.println(grammar);
             System.err.println(hm.keySet());
-            e.printStackTrace();
-            System.exit(1);
+            removeCurr.removeGrammar();
+            
         }
     }
     /**
@@ -147,7 +147,7 @@ public class Chelsea {
                     // Begin parsing at the first rule of the grammar. In this case it was *program*
                     // but you might need to
                     // figure out how to tell your parser what the entry point is.
-                    System.err.println("Testing " + myReader.getName() + " on " + fileName + " entrypoint " + myReader.getStartSymbol());
+                    // System.err.println("Testing " + myReader.getName() + " on " + fileName + " entrypoint " + myReader.getStartSymbol());
                     Method parseEntrypoint = parser.getClass().getMethod(myReader.getStartSymbol());
                     
                     // Finally, this will run the parser with the provided test case. Yay! Ignore

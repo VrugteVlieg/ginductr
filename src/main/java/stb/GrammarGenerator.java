@@ -34,11 +34,16 @@ public class GrammarGenerator {
 
                 while(currGrammar.getParserRules().size() == 0 && currRuleLen == 0)
                     currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
-                    
-                String ruleName = nonTerminals[randInt(nonTerminals.length)];
-                currGrammar.generateNewRule(ruleName, currRuleLen);
+                StringBuilder ruleName = new StringBuilder();
+                for (int nameIndex = 0; nameIndex < Constants.RULENAME_LEN; nameIndex++) {
+                    ruleName.append((char)(97 + randInt(26)));
+                }
+                currGrammar.generateNewRule(ruleName.toString(), currRuleLen);
             }
+
+            currGrammar.removeDuplicateProductions();
             currGrammar.removeUnreachable();
+            currGrammar.removeLR();
             // System.out.println("New grammar \n" + currGrammar.toString());
             output.add(currGrammar);
         }

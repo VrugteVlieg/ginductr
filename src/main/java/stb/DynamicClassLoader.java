@@ -21,12 +21,10 @@ public class DynamicClassLoader {
     private List<File> getDirectoryFiles(File directory) {
         List<File> fileList = new ArrayList<>();
         if (directory.isDirectory()) {
-            System.out.println(directory.getName() + " is a directory");
             for (File file : directory.listFiles()) {
                 fileList.addAll(getDirectoryFiles(file));
             }
         } else {
-            System.out.println(directory.getName() + " is not a directory");
             if (directory.getName().endsWith(".class")) {
                 return Collections.singletonList(directory);
             }

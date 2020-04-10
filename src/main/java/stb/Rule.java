@@ -15,6 +15,9 @@ public class Rule {
     private int depth = 0;
     private String ruleText;
 
+    public static Rule EPSILON =  new Rule(" ",1);
+    
+
     /**
      * Creates a deep-copy of a rule
      * @param toCopy
@@ -45,7 +48,7 @@ public class Rule {
         }
         this.name = ruleText;
         this.ruleText = ruleText;
-        // printOut("New minor rule " + ruleText);
+        printOut("New minor rule " + ruleText);
         this.mainRule = false;
         this.depth = depth;
 
@@ -144,7 +147,7 @@ public class Rule {
             }
             index++;
          }
-        //  printOut("Final subRules " + subRules.toString());
+         printOut("Final subRules " + subRules.toString());
      }
 
     /**
@@ -230,6 +233,8 @@ public class Rule {
         return this.optional;
     }
 
+
+
     public void setOptional(boolean setTo) {
         StringBuilder out = new StringBuilder(getName());
         this.optional = setTo;
@@ -272,6 +277,7 @@ public class Rule {
     public Rule getProduction(int index) {
         int counter = 0;
         int subSetIndex = 0;
+        if(mainRule)System.out.println("Calling get production " + index + " on " + this);
         for(LinkedList<Rule> subSet : subRules) {
             int subRuleIndex = 0;
             for(Rule subRule : subSet) {
@@ -372,6 +378,22 @@ public class Rule {
         getReachables(parserRules,reachables);
         return reachables;
     }
+
+    public boolean nullable(ArrayList<Rule> parserRules) {
+        System.out.println("Checking if " + this + " is nullable");
+        for(LinkedList<Rule> prod : subRules) {
+            if(prod.size() == 1 && prod.get(0).equals(EPSILON)) {
+                System.out.println(this +  " is nullable");
+                return true;
+            } else  {
+                for(Rule rule : prod) {
+                    if(rule.nullable(parserRules)) return true; 
+                }
+            }
+        }
+        System.out.println(this + " is not nullable");
+        return false;
+    }
     
     public void heuristic(double pH) {
 
@@ -394,14 +416,42 @@ public class Rule {
         }            
     }
 
+    public void setSubRules(ArrayList<LinkedList<Rule>> toSet) {
+        System.out.println("Changing rules of " + this + " to " + toSet);
+        subRules.clear();
+        toSet.forEach(prod -> {
+            LinkedList<Rule> newProd = new LinkedList<Rule>();
+            prod.forEach(rule -> newProd.add(rule));
+            subRules.add(newProd);
+        });
+    }
+    /**
+     * Removes rules that consist entirely of left recursive productions    term: term | factor; -> term: factor;
+     */
+    public void removeSimpleLeftRecursives() {
+        subRules.removeIf(subRule -> (subRule.size() == 1 && subRule.getFirst().getName().equals(getName())));
+    }
+    /**
+     * Replaces repeated left recursive productions with a single one to be clean up by other functions
+     * term: term term factor | term term; -> term: term factor | term;
+     */
+    public void simplifyRepeatingLR() {
+        for (int i = 0; i < subRules.size(); i++) {
+            LinkedList<Rule> currRule = subRules.get(i);
+            if(currRule.getFirst().getName().equals(getName())) {
+                while(currRule.size() > 1 && currRule.get(1).getName().equals(getName())) currRule.removeFirst();
+            }
+        }
+    }
+
     public boolean containLeftRecursiveProd() {
         for(LinkedList<Rule> prod : subRules) {
             if(prod.getFirst().getName().equals(getName())) {
-                System.out.println(this.getName() + " contains a left recursive production " + prod);
+                // System.out.println(this.getName() + " contains a left recursive production " + prod);
                 return true;
             }
         }
-        System.out.println(this.getName() + " does not contains a left recursive production ");
+        // System.out.println(this.getName() + " does not contains a left recursive production ");
         return false;
     }
 }

@@ -52,25 +52,19 @@ public class MyListener implements ANTLRErrorListener {
     @Override
     public void reportAmbiguity(Parser recognizer, org.antlr.v4.runtime.dfa.DFA dfa, int startIndex, int stopIndex,
             boolean exact, BitSet ambigAlts, ATNConfigSet configs) {
-            System.err.println("Report ambiguity m8");
-            // TODO Auto-generated method stub
-            
+            System.err.println("Report ambiguity myListener");
         }
         
         @Override
         public void reportAttemptingFullContext(Parser recognizer, org.antlr.v4.runtime.dfa.DFA dfa, int startIndex,
         int stopIndex, BitSet conflictingAlts, ATNConfigSet configs) {
-            System.err.println("Report full context m8");
-            // TODO Auto-generated method stub
-            
+            System.err.println("Report full context myListener");
         }
         
         @Override
         public void reportContextSensitivity(Parser recognizer, org.antlr.v4.runtime.dfa.DFA dfa, int startIndex,
         int stopIndex, int prediction, ATNConfigSet configs) {
-            System.err.println("Report context sensitivity m8");
-        // TODO Auto-generated method stub
-
+            System.err.println("Report context sensitivity myListener");
     }
        
 }
