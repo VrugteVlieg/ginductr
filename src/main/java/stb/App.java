@@ -3,28 +3,38 @@ package stb;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Scanner;
 import java.util.Stack;
 
 public class App {
-    
+    /**
+     * TODO add mutations
+     * grouping rules on rhs term: expr factor factor; ->term: (expr factor) factor;
+     * adding a new rule to a production    term: expr factor; -> term: expr Digit factor;
+     * removing a rule from a production    term: expr Digit factor; -> term: expr factor;
+     * adding a new rule to a grammar
+     * when a new top scorer is found, make copies of it and add to list, apply grouping mutation to copies
+     */
     static GrammarReader bestGrammar;
     static double bestScore = -1.0;
     static LinkedList<GrammarReader> myGrammars;
     public static void main(String[] args) {
         try {
             System.out.println("Hello World!");
-            // GrammarReader goldenGrammar = new GrammarReader("./grammars/arithmetic.g4");
-            // System.out.println(goldenGrammar);
-            GrammarReader seededGrammar = new GrammarReader("./grammars/seededArithmetic.g4");
-            seededGrammar.removeLR();
+            System.err.println(Constants.CURR_GRAMMAR_PATH);
+            GrammarReader goldenGrammar = new GrammarReader(Constants.CURR_GRAMMAR_PATH);
+            System.out.println(goldenGrammar);
+            GrammarReader seededGrammar = new GrammarReader(Constants.SEEDED_GRAMMAR_PATH);
             seededGrammar.getParserRules().forEach(rule -> rule.nullable(seededGrammar.getParserRules()));
+            // seededGrammar.removeLR();
+            // seededGrammar.getParserRules().forEach(rule -> rule.nullable(seededGrammar.getParserRules()));
             // System.out.println(seededGrammar);
             
             // runTests(seededGrammar);
             // runTests(myReader);   
             myGrammars = GrammarGenerator.generatePopulation(Constants.POP_SIZE);
             // myGrammars.forEach(grammar -> System.out.println(grammar));
-            for (int i = 0; i < 0; i++) {
+            for (int i = 0; i < Constants.NUM_ITERATIONS; i++) {
                 Stack<GrammarReader> toCrossover = new Stack<GrammarReader>();
                 System.out.println("\n\n\nGeneration " + i + "\n\n\n");
                 myGrammars.forEach(grammar -> {
@@ -38,24 +48,29 @@ public class App {
                         } else {
                             toCrossover.pop().crossover(grammar);
                         }
-                        grammar.removeUndefined();
                     }
                     
-
+                    
                     
                     if(Constants.MUTATE) {
                         grammar.mutate(Constants.P_M, Constants.P_H);
-
-                        grammar.removeDuplicateProductions();
-                        grammar.removeUnreachable();
-                        grammar.removeLR();
+                        
                     }
                     
                     
                     if(Constants.HEURISTIC) grammar.heuristic(Constants.P_H);
-                    
-                    
-                    
+                    for(Rule rule  : grammar.getParserRules()) {
+                        if(rule.getName().contains("* | ? | +")) {
+                            System.out.println("Oh Shit " + rule);
+                            Scanner in = new Scanner(System.in);
+                            in.nextLine();
+                            in.close();
+                        }
+                    }
+                    grammar.fixUndefinedRules();
+                    grammar.removeDuplicateProductions();
+                    grammar.removeUnreachable();
+                    grammar.removeLR();
                 });
                 // StringBuilder grammarList = new StringBuilder();
                 // myGrammars.forEach(grammar -> grammarList.append(grammar.getName() + ","));
@@ -85,8 +100,8 @@ public class App {
             //         System.err.println(grammar.getName() + " score = " + grammar.getScore() + "\n" + grammar);
             //     });
             // } else {
-            //     System.err.println("Best Grammar \n");
-            //     System.err.println(bestGrammar.getName() + " score = " + bestGrammar.getScore() + "\n" + bestGrammar);
+                // System.err.println("Best Grammar \n");
+                // System.err.println(bestGrammar.getName() + " score = " + bestGrammar.getScore() + "\n" + bestGrammar);
             // }
         }
     }
@@ -99,7 +114,7 @@ public class App {
             System.out.println("Code gen failed for \n" + myReader);
             return;
         }
-        System.out.println("Code gen succesful for \n " + myReader);  
+        // System.out.println("Code gen succesful for \n " + myReader);  
         double incScore = myReader.getScore();
         //TODO fix the scoring system
         try {
@@ -123,7 +138,7 @@ public class App {
                 System.out.println(myReader.getName() + " score " + incScore + " -> " + myReader.getScore());   
 
             if(myReader.getScore() > incScore) {
-                System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore() + " top score " + bestScore);
+                System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore() + " top score " + bestScore + '\n' + myReader);
                 if(bestScore < myReader.getScore()) {
                     System.out.println("New top scorer " + myReader.getScore() + "\n" + myReader);
                     bestGrammar = new GrammarReader(myReader);

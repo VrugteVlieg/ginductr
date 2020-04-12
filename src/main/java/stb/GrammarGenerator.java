@@ -10,18 +10,8 @@ public class GrammarGenerator {
     
 
     public static LinkedList<GrammarReader> generatePopulation(int popSize) {
-        String[] nonTerminals = {"default"};
-        try(BufferedReader Buffer = new BufferedReader(new FileReader(Constants.GRAMMAR_PATH + Constants.CURR_GRAMMAR+".non_terminals")); ) {
-            String line = "";
-            while((line = Buffer.readLine()) != null) {
-                nonTerminals = line.split(",");
-            }
-        } catch(Exception e ) {
-            e.printStackTrace();
-        }
-        GrammarReader terminalGrammar = new GrammarReader(Constants.GRAMMAR_PATH + Constants.CURR_GRAMMAR + ".terminals");
+        GrammarReader terminalGrammar = new GrammarReader(Constants.CURR_Terminals_PATH);
 
-        terminalGrammar.getAllRules().forEach(rule -> rule.getTotalProductions());
         LinkedList<GrammarReader> output = new LinkedList<GrammarReader>();
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + i;
@@ -47,6 +37,8 @@ public class GrammarGenerator {
             // System.out.println("New grammar \n" + currGrammar.toString());
             output.add(currGrammar);
         }
+        System.out.println("New Grammars ");
+        output.forEach(grammar -> System.out.println(grammar));
         return output;
         
     }

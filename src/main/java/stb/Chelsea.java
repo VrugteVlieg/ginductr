@@ -80,7 +80,6 @@ public class Chelsea {
             String.class.getConstructor(String.class);
 
             // Manually creates parser.java file in outputDir
-            //FIXME this parserFile is not showing up for left recursive rules  term: bla bla | term | bla bla
             //TODO implement left recursion removal from https://en.wikipedia.org/wiki/Left_recursion#Removing_all_left_recursion
             // The following sets of rules are mutually left-recursive [factor, term]
             // program : factor EOF ;

@@ -127,7 +127,7 @@ public class GrammarReader {
     public boolean getPositiveAcceptance() {return positiveAcceptance;}
 
 	public void mutate(Double pM, Double pH) {
-        if(Math.random() < pM || true) {
+        if(Math.random() < pM) {
             if(parserRules.size() == 1) {
                 // System.out.println("Only 1 rule left in parser " + parserRules.get(0));
             } else if(parserRules.size() == 0) {
@@ -217,23 +217,30 @@ public class GrammarReader {
         // System.out.println(mainToChange + " has " + mainToChange.getTotalProductions() + " productions");
         int toChangeIndex = randInt(mainToChange.getTotalProductions());
         if(toChangeIndex == 0)  {
-            mainToChange.addAlternative(Rule.EPSILON);
+            if(!mainToChange.nullable(parserRules)) {
+                mainToChange.addAlternative(Rule.EPSILON);
+            } else {
+                mainToChange.removeEpsilon();
+            }
             return;
         }
         Rule toChange = mainToChange.getProduction(toChangeIndex);
         double choice = Math.random();
-        // System.out.println("Changing rule " + toChangeIndex + " of " + mainToChange.getName());
+        System.out.println("Changing rule " + toChangeIndex + " of " + mainToChange);
         if(choice < 0.33) {
             if(!toChange.nullable(parserRules)) {
+                System.out.println("Setting " + toChange.getName() + " to iterative");
                 toChange.setIterative(!toChange.isIterative());
             } else {
                 System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
             }
         } else if(choice < 0.66) {
+            System.out.println("Setting " + toChange.getName() + " to optional");
             toChange.setOptional(!toChange.isOptional());
         } else {
             toChange.setOptional(!toChange.isOptional());
             if(!toChange.nullable(parserRules)) {
+                System.out.println("Setting " + toChange.getName() + " to iterative");
                 toChange.setIterative(!toChange.isIterative());
             } else {
                 System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
@@ -258,7 +265,7 @@ public class GrammarReader {
         parserRules.remove(0);
     }
 
-    public ArrayList<String> getUndefined() {
+    public ArrayList<String> getUndefinedRules() {
         ArrayList<String> undefined = parserRules.get(0).getReachables(parserRules);
         undefined.removeIf(name -> !name.contains("Undefined "));
         ArrayList<String> out = new ArrayList<String>();
@@ -269,12 +276,12 @@ public class GrammarReader {
     /**
      * Goes through grammar and transforms references to undefined rules to defined rules
      */
-	public void removeUndefined() {
-        ArrayList<String> undefined = getUndefined();
+	public void fixUndefinedRules() {
+        ArrayList<String> undefined = getUndefinedRules();
         if(undefined.size() == 0) { 
-            System.out.println(getName() + " contains no undefined rules");
+            // System.out.println(getName() + " contains no undefined rules");
         } else {
-            System.out.println("Repairing " + getName() + " with undefined rules " + undefined);
+            // System.out.println("Repairing " + getName() + " with undefined rules " + undefined);
             undefined.forEach(undefText -> {
                 String ruleName = undefText.replace("Undefined ", "");
                 int currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
@@ -282,12 +289,12 @@ public class GrammarReader {
                 generateNewRule(ruleName, currRuleLen);
 
             });
-            undefined = getUndefined();
+            undefined = getUndefinedRules();
             if(undefined.size() == 0) {
-                System.out.println("Repair successful " + this);
+                // System.out.println("Repair successful " + this);
             } else {
                 System.out.println(undefined);
-                System.out.println("Repair fucked up " + this);
+                // System.out.println("Repair fucked up " + this);
             }
         }
 
@@ -296,7 +303,7 @@ public class GrammarReader {
     
     public void removeLR() {
         if(!containsLeftRecursive()) {
-            System.out.println(this + " does not contain left recursive rules");
+            // System.out.println(this + " does not contain left recursive rules");
             return;
         }
 
@@ -304,36 +311,33 @@ public class GrammarReader {
             rule.simplifyRepeatingLR();
             rule.removeSimpleLeftRecursives();
         });
-        System.out.println("After removing all simple LR " + this);
+        // System.out.println("After removing all simple LR " + this);
         removeDirectLeftRecursion();
     }
 
     private void removeDirectLeftRecursion() {
         
         ArrayList<Rule> rulesToAdd = new ArrayList<Rule>();
-        System.out.println("Grammar goes from " + this);
+        // System.out.println("Grammar goes from " + this);
         parserRules.forEach(rule -> {
             if(rule.containLeftRecursiveProd()) {
-                System.out.println("Checking " + rule.getName() + " for left recursion");
                 String ruleName = rule.getName();
                 String newRuleName = ruleName + "_prime";
                 ArrayList<LinkedList<Rule>> cleanProductions = new ArrayList<LinkedList<Rule>>();
                 ArrayList<LinkedList<Rule>> dirtyProductions = new ArrayList<LinkedList<Rule>>();
                 rule.getSubRules().forEach(subRule -> {
                     if(subRule.getFirst().getName().equals(" ")) return;
-                    System.out.println("    Analysing " + subRule);
+                    // System.out.println("    Analysing " + subRule);
                     if(!subRule.getFirst().getName().split(" ")[0].equals(ruleName)) {
                         System.out.println("    " + subRule + " is clean");
                         subRule.add(new Rule(newRuleName,1));
                         cleanProductions.add(subRule);
                     } else {
                         //TODO add handling if the first rule is bracketed term: (term addop) | factor
-                        System.out.println("Direct left recursion in " + ruleName + " for " + subRule);
+                        // System.out.println("Direct left recursion in " + ruleName + " for " + subRule);
                         LinkedList<Rule> toAdd = new LinkedList<Rule>(subRule.subList(1, subRule.size()));
-                        System.out.println("newRuleName " + newRuleName);
                         Rule ruleToAdd = new Rule(newRuleName,1);
                         toAdd.add(ruleToAdd);
-                        System.out.println("Adding " + toAdd + " to dirtyProductions");
                         dirtyProductions.add(toAdd);
                     }
                 });
@@ -363,12 +367,11 @@ public class GrammarReader {
                 } else {
                     rule.setSubRules(cleanProductions);
                     rulesToAdd.add(dirtyRule);
-                    System.out.println("Modified rule " + dirtyRule);
                 }
             }
         });
         parserRules.addAll(rulesToAdd);
-        System.out.println("To " + this);
+        // System.out.println("To " + this);
     }
 
     public boolean containsLeftRecursive() {

@@ -156,7 +156,6 @@ public class Rule {
     //This might not be updated properly when a rule is mutated
 
     public String getRuleText() {
-
         return ruleText;
     }
 
@@ -277,7 +276,7 @@ public class Rule {
     public Rule getProduction(int index) {
         int counter = 0;
         int subSetIndex = 0;
-        if(mainRule)System.out.println("Calling get production " + index + " on " + this);
+        // if(mainRule)System.out.println("Calling get production " + index + " on " + this);
         for(LinkedList<Rule> subSet : subRules) {
             int subRuleIndex = 0;
             for(Rule subRule : subSet) {
@@ -333,6 +332,7 @@ public class Rule {
         this.subRules.add(toAdd);
     }
     public void addAlternative(Rule toAdd) {
+        if(toAdd.equals(EPSILON)) System.out.println("Making " + this + " nullable");
         LinkedList<Rule> wrappedToAdd = new LinkedList<Rule>();
         wrappedToAdd.add(toAdd);
         this.subRules.add(wrappedToAdd);
@@ -379,20 +379,52 @@ public class Rule {
         return reachables;
     }
 
-    public boolean nullable(ArrayList<Rule> parserRules) {
-        System.out.println("Checking if " + this + " is nullable");
-        for(LinkedList<Rule> prod : subRules) {
-            if(prod.size() == 1 && prod.get(0).equals(EPSILON)) {
-                System.out.println(this +  " is nullable");
-                return true;
-            } else  {
-                for(Rule rule : prod) {
-                    if(rule.nullable(parserRules)) return true; 
+    private boolean nullable(ArrayList<Rule> parserRules, String checkedRules) {
+        System.out.println("Checking if " + this + " in " + parserRules + " is nullable");
+        System.out.println("checkedRules " + checkedRules);
+        if(checkedRules.contains(getName())) System.out.println(this + " has been visited, returning false");
+        if(terminal || checkedRules.contains(getName())) return false;
+        
+        if(!singular) { //composed rule (term factor)
+            System.out.println(getName() + " is not singular consists of " + subRules.get(0));
+            LinkedList<Rule> subProds = subRules.get(0);
+            for (Rule rule : subProds) {
+                if(!rule.nullable(parserRules,checkedRules)) return false;
+            }
+            return true;
+        } else if(!mainRule) { //non terminal on the RHS of a rule
+            Rule mainVersion = parserRules.get(parserRules.indexOf(this));    
+            return mainVersion.nullable(parserRules,checkedRules);
+        } else {    //Main rule
+            System.out.println(this + " is a main rule, checking nullable");
+            checkedRules = checkedRules + ","  + getName();
+            for(LinkedList<Rule> prod : subRules) {
+                if(prod.get(0).equals(EPSILON)) {
+                    System.out.println(getName() + " contains EPSILON, nullable");
+                    return true;
                 }
             }
+            System.out.println(getName() + " does not contain EPSILON, checking nullability of productions");
+            for(LinkedList<Rule> prod : subRules) {
+                System.out.println("    Checking if " + prod + " is nullable");
+                boolean nullable = true;
+                for(Rule rule : prod) {
+                    System.out.println("        Checking if " + rule + " is nullable");
+                    nullable &= rule.nullable(parserRules,checkedRules);
+                }
+                if(nullable) System.out.println(prod + " in " + getName() + " is nullable");
+                if(nullable) System.out.println(this + " is nullable");
+                if(nullable) return true;
+            }
+            System.out.println(this + " is not nullable");
+            return false;
         }
-        System.out.println(this + " is not nullable");
-        return false;
+    }
+    /**
+     * TODO test whether this works on a combo rule (term factor) where term and factor are both nullable
+     */
+    public boolean nullable(ArrayList<Rule> parserRules) {
+        return nullable(parserRules, "");
     }
     
     public void heuristic(double pH) {
@@ -431,6 +463,7 @@ public class Rule {
     public void removeSimpleLeftRecursives() {
         subRules.removeIf(subRule -> (subRule.size() == 1 && subRule.getFirst().getName().equals(getName())));
     }
+    
     /**
      * Replaces repeated left recursive productions with a single one to be clean up by other functions
      * term: term term factor | term term; -> term: term factor | term;
@@ -454,4 +487,9 @@ public class Rule {
         // System.out.println(this.getName() + " does not contains a left recursive production ");
         return false;
     }
+
+	public void removeEpsilon() {
+        System.out.println("Removing Epsilon from " + this);
+        subRules.removeIf(prod -> prod.getFirst().equals(EPSILON));
+	}
 }
