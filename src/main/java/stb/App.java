@@ -15,7 +15,7 @@ public class App {
      * adding a new rule to a grammar
      * when a new top scorer is found, make copies of it and add to list, apply grouping mutation to copies
      */
-    static GrammarReader bestGrammar;
+    static String bestGrammar;
     static double bestScore = -1.0;
     static LinkedList<GrammarReader> myGrammars;
     public static void main(String[] args) {
@@ -56,6 +56,7 @@ public class App {
                         grammar.mutate(Constants.P_M, Constants.P_H);
                         
                     }
+                    grammar.fixUndefinedRules();
                     
                     
                     if(Constants.HEURISTIC) grammar.heuristic(Constants.P_H);
@@ -67,7 +68,6 @@ public class App {
                             in.close();
                         }
                     }
-                    grammar.fixUndefinedRules();
                     grammar.removeDuplicateProductions();
                     grammar.removeUnreachable();
                     grammar.removeLR();
@@ -89,8 +89,9 @@ public class App {
         myGrammars.forEach(grammar -> {
             System.out.println(grammar.getName() + " score = " + grammar.getScore() + "\n" + grammar);
         });
-        System.out.println("Best Grammar \n");
-        System.out.println(bestGrammar.getName() + " score = " + bestGrammar.getScore() + "\n" + bestGrammar);
+        System.out.println("Best Grammar " + bestScore + "\n" + bestGrammar);
+
+        
         } catch (Exception e) {
             // System.err.println("Exception in mainApp loop " + e.getCause());
             e.printStackTrace();
@@ -141,7 +142,7 @@ public class App {
                 System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore() + " top score " + bestScore + '\n' + myReader);
                 if(bestScore < myReader.getScore()) {
                     System.out.println("New top scorer " + myReader.getScore() + "\n" + myReader);
-                    bestGrammar = new GrammarReader(myReader);
+                    bestGrammar = myReader.toString();
                     bestScore = myReader.getScore();
                 }
             }

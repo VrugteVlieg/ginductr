@@ -218,6 +218,7 @@ public class Rule {
     }
 
     public void setIterative(boolean setTo) {
+        if(mainRule) System.out.println("Setting mainRule "  + getName() + " to iterative");
         StringBuilder out = new StringBuilder(getName());
         this.iterative = setTo;
         out.append(" -> " + getName());
@@ -235,6 +236,7 @@ public class Rule {
 
 
     public void setOptional(boolean setTo) {
+        if(mainRule) System.out.println("Setting mainRule "  + getName() + " to optional");
         StringBuilder out = new StringBuilder(getName());
         this.optional = setTo;
         out.append(" -> " + getName());
@@ -274,9 +276,10 @@ public class Rule {
     }
 
     public Rule getProduction(int index) {
+        if(index == 0) return this;
         int counter = 0;
         int subSetIndex = 0;
-        // if(mainRule)System.out.println("Calling get production " + index + " on " + this);
+        if(mainRule)System.out.println("Calling get production " + index + " on " + this);
         for(LinkedList<Rule> subSet : subRules) {
             int subRuleIndex = 0;
             for(Rule subRule : subSet) {
@@ -288,6 +291,7 @@ public class Rule {
                     counter += subRule.getTotalProductions();
                     if(counter >= index) { //the rule to change was in the the last subrule
                         int indexInRule = index - counterPre - 1; //position withing the rule
+                        if(mainRule)System.out.println("Returning " + subRule.getProduction(indexInRule).getName() + " from " + this);
                         return subRule.getProduction(indexInRule);
                     }
                 }
@@ -346,7 +350,7 @@ public class Rule {
         if(reachables.contains(getName())) return;
         if(singular && !terminal && !parserRules.contains(this)) {
             //This is a singular rule that is not part of parserRules nor is it terminal so it is undefined
-            reachables.add("Undefined " + this.getName());
+            reachables.add("Undefined " + name);
         }   else if(mainRule && !terminal) {
                 //This is a main rule, add its name to reachable and check what can be reach from its productions
                 reachables.add(getName());
@@ -376,6 +380,7 @@ public class Rule {
     public ArrayList<String> getReachables(ArrayList<Rule> parserRules) {
         ArrayList<String> reachables =  new ArrayList<String>();
         getReachables(parserRules,reachables);
+        System.out.println("Reachables from " + getName() + ": " + reachables);
         return reachables;
     }
 
@@ -384,6 +389,7 @@ public class Rule {
         System.out.println("checkedRules " + checkedRules);
         if(checkedRules.contains(getName())) System.out.println(this + " has been visited, returning false");
         if(terminal || checkedRules.contains(getName())) return false;
+        if(this.equals(EPSILON)) return true;
         
         if(!singular) { //composed rule (term factor)
             System.out.println(getName() + " is not singular consists of " + subRules.get(0));
@@ -425,6 +431,13 @@ public class Rule {
      */
     public boolean nullable(ArrayList<Rule> parserRules) {
         return nullable(parserRules, "");
+    }
+
+    public boolean containsEpsilon() {
+        for (LinkedList<Rule> linkedList : subRules) {
+            if(linkedList.getFirst().equals(EPSILON)) return true;
+        }
+        return false;
     }
     
     public void heuristic(double pH) {
