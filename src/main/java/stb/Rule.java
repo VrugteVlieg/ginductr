@@ -2,6 +2,8 @@ package stb;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 public class Rule {
@@ -32,6 +34,26 @@ public class Rule {
         this.singular = toCopy.singular;
         this.depth = toCopy.depth;
         this.ruleText = toCopy.ruleText;
+    }
+    /**
+     * Creates a rule that collects a list of sub rules
+     * @param rules
+     */
+    public Rule(List<Rule> rules, int depth) {
+        this.subRules = new ArrayList<LinkedList<Rule>>();
+        LinkedList<Rule> myRules = new LinkedList<Rule>();
+        rules.forEach(rule -> myRules.add(rule));
+        subRules.add(myRules);
+        terminal = false;
+        mainRule = false;
+        iterative = false;
+        optional = false;
+        this.depth = depth;
+        StringBuilder nameBuilder = new StringBuilder();
+        rules.forEach(rule -> nameBuilder.append(rule.getName() + " "));
+        name = nameBuilder.toString().trim();
+        ruleText = getName();
+
     }
 
     /**
@@ -218,7 +240,6 @@ public class Rule {
     }
 
     public void setIterative(boolean setTo) {
-        if(mainRule) System.out.println("Setting mainRule "  + getName() + " to iterative");
         StringBuilder out = new StringBuilder(getName());
         this.iterative = setTo;
         out.append(" -> " + getName());
@@ -236,7 +257,6 @@ public class Rule {
 
 
     public void setOptional(boolean setTo) {
-        if(mainRule) System.out.println("Setting mainRule "  + getName() + " to optional");
         StringBuilder out = new StringBuilder(getName());
         this.optional = setTo;
         out.append(" -> " + getName());
@@ -279,7 +299,7 @@ public class Rule {
         if(index == 0) return this;
         int counter = 0;
         int subSetIndex = 0;
-        if(mainRule)System.out.println("Calling get production " + index + " on " + this);
+        // if(mainRule)System.out.println("Calling get production " + index + " on " + this);
         for(LinkedList<Rule> subSet : subRules) {
             int subRuleIndex = 0;
             for(Rule subRule : subSet) {
@@ -291,7 +311,6 @@ public class Rule {
                     counter += subRule.getTotalProductions();
                     if(counter >= index) { //the rule to change was in the the last subrule
                         int indexInRule = index - counterPre - 1; //position withing the rule
-                        if(mainRule)System.out.println("Returning " + subRule.getProduction(indexInRule).getName() + " from " + this);
                         return subRule.getProduction(indexInRule);
                     }
                 }
@@ -336,7 +355,6 @@ public class Rule {
         this.subRules.add(toAdd);
     }
     public void addAlternative(Rule toAdd) {
-        if(toAdd.equals(EPSILON)) System.out.println("Making " + this + " nullable");
         LinkedList<Rule> wrappedToAdd = new LinkedList<Rule>();
         wrappedToAdd.add(toAdd);
         this.subRules.add(wrappedToAdd);
@@ -380,19 +398,18 @@ public class Rule {
     public ArrayList<String> getReachables(ArrayList<Rule> parserRules) {
         ArrayList<String> reachables =  new ArrayList<String>();
         getReachables(parserRules,reachables);
-        System.out.println("Reachables from " + getName() + ": " + reachables);
         return reachables;
     }
 
     private boolean nullable(ArrayList<Rule> parserRules, String checkedRules) {
-        System.out.println("Checking if " + this + " in " + parserRules + " is nullable");
-        System.out.println("checkedRules " + checkedRules);
-        if(checkedRules.contains(getName())) System.out.println(this + " has been visited, returning false");
+        // System.out.println("Checking if " + this + " in " + parserRules + " is nullable");
+        // System.out.println("checkedRules " + checkedRules);
+        // if(checkedRules.contains(getName())) System.out.println(this + " has been visited, returning false");
         if(terminal || checkedRules.contains(getName())) return false;
         if(this.equals(EPSILON)) return true;
         
         if(!singular) { //composed rule (term factor)
-            System.out.println(getName() + " is not singular consists of " + subRules.get(0));
+            // System.out.println(getName() + " is not singular consists of " + subRules.get(0));
             LinkedList<Rule> subProds = subRules.get(0);
             for (Rule rule : subProds) {
                 if(!rule.nullable(parserRules,checkedRules)) return false;
@@ -402,33 +419,31 @@ public class Rule {
             Rule mainVersion = parserRules.get(parserRules.indexOf(this));    
             return mainVersion.nullable(parserRules,checkedRules);
         } else {    //Main rule
-            System.out.println(this + " is a main rule, checking nullable");
+            // System.out.println(this + " is a main rule, checking nullable");
             checkedRules = checkedRules + ","  + getName();
             for(LinkedList<Rule> prod : subRules) {
                 if(prod.get(0).equals(EPSILON)) {
-                    System.out.println(getName() + " contains EPSILON, nullable");
+                    // System.out.println(getName() + " contains EPSILON, nullable");
                     return true;
                 }
             }
-            System.out.println(getName() + " does not contain EPSILON, checking nullability of productions");
+            // System.out.println(getName() + " does not contain EPSILON, checking nullability of productions");
             for(LinkedList<Rule> prod : subRules) {
-                System.out.println("    Checking if " + prod + " is nullable");
+                // System.out.println("    Checking if " + prod + " is nullable");
                 boolean nullable = true;
                 for(Rule rule : prod) {
-                    System.out.println("        Checking if " + rule + " is nullable");
+                    // System.out.println("        Checking if " + rule + " is nullable");
                     nullable &= rule.nullable(parserRules,checkedRules);
                 }
-                if(nullable) System.out.println(prod + " in " + getName() + " is nullable");
-                if(nullable) System.out.println(this + " is nullable");
+                // if(nullable) System.out.println(prod + " in " + getName() + " is nullable");
+                // if(nullable) System.out.println(this + " is nullable");
                 if(nullable) return true;
             }
-            System.out.println(this + " is not nullable");
+            // System.out.println(this + " is not nullable");
             return false;
         }
     }
-    /**
-     * TODO test whether this works on a combo rule (term factor) where term and factor are both nullable
-     */
+    
     public boolean nullable(ArrayList<Rule> parserRules) {
         return nullable(parserRules, "");
     }
@@ -462,7 +477,7 @@ public class Rule {
     }
 
     public void setSubRules(ArrayList<LinkedList<Rule>> toSet) {
-        System.out.println("Changing rules of " + this + " to " + toSet);
+        // System.out.println("Changing rules of " + this + " to " + toSet);
         subRules.clear();
         toSet.forEach(prod -> {
             LinkedList<Rule> newProd = new LinkedList<Rule>();
@@ -502,7 +517,42 @@ public class Rule {
     }
 
 	public void removeEpsilon() {
-        System.out.println("Removing Epsilon from " + this);
+        // System.out.println("Removing Epsilon from " + this);
         subRules.removeIf(prod -> prod.getFirst().equals(EPSILON));
 	}
+    /**
+     * Attempts to group rules on the RHS of this rule, returns true if successful else returns false
+     * this can fail if the rule does not contain a sub production with more than 1 symbol
+     */
+	public boolean groupProductions() {
+        boolean canGroup =  false;
+        for (LinkedList<Rule> prods : subRules) {
+            canGroup |= (prods.size() >= 2);
+        }
+        //This rule does not contain any productions with more than 1 symbol
+        if(!canGroup) return false;
+
+        LinkedList<Rule> prodToGroup = subRules.get(randInt(subRules.size()));
+        while(prodToGroup.size() < 2) prodToGroup = subRules.get(randInt(subRules.size()));
+        int startIndex = randInt(prodToGroup.size()-2);
+        int endIndex = startIndex + randInt(prodToGroup.size() - startIndex - 1) + 1;
+        List<Rule> toRemove = prodToGroup.subList(startIndex, endIndex+1);
+        System.out.println("Making a new rule from " + toRemove);
+        Rule newRule = new Rule(toRemove,depth+1);
+        System.out.println(getName() + " goes from \n" + subRules);
+        for (int i = startIndex; i < endIndex; i++) {
+            prodToGroup.remove(i);
+        }
+        // prodToGroup.removeAll(toRemove);
+        prodToGroup.set(startIndex, newRule);
+        System.out.println("To " + subRules);
+        
+		return true;
+    }
+
+    //TODO add a mutation to expand out brackted rules
+    
+    public int randInt(int bound) {
+        return ThreadLocalRandom.current().nextInt(bound);
+    }
 }

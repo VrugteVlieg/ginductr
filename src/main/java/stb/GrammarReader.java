@@ -143,7 +143,7 @@ public class GrammarReader {
                     int newRuleIndex = randInt(parserRules.size());
                     while(newRuleIndex == ruleIndex) newRuleIndex = randInt(parserRules.size());
                     Rule ruleToExtend = parserRules.get(newRuleIndex);
-                    System.out.println("Adding " + toMutate + " as an alternative to " + ruleToExtend.getName());
+                    // System.out.println("Adding " + toMutate + " as an alternative to " + ruleToExtend.getName());
                     ruleToExtend.addAlternative(toMutate.getSubRules());
                     parserRules.remove(toMutate);
                 } 
@@ -151,7 +151,7 @@ public class GrammarReader {
                     int toInsertIndex = randInt(parserRules.size());
                     while(toInsertIndex == ruleIndex) toInsertIndex = randInt(parserRules.size());
                     Rule toInsert = parserRules.get(toInsertIndex);
-                    System.out.println("Setting rule " + productionIndex + " of " + toMutate .getName()+ " to " + toInsert.getName());
+                    // System.out.println("Setting rule " + productionIndex + " of " + toMutate .getName()+ " to " + toInsert.getName());
                     toMutate.setProduction(productionIndex,toInsert);
                 }
                 System.out.println(this);
@@ -216,19 +216,20 @@ public class GrammarReader {
      * @param pH probability of mutation for each rule
      */
 	public void heuristic(Double pH) {
+        if(Math.random() > pH) return;
         int ruleIndex = randInt(parserRules.size());
         Rule mainToChange = parserRules.get(ruleIndex);
         // System.out.println(mainToChange + " has " + mainToChange.getTotalProductions() + " productions");
         int toChangeIndex = randInt(mainToChange.getTotalProductions());
-        System.out.println("Applying heuristic to " + mainToChange.getName() + " in " + getName() + " prod " + toChangeIndex + mainToChange.getProduction(toChangeIndex).getName());
+        // System.out.println("Applying heuristic to " + mainToChange.getName() + " in " + getName() + " prod " + toChangeIndex + mainToChange.getProduction(toChangeIndex).getName());
         System.out.println(this);
         if(toChangeIndex == 0)  {
             if(!mainToChange.containsEpsilon()) {
-                System.out.println("Adding EPSILON as alternative to " + mainToChange.getName());
+                // System.out.println("Adding EPSILON as alternative to " + mainToChange.getName());
                 mainToChange.addAlternative(Rule.EPSILON);
                 System.out.println(this);
             } else {
-                System.out.println("Removing EPSILON as alternative to " + mainToChange.getName());
+                // System.out.println("Removing EPSILON as alternative to " + mainToChange.getName());
                 mainToChange.removeEpsilon();
                 System.out.println(this);
             }
@@ -239,21 +240,21 @@ public class GrammarReader {
         // System.out.println("Changing rule " + toChangeIndex + " of " + mainToChange);
         if(choice < 0.33) {
             if(!toChange.nullable(parserRules)) {
-                System.out.println("Setting " + toChange.getName() + " to iterative");
+                // System.out.println("Setting " + toChange.getName() + " to iterative");
                 toChange.setIterative(!toChange.isIterative());
             } else {
-                System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
+                // System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
             }
         } else if(choice < 0.66) {
-            System.out.println("Setting " + toChange.getName() + " to optional");
+            // System.out.println("Setting " + toChange.getName() + " to optional");
             toChange.setOptional(!toChange.isOptional());
         } else {
             toChange.setOptional(!toChange.isOptional());
             if(!toChange.nullable(parserRules)) {
-                System.out.println("Setting " + toChange.getName() + " to iterative");
+                // System.out.println("Setting " + toChange.getName() + " to iterative");
                 toChange.setIterative(!toChange.isIterative());
             } else {
-                System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
+                // System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
             }
         }
         System.out.println(this);
@@ -276,6 +277,17 @@ public class GrammarReader {
         parserRules.remove(0);
     }
 
+
+    public void groupProductions(double pG) {
+        if(Math.random() > pG) return;
+        Rule ruleToGroup = parserRules.get(randInt(parserRules.size()));
+        while(!ruleToGroup.groupProductions()) {
+            ruleToGroup = parserRules.get(randInt(parserRules.size()));
+        }
+        System.out.println("Successfully mutated " + ruleToGroup.getName());
+        System.out.println(this);
+
+    }
     public ArrayList<String> getUndefinedRules() {
         ArrayList<String> undefined = parserRules.get(0).getReachables(parserRules);
         undefined.removeIf(name -> !name.contains("Undefined "));
@@ -292,7 +304,7 @@ public class GrammarReader {
         if(undefined.size() == 0) { 
             // System.out.println(getName() + " contains no undefined rules");
         } else {
-            System.out.println("Repairing " + getName() + " with undefined rules " + undefined);
+            // System.out.println("Repairing " + getName() + " with undefined rules " + undefined);
             undefined.forEach(undefText -> {
                 String ruleName = undefText.replace("Undefined ", "");
                 int currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
@@ -302,10 +314,10 @@ public class GrammarReader {
             });
             undefined = getUndefinedRules();
             if(undefined.size() == 0) {
-                System.out.println("Repair successful " + this);
+                // System.out.println("Repair successful " + this);
             } else {
                 System.out.println(undefined);
-                System.out.println("Repair fucked up " + this);
+                // System.out.println("Repair fucked up " + this);
             }
         }
 
@@ -340,8 +352,8 @@ public class GrammarReader {
                     if(subRule.getFirst().getName().equals(" ")) return;
                     // System.out.println("    Analysing " + subRule);
                     if(!subRule.getFirst().getName().split(" ")[0].equals(ruleName)) {
-                        System.out.println("    " + subRule + " is clean");
-                        subRule.add(new Rule(newRuleName,1));
+                        // System.out.println("    " + subRule + " is clean");
+                        // subRule.add(new Rule(newRuleName,1));
                         cleanProductions.add(subRule);
                     } else {
                         //TODO add handling if the first rule is bracketed term: (term addop) | factor

@@ -13,12 +13,13 @@ public class Constants {
 	public static final Double P_M = 0.4;
 	public static final Double P_H = 0.55;
     public static final Double P_C = 0.65;
+    public static final Double P_G = 1.0;
 	public static final boolean CROSSOVER = false;
 	public static final boolean MUTATE = true;
 	public static final boolean HEURISTIC = true;
 
-    public static final int POP_SIZE = 100;
-    public static final int NUM_ITERATIONS = 100;
+    public static final int POP_SIZE = 0;
+    public static final int NUM_ITERATIONS = 50;
 	public static final int RULENAME_LEN = 7;
     public static int MAX_PROD_SIZE = 4;
     public static int MAX_RHS_SIZE = 4;

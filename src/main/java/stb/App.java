@@ -25,7 +25,8 @@ public class App {
             GrammarReader goldenGrammar = new GrammarReader(Constants.CURR_GRAMMAR_PATH);
             System.out.println(goldenGrammar);
             GrammarReader seededGrammar = new GrammarReader(Constants.SEEDED_GRAMMAR_PATH);
-            seededGrammar.getParserRules().forEach(rule -> rule.nullable(seededGrammar.getParserRules()));
+            System.out.println(seededGrammar);
+            seededGrammar.groupProductions(Constants.P_G);
             // seededGrammar.removeLR();
             // seededGrammar.getParserRules().forEach(rule -> rule.nullable(seededGrammar.getParserRules()));
             // System.out.println(seededGrammar);
@@ -60,14 +61,7 @@ public class App {
                     
                     
                     if(Constants.HEURISTIC) grammar.heuristic(Constants.P_H);
-                    for(Rule rule  : grammar.getParserRules()) {
-                        if(rule.getName().contains("* | ? | +")) {
-                            System.out.println("Oh Shit " + rule);
-                            Scanner in = new Scanner(System.in);
-                            in.nextLine();
-                            in.close();
-                        }
-                    }
+
                     grammar.removeDuplicateProductions();
                     grammar.removeUnreachable();
                     grammar.removeLR();
@@ -96,6 +90,7 @@ public class App {
             // System.err.println("Exception in mainApp loop " + e.getCause());
             e.printStackTrace();
         } finally {
+            System.err.println("Best Grammar " + bestScore + "\n" + bestGrammar);
             // if(bestGrammar.getScore() == 0) {
             //     myGrammars.forEach(grammar -> {
             //         System.err.println(grammar.getName() + " score = " + grammar.getScore() + "\n" + grammar);
