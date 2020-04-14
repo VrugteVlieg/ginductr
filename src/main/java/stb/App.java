@@ -27,6 +27,7 @@ public class App {
             GrammarReader seededGrammar = new GrammarReader(Constants.SEEDED_GRAMMAR_PATH);
             System.out.println(seededGrammar);
             seededGrammar.groupProductions(Constants.P_G);
+            seededGrammar.unGroupProductions(Constants.P_G);
             // seededGrammar.removeLR();
             // seededGrammar.getParserRules().forEach(rule -> rule.nullable(seededGrammar.getParserRules()));
             // System.out.println(seededGrammar);

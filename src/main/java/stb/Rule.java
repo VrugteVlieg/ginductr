@@ -1,6 +1,7 @@
 package stb;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -540,8 +541,9 @@ public class Rule {
         System.out.println("Making a new rule from " + toRemove);
         Rule newRule = new Rule(toRemove,depth+1);
         System.out.println(getName() + " goes from \n" + subRules);
+        System.out.println("prodToGroup " + prodToGroup + " start " + startIndex + " end " + endIndex);
         for (int i = startIndex; i < endIndex; i++) {
-            prodToGroup.remove(i);
+            prodToGroup.remove(startIndex);
         }
         // prodToGroup.removeAll(toRemove);
         prodToGroup.set(startIndex, newRule);
@@ -549,6 +551,50 @@ public class Rule {
         
 		return true;
     }
+
+    /**
+     * Attempts to expand out a bracketd rule into its constituent rules
+     * returns true if a brackted rule was expanded else returns false
+     */
+    public boolean unGroupProductions() {
+        System.out.println("Running ungroup on " + this);
+        boolean canExpand = false;
+        LinkedList<Rule> expandables = new LinkedList<Rule>();
+        LinkedList<int[]> indices = new LinkedList<int[]>();
+        int prodIndex = 0;
+        for (LinkedList<Rule> prods : subRules) {
+            int ruleIndex = 0;
+            for(Rule rule : prods) {
+                if(rule.name.contains(" ")) {
+                    canExpand |= rule.name.contains(" ");
+                    expandables.add(rule);
+                    int[] index = {prodIndex,ruleIndex};
+                    indices.add(index);
+                }
+                ruleIndex++;
+            }
+            prodIndex++;
+        }
+        if(!canExpand) System.out.println("Cannot expand anything in " + getName());
+        if(!canExpand) return false;
+        int toExpandIndex = randInt(expandables.size());
+        Rule toExpand = expandables.get(toExpandIndex);
+        int[] index = indices.get(toExpandIndex);
+        
+        //50% of the time we try to expand a subrule, if there are no expandable subrules ungroup will return false and the not will become true
+        if(!(Math.random() < 1.0 && toExpand.unGroupProductions())) {
+            List<Rule> toInsert = toExpand.subRules.get(0);
+            LinkedList<Rule> prod = subRules.get(index[0]);
+            prod.remove(index[1]);
+            Collections.reverse(toInsert);
+            toInsert.forEach(rule -> prod.add(index[1],rule));
+            subRules.set(index[0], prod);
+            if(!mainRule) resetName();
+        }
+        System.out.println("New rule " + this);
+        return true;
+    }
+
 
     //TODO add a mutation to expand out brackted rules
     

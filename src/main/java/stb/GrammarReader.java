@@ -286,8 +286,20 @@ public class GrammarReader {
         }
         System.out.println("Successfully mutated " + ruleToGroup.getName());
         System.out.println(this);
-
     }
+
+    public void unGroupProductions(double pG) {
+        if(Math.random() > pG) return;
+        Rule ruleToUnGroup = parserRules.get(randInt(parserRules.size()));
+        parserRules.forEach(rule -> rule.unGroupProductions());
+        // while(!ruleToUnGroup.unGroupProductions()) {
+        //     ruleToUnGroup = parserRules.get(randInt(parserRules.size()));
+        // }
+        // System.out.println("Successfully mutated " + ruleToUnGroup.getName());
+        System.out.println(this);
+    }
+
+
     public ArrayList<String> getUndefinedRules() {
         ArrayList<String> undefined = parserRules.get(0).getReachables(parserRules);
         undefined.removeIf(name -> !name.contains("Undefined "));
