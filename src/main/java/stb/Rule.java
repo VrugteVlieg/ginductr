@@ -636,5 +636,41 @@ public class Rule {
                 }
             });
         });
-	}
+    }
+    
+    //Inserts a new rule into a random position on the RHS
+	public void extend(Rule toAdd) {
+        toAdd.mainRule = false;
+        int prodIndex = randInt(subRules.size());
+        LinkedList<Rule> prod = subRules.get(prodIndex);
+        int ruleIndex = randInt(prod.size());
+        Rule toShift = prod.get(ruleIndex);
+        if(!toShift.singular) {
+            toShift.extend(toAdd);
+        } else {
+            LinkedList<Rule> newProd = new LinkedList<Rule>();
+            int counter = 0;
+            for(Rule rule: prod) {
+                if(counter == ruleIndex) {
+                    newProd.add(toAdd);
+                } else {
+                    newProd.add(rule);
+                }
+                counter++;
+            }
+        }
+    }
+    //Removes a random rule on the RHS, this includes removing rules inside brackets
+    public void reduce() {
+        int prodIndex = randInt(subRules.size());
+        LinkedList<Rule> prod = subRules.get(prodIndex);
+        int ruleIndex = randInt(prod.size());
+        Rule toShift = prod.get(ruleIndex);
+        //half the time we just remove the whole combined rule
+        if(!toShift.singular && Math.random() < 1.0/toShift.getSubRules().get(0).size()) {
+            toShift.reduce();
+        } else {
+            prod.remove(ruleIndex);
+        }
+    }
 }

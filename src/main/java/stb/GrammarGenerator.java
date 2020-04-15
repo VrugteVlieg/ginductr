@@ -20,17 +20,10 @@ public class GrammarGenerator {
 
             // System.out.println("Creating new grammar " + grammarName + " with " + grammarRuleCount + " rules");
             for (int j = 0; j < grammarRuleCount; j++) {
-                int currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
+                int currRuleLen = 1 + ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE-1);
 
-                while(currGrammar.getParserRules().size() == 0 && currRuleLen == 0)
-                    currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
-                StringBuilder ruleName = new StringBuilder();
-                //Generates rule name by randomly concatting letters
-                for (int nameIndex = 0; nameIndex < Constants.RULENAME_LEN; nameIndex++) {
-
-                    ruleName.append((char)('a' + randInt(26)));
-                }
-                currGrammar.generateNewRule(ruleName.toString(), currRuleLen);
+                //Generates a new rule with a random name
+                currGrammar.generateNewRule(currRuleLen);
             }
 
             currGrammar.removeDuplicateProductions();

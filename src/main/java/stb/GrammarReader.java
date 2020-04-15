@@ -107,6 +107,8 @@ public class GrammarReader {
 
     public void generateNewRule(String ruleName, int RHSLen) {
         if(RHSLen == 0) return;
+       
+       
         ArrayList<Rule> allRules = getAllRules();
         StringBuilder newRuleText = new StringBuilder();
         for (int i = 0; i < RHSLen; i++) {
@@ -122,6 +124,17 @@ public class GrammarReader {
             }
         }
         parserRules.add(0,toAdd);
+    }
+    /**
+     * Wrapper for generateNewRule when a random name can be used
+     */
+    public void generateNewRule(int RHSLen) {
+        StringBuilder ruleNameBuilder = new StringBuilder();
+                //Generates rule name by randomly concatting letters
+        for (int nameIndex = 0; nameIndex < Constants.RULENAME_LEN; nameIndex++) {
+            ruleNameBuilder.append((char)('a' + randInt(26)));
+        }
+        generateNewRule(ruleNameBuilder.toString(), RHSLen);
     }
 
 	public void setPositiveAcceptance(boolean toSet) {
@@ -195,6 +208,7 @@ public class GrammarReader {
         for (int i = 0; i < parserRules.size(); i++) {
             Rule currRule = parserRules.get(i);
             int toMergeIndex = parserRules.lastIndexOf(currRule);
+            //Finds all indices of the rule that is not the first appearance, starting at the back
             if(toMergeIndex != i) {
                 // System.out.println(currRule.getName() + " is already present in " + this.getName() + " as " + parserRules.get(toMergeIndex));
                 currRule.addAlternative(parserRules.get(toMergeIndex).getSubRules());
@@ -211,7 +225,17 @@ public class GrammarReader {
 	public void removeUnreachable() {
         Rule startSymbol = parserRules.get(0);
         ArrayList<String> reachableRules = startSymbol.getReachables(parserRules);
+        int sizePre = parserRules.size();
         parserRules.removeIf(rule -> !reachableRules.contains(rule.getName()));
+        int sizePost = parserRules.size();
+        int numRulesToGen = randInt(sizePre-sizePost);
+        System.out.println("Generating " + numRulesToGen + " for " + grammarName);
+        for (int i = 0; i < numRulesToGen; i++) {
+            int currRuleLen = 1 + ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE-1);
+            generateNewRule(currRuleLen);
+        }
+        if(numRulesToGen != 0) System.out.println("Checking if new rules are reachable in " + this);
+        if(numRulesToGen != 0) removeUnreachable();
 	}
     /**
      * Applies the heuristic mutation, this can change a production to either optional, iterative , both, or none 
@@ -436,4 +460,24 @@ public class GrammarReader {
     public void setName(String name) {
         this.grammarName = name;
     }
+
+    //Removes a random rule and fixed any refrences that become undefined
+    public void removeRule() {
+        int ruleIndex = randInt(parserRules.size());
+        parserRules.remove(ruleIndex);
+        fixUndefinedRules();
+    }
+
+    //Adds a new randomm rule to the grammar
+    public void addNewRule() {
+        generateNewRule(1 + randInt(Constants.MAX_RHS_SIZE-1));
+        removeUnreachable();
+    }
+
+    public void incRuleSize() {
+        Rule toInc = parserRules.get(randInt(parserRules.size()));
+        Rule toAdd = new Rule(parserRules.get(randInt(parserRules.size())));
+        toInc.extend(toAdd);
+    }
+
 }
