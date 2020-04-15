@@ -7,14 +7,14 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class GrammarGenerator {
     
-    
+    static int grammarCount = 0;
 
     public static LinkedList<GrammarReader> generatePopulation(int popSize) {
         GrammarReader terminalGrammar = new GrammarReader(Constants.CURR_Terminals_PATH);
 
         LinkedList<GrammarReader> output = new LinkedList<GrammarReader>();
         for (int i = 0; i < popSize; i++) {
-            String grammarName = "Grammar_" + i;
+            String grammarName = "Grammar_" + grammarCount++;
             GrammarReader currGrammar = new GrammarReader(grammarName,terminalGrammar.getAllRules());
             int grammarRuleCount = ThreadLocalRandom.current().nextInt(Constants.MAX_PROD_SIZE) + 1;
 
@@ -25,8 +25,10 @@ public class GrammarGenerator {
                 while(currGrammar.getParserRules().size() == 0 && currRuleLen == 0)
                     currRuleLen = ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE);
                 StringBuilder ruleName = new StringBuilder();
+                //Generates rule name by randomly concatting letters
                 for (int nameIndex = 0; nameIndex < Constants.RULENAME_LEN; nameIndex++) {
-                    ruleName.append((char)(97 + randInt(26)));
+
+                    ruleName.append((char)('a' + randInt(26)));
                 }
                 currGrammar.generateNewRule(ruleName.toString(), currRuleLen);
             }
@@ -42,6 +44,30 @@ public class GrammarGenerator {
         return output;
         
     }
+
+    public static LinkedList<GrammarReader> generatePopulation(int popSize, GrammarReader bestGrammar) {
+        if(bestGrammar.getScore() == 0.0) return generatePopulation(popSize);
+        LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
+        int bestPopCount = Constants.BEST_GRAMMAR_COPY_COUNT;
+        System.out.println("Adding " + Math.min(bestPopCount,popSize) + " copies of " + bestGrammar.getName() + " to population");
+        if(popSize > bestPopCount) {
+            for (int i = 0; i < bestPopCount; i++) {
+                GrammarReader toAdd = new GrammarReader(bestGrammar);
+                toAdd.setName("Grammar_" + grammarCount++);
+                out.add(toAdd);
+            }
+            int newPopSize = popSize - bestPopCount;
+            out.addAll(generatePopulation(newPopSize));
+        } else {
+            for (int i = 0; i < popSize; i++) {
+                GrammarReader toAdd = new GrammarReader(bestGrammar);
+                toAdd.setName("Grammar_" + grammarCount++);
+                out.add(toAdd);
+            }
+        }
+        return out; 
+    }
+
     public static int randInt(int bound) {
         return ThreadLocalRandom.current().nextInt(bound);
     }

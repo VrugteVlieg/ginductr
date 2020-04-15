@@ -19,6 +19,7 @@ public class GrammarReader {
     private boolean positiveAcceptance = false; //does this grammar accept all positive cases
     private double score = 0.0;
     private boolean remove = false;
+    private int age = 0;
 
     /**
      * Constructs a grammar from a given file
@@ -37,6 +38,7 @@ public class GrammarReader {
         toCopy.parserRules.forEach(rule -> parserRules.add(new Rule(rule)));
         terminalRules = new ArrayList<Rule>();
         toCopy.terminalRules.forEach(rule -> terminalRules.add(new Rule(rule)));
+        this.score = toCopy.score;
     }
 
     /**
@@ -225,8 +227,9 @@ public class GrammarReader {
         System.out.println(this);
         if(toChangeIndex == 0)  {
             if(!mainToChange.containsEpsilon()) {
-                // System.out.println("Adding EPSILON as alternative to " + mainToChange.getName());
+                System.out.println("Adding EPSILON as alternative to " + mainToChange.getName());
                 mainToChange.addAlternative(Rule.EPSILON);
+                cleanReferences(mainToChange);
                 System.out.println(this);
             } else {
                 // System.out.println("Removing EPSILON as alternative to " + mainToChange.getName());
@@ -238,28 +241,29 @@ public class GrammarReader {
         Rule toChange = mainToChange.getProduction(toChangeIndex);
         double choice = Math.random();
         // System.out.println("Changing rule " + toChangeIndex + " of " + mainToChange);
-        if(choice < 0.33) {
-            if(!toChange.nullable(parserRules)) {
-                // System.out.println("Setting " + toChange.getName() + " to iterative");
+        if(!toChange.nullable(parserRules)) {
+            if(choice < 0.33) {    
                 toChange.setIterative(!toChange.isIterative());
+            } else if(choice < 0.66) {
+                toChange.setOptional(!toChange.isOptional());
             } else {
-                // System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
-            }
-        } else if(choice < 0.66) {
-            // System.out.println("Setting " + toChange.getName() + " to optional");
-            toChange.setOptional(!toChange.isOptional());
-        } else {
-            toChange.setOptional(!toChange.isOptional());
-            if(!toChange.nullable(parserRules)) {
-                // System.out.println("Setting " + toChange.getName() + " to iterative");
+                toChange.setOptional(!toChange.isOptional());
                 toChange.setIterative(!toChange.isIterative());
-            } else {
-                // System.out.println("Not setting " + toChange.getName() + " to iterative, it is nullable");
             }
         }
-        System.out.println(this);
+        // System.out.println(this);
     }
-    
+    // Goes through all rules and removes optional flags refrencing this rule after it is made nullable
+    private void cleanReferences(Rule toClean) {
+        System.out.println("Cleaning refrences to " + toClean);
+        parserRules.forEach(rule -> {
+            System.out.println("Checking in " + rule.getName() + " :" + rule.getRuleText());
+            if(rule.getRuleText().contains(toClean.getName())) {
+                rule.cleanReferences(toClean);
+            }
+        });
+    }
+
     public void flagForRemoval() {
         this.remove = true;
     }
@@ -291,12 +295,12 @@ public class GrammarReader {
     public void unGroupProductions(double pG) {
         if(Math.random() > pG) return;
         Rule ruleToUnGroup = parserRules.get(randInt(parserRules.size()));
-        parserRules.forEach(rule -> rule.unGroupProductions());
-        // while(!ruleToUnGroup.unGroupProductions()) {
-        //     ruleToUnGroup = parserRules.get(randInt(parserRules.size()));
-        // }
+        
+        while(!ruleToUnGroup.unGroupProductions()) {
+            ruleToUnGroup = parserRules.get(randInt(parserRules.size()));
+        }
         // System.out.println("Successfully mutated " + ruleToUnGroup.getName());
-        System.out.println(this);
+        // System.out.println(this);
     }
 
 
@@ -350,8 +354,7 @@ public class GrammarReader {
         removeDirectLeftRecursion();
     }
 
-    private void removeDirectLeftRecursion() {
-        
+    private void removeDirectLeftRecursion() {  
         ArrayList<Rule> rulesToAdd = new ArrayList<Rule>();
         // System.out.println("Grammar goes from " + this);
         parserRules.forEach(rule -> {
@@ -420,5 +423,17 @@ public class GrammarReader {
      */
     public void removeDuplicateProductions() {
         parserRules.forEach(rule -> Chelsea.removeDuplicates(rule.getSubRules()));
+    }
+
+    public void incAge() {
+        if(++age > Constants.MAX_GRAMMAR_AGE) flagForRemoval();
+    }
+
+    public void resetAge() {
+        age = 0;
+    }
+
+    public void setName(String name) {
+        this.grammarName = name;
     }
 }

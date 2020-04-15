@@ -15,7 +15,8 @@ public class App {
      * adding a new rule to a grammar
      * when a new top scorer is found, make copies of it and add to list, apply grouping mutation to copies
      */
-    static String bestGrammar;
+    static String bestGrammarString;
+    static GrammarReader bestGrammar;
     static double bestScore = -1.0;
     static LinkedList<GrammarReader> myGrammars;
     public static void main(String[] args) {
@@ -72,7 +73,7 @@ public class App {
                 // System.out.println("Pre removal grammars "  + grammarList);
                 myGrammars.removeIf(grammar -> grammar.toRemove());
                 if(myGrammars.size() != Constants.POP_SIZE) {
-                    myGrammars.addAll(GrammarGenerator.generatePopulation(Constants.POP_SIZE - myGrammars.size()));
+                    myGrammars.addAll(GrammarGenerator.generatePopulation(Constants.POP_SIZE - myGrammars.size(),bestGrammar));
                 }
                 // grammarList.delete(0, grammarList.length());
                 // myGrammars.forEach(grammar -> grammarList.append(grammar.getName() + ","));
@@ -131,6 +132,11 @@ public class App {
             // System.out.println("Post Filter errorCount for " + myReader.getName() + " " + errorArr);
             double numPass = totalTests - 1.0*errorArr.size();
             myReader.setScore(numPass/totalTests);
+            if(incScore >= myReader.getScore()) {
+                myReader.incAge();
+            } else {
+                myReader.resetAge();
+            }
             if(incScore != myReader.getScore())
                 System.out.println(myReader.getName() + " score " + incScore + " -> " + myReader.getScore());   
 
@@ -138,7 +144,9 @@ public class App {
                 System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore() + " top score " + bestScore + '\n' + myReader);
                 if(bestScore < myReader.getScore()) {
                     System.out.println("New top scorer " + myReader.getScore() + "\n" + myReader);
-                    bestGrammar = myReader.toString();
+                    bestGrammarString = myReader.toString();
+                    bestGrammar = new GrammarReader(myReader);
+                    System.out.println("Best grammar " + bestGrammar.getScore() + "\n" + bestGrammar);
                     bestScore = myReader.getScore();
                 }
             }

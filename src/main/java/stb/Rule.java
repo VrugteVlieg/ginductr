@@ -27,7 +27,14 @@ public class Rule {
      */
     public Rule(Rule toCopy) {
         this.name = toCopy.name;
-        this.subRules = new ArrayList<LinkedList<Rule>>(toCopy.subRules);
+        this.subRules = new ArrayList<LinkedList<Rule>>();
+        for(LinkedList<Rule> prod : toCopy.subRules) {
+            LinkedList<Rule> newList = new LinkedList<Rule>();
+            prod.forEach(rule -> {
+                newList.add(new Rule(rule));
+            });
+            subRules.add(newList);
+        }
         this.terminal = toCopy.terminal;
         this.optional = toCopy.optional;
         this.iterative = toCopy.iterative;
@@ -179,7 +186,16 @@ public class Rule {
     //This might not be updated properly when a rule is mutated
 
     public String getRuleText() {
-        return ruleText;
+        StringBuilder out = new StringBuilder();
+        subRules.forEach(prod -> {
+            prod.forEach(rule -> {
+                if(!rule.equals(EPSILON)) out.append(rule + " ");
+            });
+            out.append("| ");
+        });
+        out.delete(out.length()-2, out.length());
+        out.append(";");
+        return out.toString();
     }
 
     @Override
@@ -219,7 +235,7 @@ public class Rule {
     }
 
     String getName() {
-        if(name.equals(" ")) return name; //this is nullToken 
+        if(name.equals(" ")) return " "; //this is nullToken 
         StringBuilder out = new StringBuilder(name);
         if(name.contains(" ")) {
             out.insert(0, "(");
@@ -407,7 +423,7 @@ public class Rule {
         // System.out.println("checkedRules " + checkedRules);
         // if(checkedRules.contains(getName())) System.out.println(this + " has been visited, returning false");
         if(terminal || checkedRules.contains(getName())) return false;
-        if(this.equals(EPSILON)) return true;
+        if(this.equals(EPSILON) || isOptional()) return true;
         
         if(!singular) { //composed rule (term factor)
             // System.out.println(getName() + " is not singular consists of " + subRules.get(0));
@@ -557,6 +573,7 @@ public class Rule {
      * returns true if a brackted rule was expanded else returns false
      */
     public boolean unGroupProductions() {
+        if(this.equals(EPSILON)) return false;
         System.out.println("Running ungroup on " + this);
         boolean canExpand = false;
         LinkedList<Rule> expandables = new LinkedList<Rule>();
@@ -565,7 +582,7 @@ public class Rule {
         for (LinkedList<Rule> prods : subRules) {
             int ruleIndex = 0;
             for(Rule rule : prods) {
-                if(rule.name.contains(" ")) {
+                if(rule.name.contains(" ") && !rule.equals(EPSILON)) {
                     canExpand |= rule.name.contains(" ");
                     expandables.add(rule);
                     int[] index = {prodIndex,ruleIndex};
@@ -583,6 +600,7 @@ public class Rule {
         
         //50% of the time we try to expand a subrule, if there are no expandable subrules ungroup will return false and the not will become true
         if(!(Math.random() < 1.0 && toExpand.unGroupProductions())) {
+            System.out.println("Expanding " + toExpand);
             List<Rule> toInsert = toExpand.subRules.get(0);
             LinkedList<Rule> prod = subRules.get(index[0]);
             prod.remove(index[1]);
@@ -601,4 +619,22 @@ public class Rule {
     public int randInt(int bound) {
         return ThreadLocalRandom.current().nextInt(bound);
     }
+	public void cleanReferences(Rule toClean) {
+        System.out.println("Cleaning refrences to " + toClean.getName() + " in " + this);
+        if(singular && this.equals(toClean)) {
+            System.out.println("Making " +  this + " mandatory");
+            setOptional(false);
+            return;
+        }
+        subRules.forEach(prod -> {
+            prod.forEach(rule -> {
+                System.out.println("Checking " + rule.getName());
+                if(rule.getName().contains(toClean.getName())) {
+                    if(rule.isOptional()) System.out.println("Making " + rule + " mandatory due to it containg " + toClean.getName());
+                    if(rule.isOptional()) rule.setOptional(false);
+                    rule.cleanReferences(toClean);
+                }
+            });
+        });
+	}
 }
