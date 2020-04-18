@@ -14,12 +14,15 @@ public class Constants {
 	public static final Double P_H = 0.55;
     public static final Double P_C = 0.65;
     public static final Double P_G = 1.0;
+    
 	public static final boolean CROSSOVER = false;
 	public static final boolean MUTATE = true;
 	public static final boolean HEURISTIC = true;
+	public static final boolean GROUP = true;
+    
 	public static final int MAX_GRAMMAR_AGE = 15;
-
-    public static final int POP_SIZE = 10;
+    public static final int POP_SIZE = 100;
+    public static final int MAX_GRAMMARS  = 10000;
     public static final int NUM_ITERATIONS = 100;
 	public static final int RULENAME_LEN = 7;
 	public static final int BEST_GRAMMAR_COPY_COUNT = 5;

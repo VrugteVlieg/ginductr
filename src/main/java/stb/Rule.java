@@ -45,6 +45,7 @@ public class Rule {
     }
     /**
      * Creates a rule that collects a list of sub rules
+     * used when grouping rules together
      * @param rules
      */
     public Rule(List<Rule> rules, int depth) {
@@ -122,10 +123,13 @@ public class Rule {
         addRuleLookahead(ruleText);
     }
 
+    /**
+     * Parses rule according to the ANTLR format used in g4 files to build a rule object
+     * @param rule
+     */
      public void addRuleLookahead(String rule) {
          int index = 0;
          if(!mainRule) rule = rule+";"; //adds ; to the end of the rule text to make parsing easier
-        //  printOut("Adding \'" +  rule + "\' by lookahead");
          LinkedList<Rule> currProduction = new LinkedList<Rule>();
          StringBuilder currString = new StringBuilder();
          boolean StringLiteral = false;
@@ -183,8 +187,6 @@ public class Rule {
     /**
      * @return The RHS of the rule
      */
-    //This might not be updated properly when a rule is mutated
-
     public String getRuleText() {
         StringBuilder out = new StringBuilder();
         subRules.forEach(prod -> {
@@ -221,19 +223,16 @@ public class Rule {
             return getName();
         }
         StringBuilder output = new StringBuilder();
-        output.append(name + " : ");
+        output.append(getName() + " : ");
         
-        subRules.forEach(ruleLL -> {
-            ruleLL.forEach(rule -> {
-                if(!rule.getName().equals(" ")) output.append(rule + " ");
-            });
-            output.append("| ");
-        });
-        output.replace(output.length()-2, output.length(), ";");
+       output.append(getRuleText());
        
         return output.toString();
     }
-
+    /**
+     * Computes the displat name of this rule, appends optional/iterative symbol and wraps subrules in () if this is a compound rule
+     * @return
+     */
     String getName() {
         if(name.equals(" ")) return " "; //this is nullToken 
         StringBuilder out = new StringBuilder(name);
@@ -258,42 +257,53 @@ public class Rule {
 
     public void setIterative(boolean setTo) {
         StringBuilder out = new StringBuilder(getName());
-        this.iterative = setTo;
+        iterative = setTo;
         out.append(" -> " + getName());
         printOut(out.toString());
     }
 
     public boolean isIterative() {
-        return this.iterative;
+        return iterative;
     }
 
     public boolean isOptional() {
-        return this.optional;
+        return optional;
+    }
+
+    public boolean isSingular() {
+        return singular;
     }
 
 
 
     public void setOptional(boolean setTo) {
-        StringBuilder out = new StringBuilder(getName());
         this.optional = setTo;
-        out.append(" -> " + getName());
-        printOut(out.toString());
     }
     public boolean isTerminal() {
         return this.terminal;
     }
+
+    /**
+     * Sets a given production to the specified rules
+     * indices for compound rules defined to include the compound rule as well as its constituent rules
+     * so for term: (factor expr);
+     * 0: term
+     * 1: (factor expr)
+     * 2: factor
+     * 3: expr
+     * @param index
+     * @param toSet
+     */
     public void setProduction(int index, Rule toSet) {
         Rule test = new Rule(toSet);
         test.mainRule = false;
         int counter = 0;
-        // System.out.println("Setting rule " + index + " in " + this + " to " + test);
         int subSetIndex = 0;
         for(LinkedList<Rule> subSet : subRules) {
             int subRuleIndex = 0;
             for(Rule subRule : subSet) {
                 int counterPre = counter;
                 if(counterPre == index-1) {
-                    // printOut("Setting " + subRules.get(subSetIndex).get(subRuleIndex) + " to " + test.name);
                     subRules.get(subSetIndex).set(subRuleIndex, test);
                     if(!mainRule)resetName();
                     return;
@@ -311,7 +321,17 @@ public class Rule {
             subSetIndex++;
         }
     }
-
+     /**
+     * Returns the production at a specific index in the rule
+     * indices for compound rules defined to include the compound rule as well as its constituent rules
+     * so for term: (factor expr);
+     * 0: term
+     * 1: (factor expr)
+     * 2: factor
+     * 3: expr
+     * @param index
+     * @param toSet
+     */
     public Rule getProduction(int index) {
         if(index == 0) return this;
         int counter = 0;
@@ -339,7 +359,10 @@ public class Rule {
         return new Rule("Default", "Default");
 
     }
-
+    /**
+     * Recalculates the name of the rule, used after the content of the subRules Arraylist gets changed for minor rules
+     * //TODO figure out if this should actually exist or not
+     */
     public void resetName() {
         StringBuilder out = new StringBuilder();
         subRules.forEach(subProd -> {
@@ -352,6 +375,10 @@ public class Rule {
         this.ruleText = this.toString();
     }
 
+    /**
+     *  Returns the total number productions that can be changed by a mutation
+     *  Expands out bracketed rules to allow selection of either the whole rule or any of its subrules
+     */ 
 	public int getTotalProductions() {
         int out = 1; //always start at 1 so the rule itself can be selected as well
         if(singular && !mainRule) {
@@ -365,12 +392,16 @@ public class Rule {
         return out;
     }
     
+    /**
+     * Adds the subRules of another rule to this rule 
+     * @param toAdd
+     */
     public void addAlternative(ArrayList<LinkedList<Rule>> toAdd) {
         this.subRules.addAll(toAdd);
     }
-    public void addAlternative(LinkedList<Rule> toAdd) {
-        this.subRules.add(toAdd);
-    }
+     /**
+      * Adds a single rule as an alternative production to this rule
+      */
     public void addAlternative(Rule toAdd) {
         LinkedList<Rule> wrappedToAdd = new LinkedList<Rule>();
         wrappedToAdd.add(toAdd);
@@ -418,10 +449,15 @@ public class Rule {
         return reachables;
     }
 
+
+    /**
+     * Determines if this rule is nullable in the context of a given set of Parserrules
+     * @param parserRules
+     * @param checkedRules
+     * @return
+     */
     private boolean nullable(ArrayList<Rule> parserRules, String checkedRules) {
-        // System.out.println("Checking if " + this + " in " + parserRules + " is nullable");
-        // System.out.println("checkedRules " + checkedRules);
-        // if(checkedRules.contains(getName())) System.out.println(this + " has been visited, returning false");
+        
         if(terminal || checkedRules.contains(getName())) return false;
         if(this.equals(EPSILON) || isOptional()) return true;
         
@@ -438,25 +474,15 @@ public class Rule {
         } else {    //Main rule
             // System.out.println(this + " is a main rule, checking nullable");
             checkedRules = checkedRules + ","  + getName();
+            if(containsEpsilon()) return true
+            
             for(LinkedList<Rule> prod : subRules) {
-                if(prod.get(0).equals(EPSILON)) {
-                    // System.out.println(getName() + " contains EPSILON, nullable");
-                    return true;
-                }
-            }
-            // System.out.println(getName() + " does not contain EPSILON, checking nullability of productions");
-            for(LinkedList<Rule> prod : subRules) {
-                // System.out.println("    Checking if " + prod + " is nullable");
                 boolean nullable = true;
                 for(Rule rule : prod) {
-                    // System.out.println("        Checking if " + rule + " is nullable");
                     nullable &= rule.nullable(parserRules,checkedRules);
                 }
-                // if(nullable) System.out.println(prod + " in " + getName() + " is nullable");
-                // if(nullable) System.out.println(this + " is nullable");
                 if(nullable) return true;
             }
-            // System.out.println(this + " is not nullable");
             return false;
         }
     }
@@ -466,32 +492,12 @@ public class Rule {
     }
 
     public boolean containsEpsilon() {
-        for (LinkedList<Rule> linkedList : subRules) {
-            if(linkedList.getFirst().equals(EPSILON)) return true;
+        for (LinkedList<Rule> prod : subRules) {
+            if(prod.getFirst().equals(EPSILON)) return true;
         }
         return false;
     }
     
-    public void heuristic(double pH) {
-
-        if(!mainRule && Math.random() < pH) {
-            double choice = Math.random();
-            if(choice < 0.33) {
-                setIterative(!iterative);
-            } else if(choice < 0.66) {
-                setOptional(!optional);
-            } else {
-                setOptional(!optional);
-                setIterative(!iterative);
-            }
-        } else {
-            subRules.forEach(subRule -> {
-                subRule.forEach(production -> {
-                    production.heuristic(pH);
-                });
-            });
-        }            
-    }
 
     public void setSubRules(ArrayList<LinkedList<Rule>> toSet) {
         // System.out.println("Changing rules of " + this + " to " + toSet);
@@ -522,6 +528,7 @@ public class Rule {
         }
     }
 
+    
     public boolean containLeftRecursiveProd() {
         for(LinkedList<Rule> prod : subRules) {
             if(prod.getFirst().getName().equals(getName())) {
@@ -541,13 +548,8 @@ public class Rule {
      * Attempts to group rules on the RHS of this rule, returns true if successful else returns false
      * this can fail if the rule does not contain a sub production with more than 1 symbol
      */
-	public boolean groupProductions() {
-        boolean canGroup =  false;
-        for (LinkedList<Rule> prods : subRules) {
-            canGroup |= (prods.size() >= 2);
-        }
-        //This rule does not contain any productions with more than 1 symbol
-        if(!canGroup) return false;
+	public void groupProductions() {
+        if(!canGroup()) return;
 
         LinkedList<Rule> prodToGroup = subRules.get(randInt(subRules.size()));
         while(prodToGroup.size() < 2) prodToGroup = subRules.get(randInt(subRules.size()));
@@ -564,18 +566,22 @@ public class Rule {
         // prodToGroup.removeAll(toRemove);
         prodToGroup.set(startIndex, newRule);
         System.out.println("To " + subRules);
-        
-		return true;
+    }
+
+    public boolean canGroup() {
+        for (LinkedList<Rule> prods : subRules) {
+            if(prods.size() >= 2) return true;
+        }
+        return false;
     }
 
     /**
      * Attempts to expand out a bracketd rule into its constituent rules
      * returns true if a brackted rule was expanded else returns false
      */
-    public boolean unGroupProductions() {
-        if(this.equals(EPSILON)) return false;
+    public void unGroupProductions() {
+        if(this.equals(EPSILON)) return;
         System.out.println("Running ungroup on " + this);
-        boolean canExpand = false;
         LinkedList<Rule> expandables = new LinkedList<Rule>();
         LinkedList<int[]> indices = new LinkedList<int[]>();
         int prodIndex = 0;
@@ -583,7 +589,6 @@ public class Rule {
             int ruleIndex = 0;
             for(Rule rule : prods) {
                 if(rule.name.contains(" ") && !rule.equals(EPSILON)) {
-                    canExpand |= rule.name.contains(" ");
                     expandables.add(rule);
                     int[] index = {prodIndex,ruleIndex};
                     indices.add(index);
@@ -592,14 +597,12 @@ public class Rule {
             }
             prodIndex++;
         }
-        if(!canExpand) System.out.println("Cannot expand anything in " + getName());
-        if(!canExpand) return false;
         int toExpandIndex = randInt(expandables.size());
         Rule toExpand = expandables.get(toExpandIndex);
         int[] index = indices.get(toExpandIndex);
         
         //50% of the time we try to expand a subrule, if there are no expandable subrules ungroup will return false and the not will become true
-        if(!(Math.random() < 1.0 && toExpand.unGroupProductions())) {
+        if(!(Math.random() < 1.0 && toExpand.canUngroup())) {
             System.out.println("Expanding " + toExpand);
             List<Rule> toInsert = toExpand.subRules.get(0);
             LinkedList<Rule> prod = subRules.get(index[0]);
@@ -610,15 +613,27 @@ public class Rule {
             if(!mainRule) resetName();
         }
         System.out.println("New rule " + this);
-        return true;
     }
 
+    public boolean canUngroup() {
+        if(singular) return false;
+        for (LinkedList<Rule> prods : subRules) {
+            for(Rule rule : prods) {
+                if(!rule.singular) return true;
+            }
+        }
+        return false;
+    }
 
-    //TODO add a mutation to expand out brackted rules
     
-    public int randInt(int bound) {
+    public static int randInt(int bound) {
         return ThreadLocalRandom.current().nextInt(bound);
     }
+
+    /**
+     * Changes all occurances of toClean in this rule to be mandatory and non-iterative, used after a parserRule has epsilon added as alternative
+     * @param toClean
+     */
 	public void cleanReferences(Rule toClean) {
         System.out.println("Cleaning refrences to " + toClean.getName() + " in " + this);
         if(singular && this.equals(toClean)) {
@@ -638,7 +653,9 @@ public class Rule {
         });
     }
     
-    //Inserts a new rule into a random position on the RHS
+    /**
+     * Inserts toAdd at a random position on the RHS of this rule
+     */
 	public void extend(Rule toAdd) {
         toAdd.mainRule = false;
         int prodIndex = randInt(subRules.size());
@@ -673,4 +690,37 @@ public class Rule {
             prod.remove(ruleIndex);
         }
     }
+    /**
+     * Generates a new ruleName
+     * @return
+     */
+    public static String genName() {    
+        StringBuilder ruleNameBuilder = new StringBuilder();
+                //Generates rule name by randomly concatting letters
+        for (int nameIndex = 0; nameIndex < Constants.RULENAME_LEN; nameIndex++) {
+            ruleNameBuilder.append((char)('a' + randInt(26)));
+        }
+        return ruleNameBuilder.toString();
+    }
+    /**
+     * Replaces all references to oldRule with newRule, optional/iterative is maintained unless newRule is nullable
+     * @param newRuleNullable is newRule nullable in the context of the calling grammar
+     */
+	public void replaceReferences(Rule oldRule, Rule newRule, boolean newRuleNullable) {
+        for (int i = 0; i < subRules.size(); i++) {
+            LinkedList<Rule> prod = subRules.get(i);
+            for (int j = 0; j < prod.size(); j++) {
+                Rule currRule = prod.get(ij);
+                if(currRule.equals(oldRule)) {
+                    currRule.name = newRule.name;
+                    if(newRuleNullable) {
+                        currRule.setIterative(false);
+                        currRule.setOptional(false);
+                    }
+                } else {
+                    currRule.replaceReferences(oldRule, newRule, newRuleNullable);
+                }
+            }
+        }
+	}
 }

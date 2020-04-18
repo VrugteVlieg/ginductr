@@ -79,17 +79,7 @@ public class Chelsea {
             lexerConstructor = lexer.getConstructor(CharStream.class);
             String.class.getConstructor(String.class);
 
-            // Manually creates parser.java file in outputDir
-            //TODO implement left recursion removal from https://en.wikipedia.org/wiki/Left_recursion#Removing_all_left_recursion
-            // The following sets of rules are mutually left-recursive [factor, term]
-            // program : factor EOF ;
-            // factor : term term Digit ;
-            // term : factor? ;
-            // Digit : '0' ;
-            // Mulop : '*' | '/' ;
-            // Addop : '+' | '-' ;
-            // LPAR : '(' ;
-            // RPAR : ')' ;
+            
             Class<?> parser = hm.get(finName + "Parser");
 
             // Manually creates the parserConstructor for use later
@@ -163,7 +153,6 @@ public class Chelsea {
                     //     System.out.println(myReader.getName() + " fails for " + content);
                     // }
                     removeDuplicates(fileErrors);
-                    // fileErrors.forEach(ErrorStack -> System.err.println(ErrorStack));
                                         
                     errors.put(fileName.toString(), fileErrors);
 

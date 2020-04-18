@@ -3,22 +3,15 @@ package stb;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Scanner;
 import java.util.Stack;
 
-public class App {
-    /**
-     * TODO add mutations
-     * grouping rules on rhs term: expr factor factor; ->term: (expr factor) factor;
-     * adding a new rule to a production    term: expr factor; -> term: expr Digit factor;
-     * removing a rule from a production    term: expr Digit factor; -> term: expr factor;
-     * adding a new rule to a grammar
-     * when a new top scorer is found, make copies of it and add to list, apply grouping mutation to copies
-     */
+public class App {  
+     
     static String bestGrammarString;
     static GrammarReader bestGrammar;
     static double bestScore = -1.0;
     static LinkedList<GrammarReader> myGrammars;
+    static LinkedList<GrammarReader> positiveGrammar = new LinkedList<GrammarReader>();
     public static void main(String[] args) {
         try {
             System.out.println("Hello World!");
@@ -27,8 +20,8 @@ public class App {
             System.out.println(goldenGrammar);
             GrammarReader seededGrammar = new GrammarReader(Constants.SEEDED_GRAMMAR_PATH);
             System.out.println(seededGrammar);
-            seededGrammar.groupProductions(Constants.P_G);
-            seededGrammar.unGroupProductions(Constants.P_G);
+            // seededGrammar.groupProductions();
+            // seededGrammar.unGroupProductions();
             // seededGrammar.removeLR();
             // seededGrammar.getParserRules().forEach(rule -> rule.nullable(seededGrammar.getParserRules()));
             // System.out.println(seededGrammar);
@@ -36,6 +29,13 @@ public class App {
             // runTests(seededGrammar);
             // runTests(myReader);   
             myGrammars = GrammarGenerator.generatePopulation(Constants.POP_SIZE);
+            /*TODO
+                Generate 1k candidates by randomly mutating each base grammar 1k/popSize times 
+                store hashes of mutants in hashmap so they dont get regenerated
+                randomise order in which mutations are applied by storing all in an array  of lambdas
+                Keep top popSize from each generation for next
+                randomly restart some grammars each generation and add grammar + score to different hashmap
+            */
             // myGrammars.forEach(grammar -> System.out.println(grammar));
             for (int i = 0; i < Constants.NUM_ITERATIONS; i++) {
                 Stack<GrammarReader> toCrossover = new Stack<GrammarReader>();
@@ -55,8 +55,11 @@ public class App {
                     
                     
                     
-                    if(Constants.MUTATE) {
-                        grammar.mutate(Constants.P_M, Constants.P_H);
+                    if(Constants.MUTATE && Math.random() < Constants.P_M) {
+                        grammar.mutate(); 
+                    }
+
+                    if(Constants.GROUP && Math.random() < Constants.P_G) {
                         
                     }
                     grammar.fixUndefinedRules();
@@ -87,20 +90,10 @@ public class App {
         });
         System.out.println("Best Grammar " + bestScore + "\n" + bestGrammar);
 
-        
         } catch (Exception e) {
-            // System.err.println("Exception in mainApp loop " + e.getCause());
             e.printStackTrace();
         } finally {
             System.err.println("Best Grammar " + bestScore + "\n" + bestGrammar);
-            // if(bestGrammar.getScore() == 0) {
-            //     myGrammars.forEach(grammar -> {
-            //         System.err.println(grammar.getName() + " score = " + grammar.getScore() + "\n" + grammar);
-            //     });
-            // } else {
-                // System.err.println("Best Grammar \n");
-                // System.err.println(bestGrammar.getName() + " score = " + bestGrammar.getScore() + "\n" + bestGrammar);
-            // }
         }
     }
     
@@ -114,7 +107,6 @@ public class App {
         }
         // System.out.println("Code gen succesful for \n " + myReader);  
         double incScore = myReader.getScore();
-        //TODO fix the scoring system
         try {
             
             HashMap<String,LinkedList<Stack<String>>> errors = Chelsea.runTestcases(removeCurr);
@@ -142,6 +134,7 @@ public class App {
 
             if(myReader.getScore() > incScore) {
                 System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore() + " top score " + bestScore + '\n' + myReader);
+                if(myReader.getScore() == 1.0) positiveGrammar.add(new GrammarReader(myReader));
                 if(bestScore < myReader.getScore()) {
                     System.out.println("New top scorer " + myReader.getScore() + "\n" + myReader);
                     bestGrammarString = myReader.toString();
