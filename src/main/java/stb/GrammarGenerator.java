@@ -14,7 +14,7 @@ public class GrammarGenerator {
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + grammarCount++;
             GrammarReader currGrammar = new GrammarReader(grammarName,terminalGrammar.getAllRules());
-            int grammarRuleCount = ThreadLocalRandom.current().nextInt(Constants.MAX_PROD_SIZE) + 1;
+            int grammarRuleCount = ThreadLocalRandom.current().nextInt(Constants.MAX_RULE_COUNT) + 1;
 
             // System.out.println("Creating new grammar " + grammarName + " with " + grammarRuleCount + " rules");
             for (int j = 0; j < grammarRuleCount; j++) {

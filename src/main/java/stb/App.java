@@ -14,29 +14,18 @@ public class App {
     static LinkedList<GrammarReader> positiveGrammar = new LinkedList<GrammarReader>();
     public static void main(String[] args) {
         try {
-            System.out.println("Hello World!");
-            System.err.println(Constants.CURR_GRAMMAR_PATH);
             GrammarReader goldenGrammar = new GrammarReader(Constants.CURR_GRAMMAR_PATH);
-            System.out.println(goldenGrammar);
-            GrammarReader seededGrammar = new GrammarReader(Constants.SEEDED_GRAMMAR_PATH);
-            System.out.println(seededGrammar);
-            // seededGrammar.groupProductions();
-            // seededGrammar.unGroupProductions();
-            // seededGrammar.removeLR();
-            // seededGrammar.getParserRules().forEach(rule -> rule.nullable(seededGrammar.getParserRules()));
-            // System.out.println(seededGrammar);
             
-            // runTests(seededGrammar);
-            // runTests(myReader);   
             myGrammars = GrammarGenerator.generatePopulation(Constants.POP_SIZE);
+            goldenGrammar.computeMutants(Constants.MUTANTS_PER_BASE).forEach(grammar -> {
+                System.out.println(grammar);
+            });
             /*TODO
                 Generate 1k candidates by randomly mutating each base grammar 1k/popSize times 
                 store hashes of mutants in hashmap so they dont get regenerated
-                randomise order in which mutations are applied by storing all in an array  of lambdas
                 Keep top popSize from each generation for next
                 randomly restart some grammars each generation and add grammar + score to different hashmap
             */
-            // myGrammars.forEach(grammar -> System.out.println(grammar));
             for (int i = 0; i < Constants.NUM_ITERATIONS; i++) {
                 Stack<GrammarReader> toCrossover = new Stack<GrammarReader>();
                 System.out.println("\n\n\nGeneration " + i + "\n\n\n");
@@ -65,7 +54,7 @@ public class App {
                     grammar.fixUndefinedRules();
                     
                     
-                    if(Constants.HEURISTIC) grammar.heuristic(Constants.P_H);
+                    if(Constants.HEURISTIC) grammar.heuristic();
 
                     grammar.removeDuplicateProductions();
                     grammar.removeUnreachable();

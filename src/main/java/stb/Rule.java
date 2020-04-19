@@ -474,7 +474,7 @@ public class Rule {
         } else {    //Main rule
             // System.out.println(this + " is a main rule, checking nullable");
             checkedRules = checkedRules + ","  + getName();
-            if(containsEpsilon()) return true
+            if(containsEpsilon()) return true;
             
             for(LinkedList<Rule> prod : subRules) {
                 boolean nullable = true;
@@ -655,6 +655,7 @@ public class Rule {
     
     /**
      * Inserts toAdd at a random position on the RHS of this rule
+     * Changes toAdd to be a minor rule if it is not
      */
 	public void extend(Rule toAdd) {
         toAdd.mainRule = false;
@@ -710,7 +711,7 @@ public class Rule {
         for (int i = 0; i < subRules.size(); i++) {
             LinkedList<Rule> prod = subRules.get(i);
             for (int j = 0; j < prod.size(); j++) {
-                Rule currRule = prod.get(ij);
+                Rule currRule = prod.get(j);
                 if(currRule.equals(oldRule)) {
                     currRule.name = newRule.name;
                     if(newRuleNullable) {
@@ -722,5 +723,19 @@ public class Rule {
                 }
             }
         }
-	}
+    }
+    
+    public int getSymbolCount() {
+        int out = 0;
+        for (LinkedList<Rule> prod : subRules) {
+            for (Rule rule : prod) {
+                if(rule.singular) {
+                    out++;
+                } else {
+                    out+= rule.getSymbolCount();
+                }
+            }
+        }
+        return out;
+    }
 }
