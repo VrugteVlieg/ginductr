@@ -156,15 +156,27 @@ public class Chelsea {
                                         
                     errors.put(fileName.toString(), fileErrors);
 
-                }   catch(NoSuchMethodException e) {
-                        // System.err.println("No  such method exception " + e.getCause());
-                        System.out.println("Removing " + myReader.getName() + " from grammar");
-                        removeCurr.removeGrammar();
-                }   catch (ParseCancellationException e) {
-                        System.out.println("Parse cancelled for " + myReader.getName());
-                }   catch (Exception e) {
-                        // e.printStackTrace();
-                        System.err.println("Exception lamda in Chelsea " + e.getCause());
+                } catch(NoSuchMethodException e) {
+                    // System.err.println("No  such method exception " + e.getCause());
+                    System.out.println("Removing " + myReader.getName() + " from grammar");
+                    removeCurr.removeGrammar();
+                } catch (ParseCancellationException e) {
+                    System.out.println("Parse cancelled for " + myReader.getName());
+                } catch (StackOverflowError e) {
+                    System.out.println("Stack overflow in chelsea " + errors.toString());
+                    e.printStackTrace(System.out);
+                    System.exit(1);
+                } catch (Exception e) {
+                    /**
+                     * FIXME stackoverflowError caused by infinite loops in grammar
+                     * grammar Grammar_0_fcbrvej;
+                     * program : ptytfhg EOF ;
+                     * ptytfhg : twwrtkj (ptytfhg LBRACK twwrtkj LBRACK RBRACK) ;
+                     * twwrtkj : LBRACK LBRACK LBRACK+ RBRACK ;
+                     * LBRACK : '[' ;
+                     * RBRACK : ']' ;
+                     */
+                    System.err.println("Exception lamda in Chelsea " + e.getCause());
                 }
             });
         } catch (Exception e) {

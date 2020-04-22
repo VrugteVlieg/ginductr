@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ThreadLocalRandom;
 
 
@@ -18,7 +19,7 @@ public class Rule {
     private int depth = 0;
     private String ruleText;
 
-    public static Rule EPSILON =  new Rule(" ",1);
+    public static final Rule EPSILON =  new Rule(" ",1);
     
 
     /**
@@ -74,6 +75,10 @@ public class Rule {
         if(!ruleText.equals(" "))  {
             ruleText = ruleText.trim();
             singular = !ruleText.contains(" ");
+            subRules = new ArrayList<LinkedList<Rule>>();
+            LinkedList<Rule> start = new LinkedList<Rule>();
+            start.add(EPSILON);
+            subRules.add(start);
         } else {
             singular = true;
         }
@@ -141,7 +146,7 @@ public class Rule {
                     if(currString.length() != 0 && !StringLiteral && brackets==0) {
                         currProduction.add(new Rule(currString.toString(),depth+1));
                         currString = new StringBuilder(); 
-                    } else if(StringLiteral || brackets!=0 || rule.charAt(index+1) == ';' || rule.charAt(index+1) == ';'){
+                    } else if(StringLiteral || brackets!=0 || rule.charAt(index+1) == ';'){
                         currString.append(" ");
                     } 
                     break;
@@ -157,7 +162,11 @@ public class Rule {
 
                 case ';':
                     if(currString.length() != 0) {
-                        currProduction.add(new Rule(currString.toString(),depth+1));
+                        if(currString.toString().equals(" ")) {
+                            currProduction.add(EPSILON);
+                        } else {
+                            currProduction.add(new Rule(currString.toString(),depth+1));
+                        }
                         currString = new StringBuilder(); 
                     } 
                     subRules.add(currProduction);
@@ -191,11 +200,12 @@ public class Rule {
         StringBuilder out = new StringBuilder();
         subRules.forEach(prod -> {
             prod.forEach(rule -> {
-                if(!rule.equals(EPSILON)) out.append(rule + " ");
+                out.append(rule + " ");
+                // if(!rule.equals(EPSILON)) out.append(rule + " ");
             });
             out.append("| ");
         });
-        out.delete(out.length()-2, out.length());
+        if(out.lastIndexOf("| ") != -1) out.delete(out.length()-2, out.length());
         out.append(";");
         return out.toString();
     }
@@ -234,7 +244,7 @@ public class Rule {
      * @return
      */
     String getName() {
-        if(name.equals(" ")) return " "; //this is nullToken 
+        if(name.equals(" ")) return Constants.DEBUG ? "EPSILON" : " "; //this is nullToken 
         StringBuilder out = new StringBuilder(name);
         if(name.contains(" ")) {
             out.insert(0, "(");
@@ -492,7 +502,10 @@ public class Rule {
     }
 
     public boolean containsEpsilon() {
+        // System.out.println("Searching for EPSILON in " + subRules);
         for (LinkedList<Rule> prod : subRules) {
+            // System.out.println("Checking " +  prod);
+            // if(prod.getFirst().equals(EPSILON)) System.out.println("Found EPSILON returning true");;
             if(prod.getFirst().equals(EPSILON)) return true;
         }
         return false;
@@ -520,6 +533,7 @@ public class Rule {
      * term: term term factor | term term; -> term: term factor | term;
      */
     public void simplifyRepeatingLR() {
+        // System.out.println("simplifyRepeatingLR " + subRules);
         for (int i = 0; i < subRules.size(); i++) {
             LinkedList<Rule> currRule = subRules.get(i);
             if(currRule.getFirst().getName().equals(getName())) {
@@ -531,9 +545,13 @@ public class Rule {
     
     public boolean containLeftRecursiveProd() {
         for(LinkedList<Rule> prod : subRules) {
-            if(prod.getFirst().getName().equals(getName())) {
-                // System.out.println(this.getName() + " contains a left recursive production " + prod);
-                return true;
+            try {
+                if(prod.getFirst().getName().equals(getName())) {
+                    // System.out.println(this.getName() + " contains a left recursive production " + prod);
+                    return true;
+                }
+            } catch (NoSuchElementException e) {
+                System.err.println(prod + " in " + this);
             }
         }
         // System.out.println(this.getName() + " does not contains a left recursive production ");
@@ -553,19 +571,19 @@ public class Rule {
 
         LinkedList<Rule> prodToGroup = subRules.get(randInt(subRules.size()));
         while(prodToGroup.size() < 2) prodToGroup = subRules.get(randInt(subRules.size()));
-        int startIndex = randInt(prodToGroup.size()-2);
+        int startIndex = prodToGroup.size() == 2 ? 0 : randInt(prodToGroup.size()-2);
         int endIndex = startIndex + randInt(prodToGroup.size() - startIndex - 1) + 1;
         List<Rule> toRemove = prodToGroup.subList(startIndex, endIndex+1);
-        System.out.println("Making a new rule from " + toRemove);
+        // System.out.println("Making a new rule from " + toRemove);
         Rule newRule = new Rule(toRemove,depth+1);
-        System.out.println(getName() + " goes from \n" + subRules);
-        System.out.println("prodToGroup " + prodToGroup + " start " + startIndex + " end " + endIndex);
+        // System.out.println(getName() + " goes from \n" + subRules);
+        // System.out.println("prodToGroup " + prodToGroup + " start " + startIndex + " end " + endIndex);
         for (int i = startIndex; i < endIndex; i++) {
             prodToGroup.remove(startIndex);
         }
         // prodToGroup.removeAll(toRemove);
         prodToGroup.set(startIndex, newRule);
-        System.out.println("To " + subRules);
+        // System.out.println("To " + subRules);
     }
 
     public boolean canGroup() {
@@ -581,7 +599,7 @@ public class Rule {
      */
     public void unGroupProductions() {
         if(this.equals(EPSILON)) return;
-        System.out.println("Running ungroup on " + this);
+        // System.out.println("Running ungroup on " + this);
         LinkedList<Rule> expandables = new LinkedList<Rule>();
         LinkedList<int[]> indices = new LinkedList<int[]>();
         int prodIndex = 0;
@@ -603,7 +621,7 @@ public class Rule {
         
         //50% of the time we try to expand a subrule, if there are no expandable subrules ungroup will return false and the not will become true
         if(!(Math.random() < 1.0 && toExpand.canUngroup())) {
-            System.out.println("Expanding " + toExpand);
+            // System.out.println("Expanding " + toExpand);
             List<Rule> toInsert = toExpand.subRules.get(0);
             LinkedList<Rule> prod = subRules.get(index[0]);
             prod.remove(index[1]);
@@ -612,7 +630,7 @@ public class Rule {
             subRules.set(index[0], prod);
             if(!mainRule) resetName();
         }
-        System.out.println("New rule " + this);
+        // System.out.println("New rule " + this);
     }
 
     public boolean canUngroup() {
@@ -635,17 +653,17 @@ public class Rule {
      * @param toClean
      */
 	public void cleanReferences(Rule toClean) {
-        System.out.println("Cleaning refrences to " + toClean.getName() + " in " + this);
+        // System.out.println("Cleaning refrences to " + toClean.getName() + " in " + this);
         if(singular && this.equals(toClean)) {
-            System.out.println("Making " +  this + " mandatory");
+            // System.out.println("Making " +  this + " mandatory");
             setOptional(false);
             return;
         }
         subRules.forEach(prod -> {
             prod.forEach(rule -> {
-                System.out.println("Checking " + rule.getName());
+                // System.out.println("Checking " + rule.getName());
                 if(rule.getName().contains(toClean.getName())) {
-                    if(rule.isOptional()) System.out.println("Making " + rule + " mandatory due to it containg " + toClean.getName());
+                    // if(rule.isOptional()) System.out.println("Making " + rule + " mandatory due to it containg " + toClean.getName());
                     if(rule.isOptional()) rule.setOptional(false);
                     rule.cleanReferences(toClean);
                 }
@@ -666,16 +684,7 @@ public class Rule {
         if(!toShift.singular) {
             toShift.extend(toAdd);
         } else {
-            LinkedList<Rule> newProd = new LinkedList<Rule>();
-            int counter = 0;
-            for(Rule rule: prod) {
-                if(counter == ruleIndex) {
-                    newProd.add(toAdd);
-                } else {
-                    newProd.add(rule);
-                }
-                counter++;
-            }
+            prod.add(ruleIndex, toAdd);
         }
     }
     //Removes a random rule on the RHS, this includes removing rules inside brackets
@@ -689,6 +698,9 @@ public class Rule {
             toShift.reduce();
         } else {
             prod.remove(ruleIndex);
+            if(prod.size() == 0) {
+                subRules.remove(prodIndex);
+            } 
         }
     }
     /**
@@ -738,4 +750,6 @@ public class Rule {
         }
         return out;
     }
+
+    
 }
