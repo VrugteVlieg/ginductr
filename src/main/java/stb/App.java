@@ -12,14 +12,28 @@ public class App {
     static double bestScore = -1.0;
     static LinkedList<GrammarReader> myGrammars;
     static LinkedList<GrammarReader> positiveGrammar = new LinkedList<GrammarReader>();
+    static HashMap<String, Boolean> positiveGrammars= new HashMap<String, Boolean>();
+    static HashMap<String, Boolean> checkedGrammars = new HashMap<String, Boolean>();
     public static void main(String[] args) {
         try {
             GrammarReader goldenGrammar = new GrammarReader(Constants.CURR_GRAMMAR_PATH);
+            goldenGrammar.generateNewRule(2);
+            System.out.println(goldenGrammar);
+            goldenGrammar.hash();
+            //TODO add the hashes to the hashmap
+            System.exit(0);
             
+            // goldenGrammar.computeMutants(Constants.MUTANTS_PER_BASE).forEach(grammar -> {
+            //     System.out.println(grammar);
+            // });
             myGrammars = GrammarGenerator.generatePopulation(Constants.POP_SIZE);
-            goldenGrammar.computeMutants(Constants.MUTANTS_PER_BASE).forEach(grammar -> {
-                System.out.println(grammar);
+            LinkedList<GrammarReader> totalPop  = new LinkedList<GrammarReader>();
+            totalPop.addAll(myGrammars);
+            myGrammars.forEach(grammar -> totalPop.addAll(grammar.computeMutants(Constants.MUTANTS_PER_BASE)));
+            totalPop.forEach(grammar -> {
+                runTests(grammar);
             });
+            totalPop.removeIf(grammar -> grammar.toRemove());
             /*TODO
                 Generate 1k candidates by randomly mutating each base grammar 1k/popSize times 
                 store hashes of mutants in hashmap so they dont get regenerated
@@ -74,10 +88,10 @@ public class App {
                 // in.nextLine();
 
             }
-        myGrammars.forEach(grammar -> {
-            System.out.println(grammar.getName() + " score = " + grammar.getScore() + "\n" + grammar);
-        });
-        System.out.println("Best Grammar " + bestScore + "\n" + bestGrammar);
+        
+        System.err.println("Best grammar " + bestGrammarString);
+        System.out.println("Positive grammars " + positiveGrammar.size());
+        positiveGrammar.forEach(grammar -> System.out.println(grammar));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -87,6 +101,7 @@ public class App {
     }
     
     public static void runTests(GrammarReader myReader) {
+        if(myReader.getParserRules().size() == 0) return;
         myReader.injectEOF();
         lamdaArg removeCurr = () ->  myReader.flagForRemoval();
         Chelsea.generateSources(myReader, removeCurr);
@@ -113,17 +128,14 @@ public class App {
             // System.out.println("Post Filter errorCount for " + myReader.getName() + " " + errorArr);
             double numPass = totalTests - 1.0*errorArr.size();
             myReader.setScore(numPass/totalTests);
-            if(incScore >= myReader.getScore()) {
-                myReader.incAge();
-            } else {
-                myReader.resetAge();
-            }
+            
             if(incScore != myReader.getScore())
                 System.out.println(myReader.getName() + " score " + incScore + " -> " + myReader.getScore());   
 
             if(myReader.getScore() > incScore) {
                 System.out.println(myReader.getName() + " has improved its score from " + incScore + " to " + myReader.getScore() + " top score " + bestScore + '\n' + myReader);
                 if(myReader.getScore() == 1.0) positiveGrammar.add(new GrammarReader(myReader));
+                if(myReader.getScore() == 1.0) System.out.println("positive grammar \n" + myReader);
                 if(bestScore < myReader.getScore()) {
                     System.out.println("New top scorer " + myReader.getScore() + "\n" + myReader);
                     bestGrammarString = myReader.toString();
