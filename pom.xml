@@ -16,6 +16,11 @@
             <version>4.12</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+           <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>13</version>
+        </dependency>
         <dependency> 
           <groupId>org.antlr</groupId> 
           <artifactId>antlr4</artifactId> 
@@ -64,6 +69,14 @@
                       </goals>
                     </execution>
                   </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-maven-plugin</artifactId>
+                    <version>0.0.3</version>
+                    <configuration>
+                        <mainClass>stb.App</mainClass>
+                    </configuration>
                 </plugin>
                 <!-- plugin to create a self-contained portable package
                      This allows us to execute our application like this:
