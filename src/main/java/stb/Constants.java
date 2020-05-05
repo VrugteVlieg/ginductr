@@ -1,7 +1,11 @@
 package stb;
 
+
+
 public class Constants {
-    public static final String OUTPUT_DIR = "./antlrOut";
+        
+
+    public static  String ANTLR_DIR = "./antlrOut";
     public static final String GRAMMARS_PATH = "./grammars/";
     public static final String CURR_GRAMMAR_NAME = "dyck";
     public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
@@ -9,37 +13,238 @@ public class Constants {
     public static final String CURR_GRAMMAR_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".g4";
     public static final String CURR_Terminals_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
     public static final boolean DEBUG = false;
+    public static final boolean USE_GUI = true;
 
 
-    public static final double P_CHANGE_RULE_COUNT = 0.6; //P to add or remove a rule from a grammar
-    public static final double P_ADD_RULE = 0.5;    //P to add a rule when adding/removing rules
-    public static final double P_CHANGE_SYMBOL_COUNT = 0.6; //P to add or remove a rule from a grammar
-    public static final double P_ADD_SYMBOL = 0.6; //P to add a symbol when adding/removing symbols
-	public static final double P_M = 0.4;   //P to mutate a symbol in a grammar
-    public static final double P_H = 0.55;  //P to make a symbol iterative or optional
-    public static final double P_ITER = 0.55;  //P to make a symbol iterative 
-    public static final double P_OPTIONAL = 0.55;  //P to make a symbol optional
+    public static double P_CHANGE_RULE_COUNT = 0.6; //P to add or remove a rule from a grammar
+    public static double P_ADD_RULE = 0.5;    //P to add a rule when adding/removing rules
+    public static double P_CHANGE_SYMBOL_COUNT = 0.6; //P to add or remove a rule from a grammar
+    public static double P_ADD_SYMBOL = 0.6; //P to add a symbol when adding/removing symbols
+	public static double P_M = 0.4;   //P to mutate a symbol in a grammar
+    public static double P_H = 0.55;  //P to make a symbol iterative or optional
+    public static double P_ITER = 0.55;  //P to make a symbol iterative 
+    public static double P_OPTIONAL = 0.55;  //P to make a symbol optional
     
-    public static final double P_C = 0.65; // P to apply crossover
-    public static final double P_G = 1.0;   // P to group/ungroup symbols on the RHS
-    public static final double P_GROUP = 0.5;   // P to group symbols
+    public static double P_C = 0.65; // P to apply crossover
+    public static double P_C_MIN = 0.4; // P to apply crossover
+    public static double P_C_MAX = 0.6; // P to apply crossover
+
+    public static double P_G = 1.0;   // P to group/ungroup symbols on the RHS
+    public static double P_GROUP = 0.5;   // P to group symbols
 
     
-	public static final boolean CHANGE_RULE_COUNT = true;
-	public static final boolean CHANGE_SYMBOL_COUNT = true;
-	public static final boolean GROUP = true;
-	public static final boolean MUTATE = true;
-	public static final boolean HEURISTIC = true;
-	public static final boolean CROSSOVER = false;
+	public static boolean CHANGE_RULE_COUNT = true;
+	public static boolean CHANGE_SYMBOL_COUNT = true;
+	public static boolean GROUP = true;
+	public static boolean MUTATE = true;
+	public static boolean HEURISTIC = true;
+	public static boolean CROSSOVER = false;
     
-	public static final int MAX_GRAMMAR_AGE = 15;
-    public static final int POP_SIZE = 100;
-    public static final int MAX_GRAMMARS  = 10000;
-    public static final int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
+	public static int MAX_GRAMMAR_AGE = 15;
+    public static int POP_SIZE = 100;
+    public static int MAX_GRAMMARS  = 10000;
+    public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
 
-    public static final int NUM_ITERATIONS = 0;
-	public static final int RULENAME_LEN = 7;
-	public static final int BEST_GRAMMAR_COPY_COUNT = 5;
-    public static final int MAX_RULE_COUNT = 5;
-    public static final int MAX_RHS_SIZE = 6;
-}
+    public static int NUM_ITERATIONS = 5;
+	public static int RULENAME_LEN = 7;
+	public static int BEST_GRAMMAR_COPY_COUNT = 5;
+    public static int MAX_RULE_COUNT = 5;
+    public static int MAX_RHS_SIZE = 6;
+    public static int FRESH_POP_PER_GEN = 5;
+
+
+
+
+    public static void setAntlrDir(String newDir) {
+        ANTLR_DIR = newDir;
+    }
+
+    public static void setPopSize(int newSize) {
+        POP_SIZE = newSize;
+    }
+
+    public static double getP_CHANGE_RULE_COUNT() {
+        return P_CHANGE_RULE_COUNT;
+    }
+
+    public static void setP_CHANGE_RULE_COUNT(double p_CHANGE_RULE_COUNT) {
+        P_CHANGE_RULE_COUNT = p_CHANGE_RULE_COUNT;
+    }
+
+    public static double getP_ADD_RULE() {
+        return P_ADD_RULE;
+    }
+
+    public static void setP_ADD_RULE(double p_ADD_RULE) {
+        P_ADD_RULE = p_ADD_RULE;
+    }
+
+    public static double getP_CHANGE_SYMBOL_COUNT() {
+        return P_CHANGE_SYMBOL_COUNT;
+    }
+
+    public static void setP_CHANGE_SYMBOL_COUNT(double p_CHANGE_SYMBOL_COUNT) {
+        P_CHANGE_SYMBOL_COUNT = p_CHANGE_SYMBOL_COUNT;
+    }
+
+    public static double getP_ADD_SYMBOL() {
+        return P_ADD_SYMBOL;
+    }
+
+    public static void setP_ADD_SYMBOL(double p_ADD_SYMBOL) {
+        P_ADD_SYMBOL = p_ADD_SYMBOL;
+    }
+
+    public static double getP_M() {
+        return P_M;
+    }
+
+    public static void setP_M(double p_M) {
+        P_M = p_M;
+    }
+
+    public static double getP_H() {
+        return P_H;
+    }
+
+    public static void setP_H(double p_H) {
+        P_H = p_H;
+    }
+
+    public static double getP_ITER() {
+        return P_ITER;
+    }
+
+    public static void setP_ITER(double p_ITER) {
+        P_ITER = p_ITER;
+    }
+
+    public static double getP_OPTIONAL() {
+        return P_OPTIONAL;
+    }
+
+    public static void setP_OPTIONAL(double p_OPTIONAL) {
+        P_OPTIONAL = p_OPTIONAL;
+    }
+
+    public static double getP_C() {
+        return P_C;
+    }
+
+    public static void setP_C(double p_C) {
+        P_C = p_C;
+    }
+
+    public static double getP_G() {
+        return P_G;
+    }
+
+    public static void setP_G(double p_G) {
+        P_G = p_G;
+    }
+
+    public static double getP_GROUP() {
+        return P_GROUP;
+    }
+
+    public static void setP_GROUP(double p_GROUP) {
+        P_GROUP = p_GROUP;
+    }
+
+    public static boolean isCHANGE_RULE_COUNT() {
+        return CHANGE_RULE_COUNT;
+    }
+
+    public static void setCHANGE_RULE_COUNT(boolean cHANGE_RULE_COUNT) {
+        CHANGE_RULE_COUNT = cHANGE_RULE_COUNT;
+    }
+
+    public static boolean isCHANGE_SYMBOL_COUNT() {
+        return CHANGE_SYMBOL_COUNT;
+    }
+
+    public static void setCHANGE_SYMBOL_COUNT(boolean cHANGE_SYMBOL_COUNT) {
+        CHANGE_SYMBOL_COUNT = cHANGE_SYMBOL_COUNT;
+    }
+
+    public static boolean isGROUP() {
+        return GROUP;
+    }
+
+    public static void setGROUP(boolean gROUP) {
+        GROUP = gROUP;
+    }
+
+    public static boolean isMUTATE() {
+        return MUTATE;
+    }
+
+    public static void setMUTATE(boolean mUTATE) {
+        MUTATE = mUTATE;
+    }
+
+    public static boolean isHEURISTIC() {
+        return HEURISTIC;
+    }
+
+    public static void setHEURISTIC(boolean hEURISTIC) {
+        HEURISTIC = hEURISTIC;
+    }
+
+    public static boolean isCROSSOVER() {
+        return CROSSOVER;
+    }
+
+    public static void setCROSSOVER(boolean cROSSOVER) {
+        CROSSOVER = cROSSOVER;
+    }
+
+    public static int getPOP_SIZE() {
+        return POP_SIZE;
+    }
+
+    public static void setPOP_SIZE(int pOP_SIZE) {
+        POP_SIZE = pOP_SIZE;
+    }
+
+    public static int getMAX_GRAMMARS() {
+        return MAX_GRAMMARS;
+    }
+
+    public static void setMAX_GRAMMARS(int mAX_GRAMMARS) {
+        MAX_GRAMMARS = mAX_GRAMMARS;
+    }
+
+    public static int getNUM_ITERATIONS() {
+        return NUM_ITERATIONS;
+    }
+
+    public static void setNUM_ITERATIONS(int nUM_ITERATIONS) {
+        NUM_ITERATIONS = nUM_ITERATIONS;
+    }
+
+    public static int getFRESH_POP_PER_GEN() {
+        return FRESH_POP_PER_GEN;
+    }
+
+    public static void setFRESH_POP_PER_GEN(int fRESH_POP_PER_GEN) {
+        FRESH_POP_PER_GEN = fRESH_POP_PER_GEN;
+    }
+
+    public static double getP_C_MIN() {
+        return P_C_MIN;
+    }
+
+    public static void setP_C_MIN(double p_C_MIN) {
+        P_C_MIN = p_C_MIN;
+    }
+
+    public static double getP_C_MAX() {
+        return P_C_MAX;
+    }
+
+    public static void setP_C_MAX(double p_C_MAX) {
+        P_C_MAX = p_C_MAX;
+    }
+
+    }

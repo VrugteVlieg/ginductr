@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 
 public class Rule {
@@ -28,6 +29,7 @@ public class Rule {
      */
     public Rule(Rule toCopy) {
         this.name = toCopy.name;
+
         this.subRules = new ArrayList<LinkedList<Rule>>();
         for(LinkedList<Rule> prod : toCopy.subRules) {
             LinkedList<Rule> newList = new LinkedList<Rule>();
@@ -76,10 +78,11 @@ public class Rule {
             ruleText = ruleText.trim();
             singular = !ruleText.contains(" ");
             subRules = new ArrayList<LinkedList<Rule>>();
+        } else {
             LinkedList<Rule> start = new LinkedList<Rule>();
             start.add(EPSILON);
             subRules.add(start);
-        } else {
+            System.out.println("Adding EPSILON in "+ ruleText);
             singular = true;
         }
         this.name = ruleText;
@@ -119,7 +122,8 @@ public class Rule {
         this.ruleText = ruleText;
         name = name.trim();
         this.name = name;
-        singular = true;
+        //This used to be true, might create a cascading effect somewhere
+        singular = false;
         printOut("New major rule " + name + " : " + ruleText);
         mainRule = true;
         terminal = Character.isUpperCase(name.charAt(0));
@@ -140,10 +144,11 @@ public class Rule {
          boolean StringLiteral = false;
          int brackets = 0;
          while(index < rule.length()) {
-            // printOut(rule.charAt(index) + " -> " + currString.toString().replaceAll(" ", "_SPACE_"));
+            printOut(rule.charAt(index) + " -> " + currString.toString().replaceAll(" ", "_SPACE_"));
             switch(rule.charAt(index)) {
                case ' ':
                     if(currString.length() != 0 && !StringLiteral && brackets==0) {
+                        printOut("Adding rule " + currString.toString());
                         currProduction.add(new Rule(currString.toString(),depth+1));
                         currString = new StringBuilder(); 
                     } else if(StringLiteral || brackets!=0 || rule.charAt(index+1) == ';'){
@@ -163,6 +168,7 @@ public class Rule {
                 case ';':
                     if(currString.length() != 0) {
                         if(currString.toString().equals(" ")) {
+                            printOut("Adding EPSILON");
                             currProduction.add(EPSILON);
                         } else {
                             currProduction.add(new Rule(currString.toString(),depth+1));
@@ -220,11 +226,10 @@ public class Rule {
         if (!(o instanceof Rule)) { 
             return false; 
         } 
-          
-        Rule c = (Rule) o; 
         
-          
+        Rule c = (Rule) o; 
         return this.name.equals(c.name);
+        
     }
 
     
@@ -305,6 +310,7 @@ public class Rule {
      * @param toSet
      */
     public void setProduction(int index, Rule toSet) {
+        System.out.println("Making a copy of "  + toSet);
         Rule test = new Rule(toSet);
         test.mainRule = false;
         int counter = 0;
@@ -736,20 +742,64 @@ public class Rule {
             }
         }
     }
+
+    /**
+     * removes all references to toRemove
+     */
+	public void removeReferences(String toRemoveName) {
+        for (int i = 0; i < subRules.size(); i++) {
+            LinkedList<Rule> prod = subRules.get(i);
+            for (int j = 0; j < prod.size(); j++) {
+                Rule currRule = prod.get(j);
+                if(currRule.name.equals(toRemoveName)) {
+                    prod.remove(j);
+                } else if(!currRule.singular) {
+                    currRule.removeReferences(toRemoveName);
+                }
+            }
+        }
+    }
+
+
+
     
     public int getSymbolCount() {
         int out = 0;
         for (LinkedList<Rule> prod : subRules) {
-            for (Rule rule : prod) {
-                if(rule.singular) {
-                    out++;
-                } else {
-                    out+= rule.getSymbolCount();
-                }
-            }
+            out += prod.size();    
         }
         return out;
     }
+	public boolean containsInfLoop(ArrayList<Rule> parserRules, String touchedRules) {
+        System.out.println("Checking if " + getName() + " contains an infLoop touchedRules " + touchedRules);
+        System.out.println("SubRule Size " + subRules.size() + " prod sizes\n" + subRules.stream().map(list -> {
+            return list.toString() + " : " + list.size() + "\n";
+        }).collect(Collectors.joining()));
+        if(containsEpsilon()) {
+            System.out.println(name + " contains epsilon returning false singular " + singular);
+        }
+        if(containsEpsilon()) return false;
+        if(touchedRules.contains(getName()) && !containsEpsilon()) return true;
+        if(mainRule) touchedRules = touchedRules + "," + getName();
+        for(LinkedList<Rule> prod : subRules) {
+            boolean out = true;
+            for(Rule rule : prod) {
+                System.out.println("Checking " + rule.getName());
+                if(rule.singular) {
+                    if(!rule.terminal) {
+                        System.out.println("Fetching " + rule.name + " from parserRules");
+                        Rule mainVer = parserRules.get(parserRules.indexOf(rule));
+                        if(mainVer.containsInfLoop(parserRules, touchedRules)) return true;
+                    }
+                } else {
+                    if(rule.containsInfLoop(parserRules, touchedRules)) return true;
+                }
+            }
+        }
+
+
+        return false;
+	}
 
     
 }

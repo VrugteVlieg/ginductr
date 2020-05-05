@@ -51,7 +51,7 @@ public class Chelsea {
             finName = grammar.getName();
             // Setting up the arguments for th e ANTLR Tool. outputDir is in this case
             // generated-sources/
-            String[] args = { "-o", Constants.OUTPUT_DIR };
+            String[] args = { "-o", Constants.ANTLR_DIR};
 
             // Creating a new Tool object with org.antlr.v4.Tool
 
@@ -68,9 +68,9 @@ public class Chelsea {
             // Compile source files
             DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
 
-            dynamicClassCompiler.compile(new File(Constants.OUTPUT_DIR));
+            dynamicClassCompiler.compile(new File(Constants.ANTLR_DIR));
 
-            hm = new DynamicClassLoader().load(new File(Constants.OUTPUT_DIR));
+            hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR));
 
             // Manually creates lexer.java file in outputDir
             Class<?> lexer = hm.get(finName + "Lexer");
@@ -167,15 +167,6 @@ public class Chelsea {
                     e.printStackTrace(System.out);
                     System.exit(1);
                 } catch (Exception e) {
-                    /**
-                     * FIXME stackoverflowError caused by infinite loops in grammar
-                     * grammar Grammar_0_fcbrvej;
-                     * program : ptytfhg EOF ;
-                     * ptytfhg : twwrtkj (ptytfhg LBRACK twwrtkj LBRACK RBRACK) ;
-                     * twwrtkj : LBRACK LBRACK LBRACK+ RBRACK ;
-                     * LBRACK : '[' ;
-                     * RBRACK : ']' ;
-                     */
                     System.err.println("Exception lamda in Chelsea " + e.getCause());
                 }
             });
@@ -183,7 +174,7 @@ public class Chelsea {
             System.err.println("Exception filewalker in Chelsea " + e.getMessage());
             e.printStackTrace();
         }
-        cleanDirectory(new File(Constants.OUTPUT_DIR));
+        cleanDirectory(new File(Constants.ANTLR_DIR));
         return errors;
 
     }

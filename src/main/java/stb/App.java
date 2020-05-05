@@ -1,94 +1,73 @@
 package stb;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Stack;
+import java.util.concurrent.ThreadLocalRandom;
+import javafx.application.Application;
 
 public class App {  
-     
+
+    static GrammarReader demoGrammar;
+
+
+    static outputLambda logOutput = (String toPrint) -> System.out.println(toPrint);
+    static outputLambda grammarOutput = (String toPrint) -> System.out.println(toPrint);
+
     static String bestGrammarString;
     static GrammarReader bestGrammar;
     static double bestScore = -1.0;
     static LinkedList<GrammarReader> myGrammars;
+    //Can reduce memory footprint my storing grammarStrings in positiveGrammars and reconstructing when needed
     static LinkedList<GrammarReader> positiveGrammar = new LinkedList<GrammarReader>();
-    static HashMap<String, Boolean> positiveGrammars= new HashMap<String, Boolean>();
-    static HashMap<String, Boolean> checkedGrammars = new HashMap<String, Boolean>();
+    static HashMap<Double, LinkedList<GrammarReader>> evaluatedGrammars = new HashMap<Double, LinkedList<GrammarReader>>();
+    static HashMap<Integer, Boolean> generatedGrammars = new HashMap<Integer, Boolean>();
     public static void main(String[] args) {
-        try {
-            GrammarReader goldenGrammar = new GrammarReader(Constants.CURR_GRAMMAR_PATH);
-            goldenGrammar.generateNewRule(2);
-            System.out.println(goldenGrammar);
-            goldenGrammar.hash();
-            //TODO add the hashes to the hashmap
+        if(Constants.USE_GUI) {
+            Application.launch(Gui.class, new String[]{});
+            System.err.println("Test");
             System.exit(0);
+        }
+
+        try {
+            // GrammarReader goldenGrammar = new GrammarReader(Constants.CURR_GRAMMAR_PATH);
+            GrammarReader seededGrammar = new GrammarReader(Constants.SEEDED_GRAMMAR_PATH);
             
-            // goldenGrammar.computeMutants(Constants.MUTANTS_PER_BASE).forEach(grammar -> {
-            //     System.out.println(grammar);
-            // });
+
             myGrammars = GrammarGenerator.generatePopulation(Constants.POP_SIZE);
-            LinkedList<GrammarReader> totalPop  = new LinkedList<GrammarReader>();
-            totalPop.addAll(myGrammars);
-            myGrammars.forEach(grammar -> totalPop.addAll(grammar.computeMutants(Constants.MUTANTS_PER_BASE)));
-            totalPop.forEach(grammar -> {
-                runTests(grammar);
-            });
-            totalPop.removeIf(grammar -> grammar.toRemove());
-            /*TODO
-                Generate 1k candidates by randomly mutating each base grammar 1k/popSize times 
-                store hashes of mutants in hashmap so they dont get regenerated
-                Keep top popSize from each generation for next
-                randomly restart some grammars each generation and add grammar + score to different hashmap
-            */
-            for (int i = 0; i < Constants.NUM_ITERATIONS; i++) {
-                Stack<GrammarReader> toCrossover = new Stack<GrammarReader>();
-                System.out.println("\n\n\nGeneration " + i + "\n\n\n");
-                myGrammars.forEach(grammar -> {
-                    runTests(grammar);
+            
+            for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
+                System.out.println(genNum);
+                LinkedList<GrammarReader> totalPop  = new LinkedList<GrammarReader>();
+                totalPop.addAll(myGrammars);
+                myGrammars.forEach(grammar -> totalPop.addAll(grammar.computeMutants(Constants.MUTANTS_PER_BASE,generatedGrammars)));
+                totalPop.forEach(App::runTests);
+                totalPop.removeIf(GrammarReader::toRemove);
 
-                    if(grammar.toRemove()) return;
+                Double[] scoreArr = evaluatedGrammars.keySet().toArray(new Double[0]);
+                Arrays.sort(scoreArr);
+                myGrammars.clear();
+                int grammarsToAdd = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
 
-                    if(Constants.CROSSOVER && Math.random() < Constants.P_C) {
-                        if(toCrossover.size() == 0) {
-                            toCrossover.push(grammar);
+                while(true) {
+                    if(grammarsToAdd == 0) break;
+                    for (int i = 0; i < scoreArr.length; i++) {
+                        LinkedList<GrammarReader> currList = evaluatedGrammars.get(scoreArr[i]);
+                        grammarsToAdd = Constants.POP_SIZE-myGrammars.size();
+                        if(currList.size() <= grammarsToAdd) {
+                            myGrammars.addAll(currList);
                         } else {
-                            toCrossover.pop().crossover(grammar);
+                            for (int j = 0; j < grammarsToAdd; j++) {
+                                myGrammars.add(currList.remove(randInt(currList.size())));
+                            }
                         }
                     }
-                    
-                    
-                    
-                    if(Constants.MUTATE && Math.random() < Constants.P_M) {
-                        grammar.mutate(); 
-                    }
-
-                    if(Constants.GROUP && Math.random() < Constants.P_G) {
-                        
-                    }
-                    grammar.fixUndefinedRules();
-                    
-                    
-                    if(Constants.HEURISTIC) grammar.heuristic();
-
-                    grammar.removeDuplicateProductions();
-                    grammar.removeUnreachable();
-                    grammar.removeLR();
-                });
-                // StringBuilder grammarList = new StringBuilder();
-                // myGrammars.forEach(grammar -> grammarList.append(grammar.getName() + ","));
-                // System.out.println("Pre removal grammars "  + grammarList);
-                myGrammars.removeIf(grammar -> grammar.toRemove());
-                if(myGrammars.size() != Constants.POP_SIZE) {
-                    myGrammars.addAll(GrammarGenerator.generatePopulation(Constants.POP_SIZE - myGrammars.size(),bestGrammar));
                 }
-                // grammarList.delete(0, grammarList.length());
-                // myGrammars.forEach(grammar -> grammarList.append(grammar.getName() + ","));
-                // System.out.println("Post removal " + grammarList);
-                // Scanner in = new Scanner(System.in);
-                // in.nextLine();
-
+                myGrammars.addAll(GrammarGenerator.generatePopulation(Constants.FRESH_POP_PER_GEN));
             }
-        
+            
         System.err.println("Best grammar " + bestGrammarString);
         System.out.println("Positive grammars " + positiveGrammar.size());
         positiveGrammar.forEach(grammar -> System.out.println(grammar));
@@ -101,7 +80,10 @@ public class App {
     }
     
     public static void runTests(GrammarReader myReader) {
-        if(myReader.getParserRules().size() == 0) return;
+        if(myReader.getParserRules().size() == 0 || myReader.containsInfLoop()) {
+            myReader.flagForRemoval();
+            return;
+        }
         myReader.injectEOF();
         lamdaArg removeCurr = () ->  myReader.flagForRemoval();
         Chelsea.generateSources(myReader, removeCurr);
@@ -128,6 +110,15 @@ public class App {
             // System.out.println("Post Filter errorCount for " + myReader.getName() + " " + errorArr);
             double numPass = totalTests - 1.0*errorArr.size();
             myReader.setScore(numPass/totalTests);
+
+            //Add the grammar to scored hashMap
+            if(evaluatedGrammars.containsKey(myReader.getScore())){
+                evaluatedGrammars.get(myReader.getScore()).add(myReader);
+            } else {
+                LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
+                thisScoreList.add(myReader);
+                evaluatedGrammars.put(myReader.getScore(),thisScoreList);
+            }
             
             if(incScore != myReader.getScore())
                 System.out.println(myReader.getName() + " score " + incScore + " -> " + myReader.getScore());   
@@ -147,5 +138,51 @@ public class App {
         } catch(Exception e) {
             System.err.println("Exception in runTests " + e.getCause());
         }
+    }
+
+    public static int randInt(int bound) {
+        return ThreadLocalRandom.current().nextInt(bound);
+    }
+
+    public static outputLambda getGrammarOut() {
+        return grammarOutput;
+    }
+    
+    public static void setGrammarOut(outputLambda toSet) {
+        grammarOutput = toSet;
+    }
+
+    public static outputLambda getLogOut() {
+        return logOutput;
+    }
+    
+    public static void setLogOut(outputLambda toSet) {
+        logOutput = toSet;
+    }
+
+    public static void loadStartGrammar(String pathTo) {
+        GrammarReader out = new GrammarReader(pathTo);
+        demoGrammar = out;
+        grammarOutput.output(out.toString());
+    }
+
+    public static void ruleCountDemo() {
+        demoGrammar.demoChangeRuleCount(logOutput, grammarOutput);
+        grammarOutput.output(demoGrammar.toString());
+    }
+
+    public static void symbolCountDemo() {
+        demoGrammar.demoChangeSymbolCount(logOutput, grammarOutput);
+        grammarOutput.output(demoGrammar.toString());
+    }
+
+    public static void groupDemo() {
+        demoGrammar.demoGroupMutate(logOutput, grammarOutput);
+        grammarOutput.output(demoGrammar.toString());
+    }
+
+    public static void symbMutateDemo() {
+        demoGrammar.demoMutate(logOutput, grammarOutput);
+        grammarOutput.output(demoGrammar.toString());
     }
 }
