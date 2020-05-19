@@ -1,6 +1,9 @@
 package stb;
 
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Stack;
 
 public class Constants {
         
@@ -8,8 +11,9 @@ public class Constants {
     public static  String ANTLR_DIR = "./antlrOut";
     public static final String GRAMMARS_PATH = "./grammars/";
     public static final String CURR_GRAMMAR_NAME = "dyck";
-    public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
-    public static final String TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME;
+    public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/toyExample.g4";
+    public static final String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/pos";
+    public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
     public static final String CURR_GRAMMAR_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".g4";
     public static final String CURR_Terminals_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
     public static final boolean DEBUG = false;
@@ -29,7 +33,7 @@ public class Constants {
     public static double P_C_MIN = 0.4; // P to apply crossover
     public static double P_C_MAX = 0.6; // P to apply crossover
 
-    public static double P_G = 1.0;   // P to group/ungroup symbols on the RHS
+    public static double P_G = 0.4;   // P to group/ungroup symbols on the RHS
     public static double P_GROUP = 0.5;   // P to group symbols
 
     
@@ -41,16 +45,39 @@ public class Constants {
 	public static boolean CROSSOVER = false;
     
 	public static int MAX_GRAMMAR_AGE = 15;
-    public static int POP_SIZE = 100;
-    public static int MAX_GRAMMARS  = 10000;
+    public static int POP_SIZE = 10;
+    public static int MAX_GRAMMARS = 100;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
 
-    public static int NUM_ITERATIONS = 5;
+    public static int NUM_ITERATIONS = 10;
+    public static int NUM_NEGATIVE_ITERATIONS = 10;
 	public static int RULENAME_LEN = 7;
 	public static int BEST_GRAMMAR_COPY_COUNT = 5;
-    public static int MAX_RULE_COUNT = 5;
+    public static int MAX_RULE_COUNT = 3;
     public static int MAX_RHS_SIZE = 6;
     public static int FRESH_POP_PER_GEN = 5;
+
+
+    public static scoringLambda positiveScoring = (int[] testResult, GrammarReader GUT) -> {
+        int totalTests = testResult[1];
+        
+        
+        double numPass = testResult[0];
+        
+        GUT.setPosScore(numPass/totalTests);
+    };
+
+    public static scoringLambda negativeScoring = (int[] testResult, GrammarReader GUT) -> {
+        int totalTests = testResult[1];
+        
+        double numPass = totalTests - testResult[0];
+        GUT.setNegScore(numPass/totalTests);
+    };
+
+    public static double calculatePM(double posScore, double negScore) {
+        return (1-(posScore+negScore)/2.0)*P_M;
+    }
+        
 
 
 

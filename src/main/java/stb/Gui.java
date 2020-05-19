@@ -4,8 +4,10 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -25,6 +27,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.scene.Node;
 import javafx.stage.StageStyle;
+import javafx.concurrent.Task;
 
 public class Gui extends Application {
 
@@ -32,20 +35,21 @@ public class Gui extends Application {
     @Override
     public void start(Stage stage) {
         stage.setTitle("gInferrer");
-        stage.setWidth(800);
-        stage.setHeight(450);
+        stage.setWidth(1200);
+        stage.setHeight(575);
         stage.initStyle(StageStyle.DECORATED);
         
         TabPane cont = new TabPane();
+        cont.setStyle("-fx-font-size:  16;");
         Tab testTab = new Tab("Example", exampleThing());
         Tab settingsTab = new Tab("Settings",settingsThing(stage));
-        Tab runTab = new Tab("Run", new Label("Run"));
+        Tab runTab = new Tab("Run", runScreen());
         Arrays.asList(testTab,runTab,settingsTab).forEach(t -> cont.getTabs().add(t));
         
         Scene mainScene = new Scene(cont);
         stage.setScene(mainScene);
         stage.show();
-        App.loadStartGrammar(Constants.SEEDED_GRAMMAR_PATH);
+        App.loadStartGrammar();
 
 
     }
@@ -87,7 +91,13 @@ public class Gui extends Application {
         VBox consoleArea = new VBox(new Label("Output"),logOutput);
         mutationInterface.getChildren().add(consoleArea);
         TextArea grammarOutput = new TextArea();
-        outputLambda grammarOut = (String toLog) -> grammarOutput.appendText(toLog + "\n");
+        outputLambda grammarOut = (String toLog) -> {
+            if(toLog.equals("clear")) {
+                grammarOutput.setText("");
+            } else {
+                grammarOutput.appendText(toLog + "\n");
+            }
+        };
         App.setGrammarOut(grammarOut);
         grammarOutput.setMinWidth(600);
         greaterContainer.getChildren().add(mutationInterface);
@@ -95,6 +105,30 @@ public class Gui extends Application {
         return greaterContainer;
 
     }
+
+    public HBox runScreen() {
+
+        HBox greaterContainer = new HBox();
+        VBox mutationInterface = new VBox();
+        mutationInterface.setMinWidth(200);
+        Button btnRun = new Button("Run");
+        mutationInterface.getChildren().add(btnRun);
+        TextArea logOutput = new TextArea();
+        outputLambda logOut = (String toLog) -> logOutput.appendText(toLog + "\n");
+        App.setRunLogOutput(logOut);
+        VBox consoleArea = new VBox(new Label("Output"),logOutput);
+        mutationInterface.getChildren().add(consoleArea);
+        TextArea grammarOutput = new TextArea();
+        outputLambda grammarOut = (String toLog) -> grammarOutput.appendText(toLog + "\n");
+        btnRun.setOnAction(event -> backGroundProcess(logOut,grammarOut).start());
+        App.setRunGrammarOutput(grammarOut);
+        grammarOutput.setMinWidth(600);
+        greaterContainer.getChildren().add(mutationInterface);
+        greaterContainer.getChildren().add(grammarOutput);
+        return greaterContainer;
+
+    }
+
 
     public HBox testThing() {
         HBox greaterContainer = new HBox();
@@ -121,11 +155,11 @@ public class Gui extends Application {
         Button symbolMutation = new Button("symbolMutation");
         symbolMutation.setOnAction(event -> App.symbMutateDemo());
         Button heuristic = new Button("heuristic");
-        Button all = new Button("all");
-        List<Button> btns = Arrays.asList(changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic, all);
-        all.setMinWidth(150);
-        System.out.println(changeSymbolCount.getWidth());
-        VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic, all);
+        heuristic.setOnAction(event -> App.demoHeuristic());
+        Button crossover = new Button("crossover");
+        heuristic.setOnAction(event -> App.demoCrossover());
+        List<Button> btns = Arrays.asList(changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic);
+        VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic);
         out.setStyle("-fx-padding: 16;-fx-border-color: black;");
         out.setSpacing(5);
         
@@ -226,5 +260,42 @@ public class Gui extends Application {
     public static void main(String[] args) {
         launch();
     }
+
+    public Thread backGroundProcess(outputLambda logOut, outputLambda grammarOut) {
+        Thread taskThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Thread demoThread = new Thread(){
+                    public void run() {
+                        App.demoMainProgram();
+                    }
+                };
+                demoThread.start();
+                // while(!App.hasNewBestGrammar){}
+                // System.out.println("Fuck me bro");
+                // GrammarReader reportedBest = App.getCurrBestGrammar();
+                // grammarOut.output(reportedBest.toString());
+                // Platform.runLater(new Runnable() {
+
+                //   @Override
+                //   public void run() {
+                //       logOut.output("awe bru");
+                //     if(App.hasNewBest()) {
+                //         grammarOut.output(reportedBest.toString());
+                //     }
+
+                //     if(App.hasNewRunMessage()) {
+                //         logOut.output(App.getMessage());
+                //     }
+
+                //     logOut.output(App.numGrammarsEvalled() + "");
+                //   }
+                // });
+            }
+          });
+          return taskThread;
+    }
+
+    
 
 }

@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,11 +29,12 @@ heuristic symbol in rule
 public class GrammarReader {
 
     private File grammarFile;
+    private List<String> fileLines = new LinkedList<String>();
     private String grammarName;
     private ArrayList<Rule> parserRules = new ArrayList<Rule>();
     private ArrayList<Rule> terminalRules;
-    private boolean positiveAcceptance = false; // does this grammar accept all positive cases
-    private double score = 0.0;
+    private double posScore = 0.0;
+    private double negScore = 0.0;
     private boolean remove = false;
     private int age = 0;
 
@@ -41,23 +43,46 @@ public class GrammarReader {
      * 
      * @param filePath
      */
-    public GrammarReader(String filePath) {
-        grammarFile = new File(filePath);
+    public GrammarReader(File sourceFile) {
+        grammarFile = sourceFile;
         grammarName = grammarFile.getName().split("\\.")[0];
+        try (BufferedReader in = new BufferedReader(new FileReader(grammarFile));) {
+            String input;
+            in.readLine();
+            while ((input = in.readLine()) != null) {
+                fileLines.add(input);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         this.terminalRules = new ArrayList<Rule>();
         readRules();
     }
+
+    public GrammarReader(String grammarText) {
+        System.err.println("Constructing grammar from\n" + grammarText);
+        fileLines  = Arrays.asList(grammarText.split("\n"));
+        grammarName = fileLines.get(0).split(" ")[1];
+        this.terminalRules = new ArrayList<Rule>();
+        readRules();
+    }
+
+    
+
+    
 
     /**
      * Creates a deep copy of a grammarReader
      */
     public GrammarReader(GrammarReader toCopy) {
+        // System.out.println("Copying " + toCopy);
         grammarName = toCopy.grammarName;
         parserRules = new ArrayList<Rule>();
         toCopy.parserRules.forEach(rule -> parserRules.add(new Rule(rule)));
         terminalRules = new ArrayList<Rule>();
         toCopy.terminalRules.forEach(rule -> terminalRules.add(new Rule(rule)));
-        this.score = toCopy.score;
+        this.posScore = toCopy.posScore;
+        this.negScore = toCopy.negScore;
     }
 
     /**
@@ -83,25 +108,18 @@ public class GrammarReader {
      * Reads a grammar from the ANTLR file associated with this
      */
     private void readRules() {
-        try (BufferedReader in = new BufferedReader(new FileReader(grammarFile));) {
-            String input;
-            in.readLine();
-            while ((input = in.readLine()) != null) {
-                input = input.replaceAll("[ ]+", " ").trim();
-                String RuleName = input.substring(0, input.indexOf(":")).trim();
-                String RuleString = input.substring(input.indexOf(":") + 1); // cuts off the ; at the end
-                Rule currRule = new Rule(RuleName, RuleString);
-                // currRule.addRule(RuleString);
-                if (currRule.isTerminal()) {
-                    terminalRules.add(currRule);
-                } else {
-                    parserRules.add(currRule);
-                }
+        fileLines.forEach(input -> {
+            input = input.replaceAll("[ ]+", " ").trim();
+            String RuleName = input.substring(0, input.indexOf(":")).trim();
+            String RuleString = input.substring(input.indexOf(":") + 1); // cuts off the ; at the end
+            Rule currRule = new Rule(RuleName, RuleString);
+            // currRule.addRule(RuleString);
+            if (currRule.isTerminal()) {
+                terminalRules.add(currRule);
+            } else {
+                parserRules.add(currRule);
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        });
     }
 
     public String getStartSymbol() {
@@ -156,26 +174,44 @@ public class GrammarReader {
         newRuleText.append(";");
         
         Rule toAdd = new Rule(ruleName, newRuleText.toString());
+        System.out.println(toAdd);
         parserRules.add(0, toAdd);
     }
+
+    public Rule generateReturnNewRule(String ruleName, int RHSLen) {
+        ArrayList<Rule> allRules = getAllRules();
+        StringBuilder newRuleText = new StringBuilder();
+        for (int i = 0; i < RHSLen; i++) {
+            int newRulesIndex = ThreadLocalRandom.current().nextInt(allRules.size());
+            newRuleText.append(allRules.get(newRulesIndex).getName() + " ");
+        }
+        newRuleText.append(";");
+        
+        Rule toAdd = new Rule(ruleName, newRuleText.toString());
+        return toAdd;
+    }
+
+    public Rule generateReturnNewRule(int RHSLen) {
+        String ruleName = Rule.genName();
+        while(ruleName.equals("program")) ruleName = Rule.genName();
+        while(parserRules.stream().map(Rule::getName).map(ruleName::equals).reduce(false, (sub,next) -> sub || next)) ruleName = Rule.genName();
+        return generateReturnNewRule(ruleName, RHSLen);
+    }
+
+
+
 
     /**
      * Wrapper for generateNewRule when a random name can be used
      */
     public void generateNewRule(int RHSLen) {
         String ruleName = Rule.genName();
+        while(ruleName.equals("program")) ruleName = Rule.genName();
         while(parserRules.stream().map(Rule::getName).map(ruleName::equals).reduce(false, (sub,next) -> sub || next)) ruleName = Rule.genName();
         generateNewRule(ruleName, RHSLen);
     }
 
-    public void setPositiveAcceptance(boolean toSet) {
-        this.positiveAcceptance = toSet;
-    }
-
-    public boolean getPositiveAcceptance() {
-        return positiveAcceptance;
-    }
-
+    
     /**
      * Selects a random parserRule A and sets a random symbol B in A to be another
      * rule C in the grammar this can include selecting the LHS as the thing to be
@@ -187,38 +223,79 @@ public class GrammarReader {
         int ruleIndex = randInt(parserRules.size());
         Rule toMutate = parserRules.get(ruleIndex);
         int productionIndex = randInt(toMutate.getTotalProductions());
+
         if(parserRules.size() == 1 && productionIndex == 0) productionIndex = 1 + randInt(toMutate.getTotalProductions()-1);
         if (productionIndex == 0) { // this symbol is now becoming an alternative to another rule
             int newRuleIndex = randInt(parserRules.size());
             while (newRuleIndex == ruleIndex) newRuleIndex = randInt(parserRules.size());
             Rule ruleToExtend = parserRules.get(newRuleIndex);
+            // System.out.println("Adding " + toMutate.getName() + " as an alt to " + ruleToExtend.getName() + " in \n" + this);
             ruleToExtend.addAlternative(toMutate.getSubRules());
-            // System.out.println("Checking nullable of " + ruleToExtend + "\n in \n" + this);
-            boolean toExtendNullable = ruleToExtend.nullable(parserRules);
+            // System.out.println("Checking nullable of " + ruleToExtend.getName() + "\n in \n" + this);
+            boolean toExtendNullable = nullable(ruleToExtend.getName());
             parserRules.forEach(rule -> rule.replaceReferences(toMutate, ruleToExtend, toExtendNullable));
             parserRules.remove(toMutate);
         } else {
-
             int toInsertIndex = randInt(parserRules.size());
             Rule toInsert = parserRules.get(toInsertIndex);
             // System.out.println("Setting " + toMutate.getProduction(productionIndex) + " to " + toInsert.getName());
             toMutate.setProduction(productionIndex, toInsert);
-            System.out.println(this);
+            // System.out.println(this);
             if(containsLeftRecursive()) removeLR();
         }
 
+    }
+
+    public LinkedList<Rule> getCrossoverRuleList() {
+        LinkedList<Rule> out = new LinkedList<Rule>();
+        int baseIndex = randInt(parserRules.size());
+        Rule baseRule = parserRules.get(baseIndex);
+        ArrayList<String> reachables = baseRule.getReachables(parserRules);
+        out.addAll(parserRules.stream()
+                   .filter(rule -> reachables.contains(rule.getName()))
+                   .collect(Collectors.toList()));
+        return out;
+    }
+
+    //TODO add changing mutation operator probability
+    public void applyCrossover(LinkedList<Rule> toInsert, Rule toReplace, boolean toInsertNullable) {
+        parserRules.addAll(toInsert);
+        parserRules.remove(toReplace);
+        parserRules.forEach(rule -> rule.replaceReferences(toReplace, toInsert.getFirst().makeMinorCopy(), toInsertNullable));
+    }
+
+    public void applyCrossover(GrammarReader toCrossover, outputLambda grammarOut) {
+        LinkedList<Rule> otherList = toCrossover.getCrossoverRuleList();
+        LinkedList<Rule> myList = getCrossoverRuleList();
+        grammarOut.output("Swapping " + myList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + " with " 
+        + otherList.stream().map(Rule::getName).collect(Collectors.joining(", ")));
+        boolean toInsNull = toCrossover.nullable(otherList.getFirst().getName());
+        boolean toSendNull = nullable(myList.getFirst().getName());
+        toCrossover.applyCrossover(myList, otherList.getFirst(), toInsNull);
+        applyCrossover(otherList, myList.getFirst(), toSendNull);
     }
 
     public int randInt(int bound) {
         return ThreadLocalRandom.current().nextInt(bound);
     }
 
-    public void setScore(double newScore) {
-        score = newScore;
+    
+    public void setPosScore(double newScore) {
+        posScore = newScore;
+    }
+
+    public void setNegScore(double newScore) {
+        negScore = newScore;
     }
 
     public double getScore() {
-        return score;
+        return (posScore+negScore)/2.0;
+    }
+    public double getPosScore() {
+        return posScore;
+    }
+    public double getNegScore() {
+        return negScore;
     }
 
     /**
@@ -306,7 +383,7 @@ public class GrammarReader {
 
         if (toChangeIndex == 0) {
             if (!mainToChange.containsEpsilon()) {
-                mainToChange.addAlternative(Rule.EPSILON);
+                mainToChange.addAlternative(Rule.EPSILON());
                 cleanReferences(mainToChange);
             } else {
                 mainToChange.removeEpsilon();
@@ -316,7 +393,8 @@ public class GrammarReader {
         }
         Rule toChange = mainToChange.getProduction(toChangeIndex);
         double choice = Math.random();
-        if (!toChange.nullable(parserRules)) {
+        // System.out.println("\n\n\nChecking nullable of " + toChange.getName() + " in \n " + this);
+        if (!nullable(toChange.getName())) {
             if (choice < 0.33) {
                 toChange.setIterative(!toChange.isIterative());
             } else if (choice < 0.66) {
@@ -326,6 +404,32 @@ public class GrammarReader {
                 toChange.setIterative(!toChange.isIterative());
             }
         }
+    }
+
+
+    
+    public LinkedList<String> constrNullable() {
+        LinkedList<String> nullableNames = new LinkedList<String>();
+        for (int i = 0; i < parserRules.size(); i++) {
+            if(parserRules.get(i).containsEpsilon()) {
+                nullableNames.add(parserRules.get(i).getName());
+            }
+        }
+        int startSize = nullableNames.size();
+        do {
+            startSize = nullableNames.size();
+            parserRules.stream()
+            .filter(rule -> !nullableNames.contains(rule.getName()))
+            .forEach(rule -> {
+                rule.nullable(nullableNames);
+            });
+
+        } while(startSize != nullableNames.size());
+        return nullableNames;
+    }
+
+    public boolean nullable(String targetName) {
+        return constrNullable().contains(targetName);
     }
 
     // Goes through all rules and removes optional flags refrencing this rule after
@@ -352,42 +456,40 @@ public class GrammarReader {
         Rule wrapperRule = new Rule("program", getStartSymbol() + " EOF;");
         parserRules.add(0, wrapperRule);
     }
-
+    
     public void stripEOF() {
-        parserRules.remove(0);
+        parserRules.removeIf(rule -> rule.getName().equals("program"));
     }
 
     /**
      * Returns a list of rules that are referenced in the grammar but that are
      * undefined
      */
-    public ArrayList<String> getUndefinedRules() {
+    public List<String> getUndefinedRules() {
         if(parserRules.size() == 0) return new ArrayList<String>();
-        ArrayList<String> undefined = parserRules.get(0).getReachables(parserRules);
-        undefined.removeIf(name -> !name.contains("Undefined "));
-        ArrayList<String> out = new ArrayList<String>();
-        undefined.forEach(rawText -> out.add(rawText.replace("Undefined ", "")));
-        return out;
+        
+        List<String> undefined = parserRules.stream()
+        .flatMap(rule -> rule.getReachables(parserRules).stream())
+        .filter(s -> s.contains("Undefined "))
+        .distinct().collect(Collectors.toList());
+        if(undefined.size() > 0) System.out.println("Undefined rules in " + this + "\n" + undefined.stream().collect(Collectors.joining(", ")));
+        return undefined;
     }
 
     /**
-     * Introduces a new non-terminal for each undefined reference in the grammar
+     * FIXME this was disabled for demo, 
+     * problem 
+     * if there exists a combined rule consisting of a singular rule reference ruleA : (ruleB ruleB);
+     * if ruleB is removed, the combines rule remove its references, it is now empty but is not being removed, causes crashes elsewhere
      */
     public void fixUndefinedRules() {
-        ArrayList<String> undefined = getUndefinedRules();
+        List<String> undefined = getUndefinedRules();
         if (undefined.size() == 0) {
-            // System.out.println(getName() + " contains no undefined rules");
+
         } else {
-            // System.out.println("Repairing " + getName() + " with undefined rules " +
-            // undefined);
-            undefined.forEach(undefText -> {
-                String ruleName = undefText.replace("Undefined ", "");
-                parserRules.forEach(rule -> {
-                    if(rule.toString().contains(ruleName)) {
-                        rule.removeReferences(ruleName);
-                    }
-                });
-            });
+            System.out.println("Flagging\n" + this + " for removal");
+            flagForRemoval();
+            return;
         }
 
     }
@@ -405,6 +507,22 @@ public class GrammarReader {
                 rule.simplifyRepeatingLR();
                 rule.removeSimpleLeftRecursives();
             });
+            while(parserRules.stream().map(rule -> rule.getTotalProductions()==1).reduce(false, (curr, next) -> curr || next)) {
+                LinkedList<String> toCleanList = new LinkedList<String>();
+                for(Rule rule : parserRules) {
+
+                    if(rule.getTotalProductions() == 1) {
+                        toCleanList.add(rule.getName());
+                        // parserRules.remove(rule);
+                        // System.out.println("Removing references to " +rule.getName() + " following LR removal in \n" + this);
+                        // parserRules.forEach(toClean -> toClean.removeReferences(rule.getName()));
+                        // System.out.println("post removal \n" + this);
+                    }
+                }
+                parserRules.removeIf(rule -> toCleanList.contains(rule.getName()));
+                toCleanList.forEach(name -> parserRules.forEach(rule -> rule.removeReferences(name)));
+            }
+            
 
             removeDirectLeftRecursion();
         }
@@ -424,7 +542,7 @@ public class GrammarReader {
                 ArrayList<LinkedList<Rule>> dirtyProductions = new ArrayList<LinkedList<Rule>>();
                 rule.getSubRules().forEach(subRule -> {
 
-                    if (subRule.getFirst().equals(Rule.EPSILON))
+                    if (subRule.getFirst().equals(Rule.EPSILON()))
                         return;
 
                     if (!subRule.getFirst().getName().split(" ")[0].equals(ruleName)) {
@@ -436,6 +554,10 @@ public class GrammarReader {
                         dirtyProductions.add(toAdd);
                     }
                 });
+                if(cleanProductions.size() == 0) {
+                    flagForRemoval();
+                    return;
+                }
 
                 StringBuilder newRuleText = new StringBuilder();
                 dirtyProductions.forEach(subProduction -> {
@@ -449,22 +571,14 @@ public class GrammarReader {
                 // Create the rule, if all the productions were dirty, reuse the same rule name
                 // so replace all occurences of newRuleName with original name
                 // The productions of the dirtyRule is later copied into the original rule
-                Rule dirtyRule;
-                if (cleanProductions.size() == 0) {
-                    dirtyRule = new Rule(newRuleName, newRuleText.toString().replaceAll(newRuleName, rule.getName()));
-                } else {
-                    dirtyRule = new Rule(newRuleName, newRuleText.toString());
-                }
+                Rule dirtyRule = new Rule(newRuleName, newRuleText.toString());
 
                 // If all of the orignal rules were dirty reuse the ruleName for the modified
                 // rule other wise introduce a new rule
                 rule.getSubRules().clear();
-                if (cleanProductions.size() == 0) {
-                    rule.setSubRules(dirtyRule.getSubRules());
-                } else {
-                    rule.setSubRules(cleanProductions);
-                    rulesToAdd.add(dirtyRule);
-                }
+                
+                rule.setSubRules(cleanProductions);
+                rulesToAdd.add(dirtyRule);
             }
         });
         parserRules.addAll(rulesToAdd);
@@ -508,7 +622,9 @@ public class GrammarReader {
      * Removes a random rule and fixed any refrences that become undefined
      */
     public void removeRule(int ruleIndex) {
+        System.out.println("Removing " + parserRules.get(ruleIndex) + " from \n" + this);
         parserRules.remove(ruleIndex);
+
         fixUndefinedRules();
     }
 
@@ -612,7 +728,10 @@ public class GrammarReader {
             generateNewRule(1 + randInt(Constants.MAX_RHS_SIZE));
         } else if (parserRules.size() > 0) {
             int ruleIndex = randInt(parserRules.size());
+            // System.out.println("Removing " + parserRules.get(ruleIndex).getName() + " from " + this);
             removeRule(ruleIndex);
+            // System.out.println("Post removal " + this);
+
         } else if (parserRules.size() < Constants.MAX_RULE_COUNT) {
             generateNewRule(1 + randInt(Constants.MAX_RHS_SIZE));
         }
@@ -623,50 +742,80 @@ public class GrammarReader {
     public LinkedList<GrammarReader> computeMutants(int numMutants, HashMap<Integer,Boolean> checkedGrammars){
         LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
         for (int i = 0; i < numMutants; i++) {
+            try {
+
+            
             GrammarReader toAdd = new GrammarReader(this);
             toAdd.grammarName = genMutantName();
-            // System.err.println(toAdd.grammarName + " : ");
+            System.out.println(toAdd.grammarName + " : ");
 
             // System.out.println("Operating on \n" + toAdd);
 
-
+                
             if (Constants.CHANGE_RULE_COUNT && Math.random() < Constants.P_CHANGE_RULE_COUNT) {
                 // System.out.println("Changing rule count of " + toAdd.getName());
                 toAdd.changeRuleCount();
+                if(toAdd.toRemove()) {
+                    System.out.println("Removing\n" + this +  " from the grammarList");
+                    i--;
+                    continue;
+                }
                 // System.out.println(toAdd);
             }
 
             if (Constants.CHANGE_SYMBOL_COUNT && Math.random() < Constants.P_CHANGE_SYMBOL_COUNT) {
                 // System.out.println("Changing symbol count of " + toAdd.getName());
                 toAdd.changeSymbolCount();
+                if(toAdd.toRemove()) {
+                    i--;
+                    continue;
+                }
                 // System.out.println(toAdd);
             }
 
             if (Constants.GROUP && Math.random() < Constants.P_G) {
+                // System.out.println("Grouping in " + toAdd);
                 toAdd.groupMutate();
-                // System.out.println(toAdd);
+                if(toAdd.toRemove()) {
+                    i--;
+                    continue;
+                }
+                // System.out.println("Post grouping " + toAdd);
             }
 
             if(Constants.MUTATE && Math.random() < Constants.P_M) {
                 // System.out.println("Mutating " + toAdd);
                 toAdd.mutate();
-                // System.out.println(toAdd);
+                if(toAdd.toRemove()) {
+                    i--;
+                    continue;
+                }
+                // System.out.println("Post mutation \n" + toAdd);
             }
 
             if(Constants.HEURISTIC && Math.random() < Constants.P_H) {
                 // System.out.println("Heuristic on " + toAdd.getName());
                 toAdd.heuristic();
+                if(toAdd.toRemove()) {
+                    i--;
+                    continue;
+                }
                 // System.out.println(toAdd);
             }
             
             if(checkedGrammars.get(toAdd.hash()) != null) {
-                System.out.println(toAdd + " already generated");
+                App.hashtableHits++;
+                // System.out.println(toAdd + " already generated");
                 i--;
             } else {
                 checkedGrammars.put(toAdd.hash(),true);
                 out.add(toAdd);
             }
             // System.out.println(toAdd);
+            } catch(Exception e) {
+                System.out.println("Exceptio during mutant calc\n" + this);
+                e.printStackTrace(System.out);
+            }
         }
         return out;
     }
@@ -674,6 +823,17 @@ public class GrammarReader {
     
     
     public int hash() {
+        
+        
+        // System.out.println("HashString for " + this + "\n" + finalRules.stream().collect(Collectors.joining("\n")));
+        return hashString().hashCode();
+    }
+
+    public ArrayList<Rule> getTerminalRules() {
+        return terminalRules;
+    }
+
+    public String hashString() {
         LinkedList<String[]> mappings = new LinkedList<String[]>();
         for (int i = 0; i < parserRules.size(); i++) {
             String[] toAdd = {parserRules.get(i).getName(), "rule_" + i};
@@ -688,19 +848,39 @@ public class GrammarReader {
             }
             finalRules.add(ruleText);
         });
-        System.out.println("HashString for " + this + "\n" + finalRules.stream().collect(Collectors.joining("\n")));
-        return finalRules.hashCode();
+        String out = finalRules.stream().collect(Collectors.joining("\n"));
+        return out;
+
+    }
+
+    public String hashRuleName(String rulename) {
+        LinkedList<String[]> mappings = new LinkedList<String[]>();
+        for (int i = 0; i < parserRules.size(); i++) {
+            String[] toAdd = {parserRules.get(i).getName(), "rule_" + i};
+            mappings.add(toAdd);
+        }
+
+        for (String[] mapping : mappings) {
+            if(mapping[0].equals(rulename)) return mapping[1];
+        }
+        return rulename;
+
     }
 
 	public boolean containsInfLoop() {
-        System.out.println("Checking if " + this + " contains an infLoop");
+        // System.out.println("Checking if " + this + " contains an infLoop");
+        if (getUndefinedRules().stream()
+            .map(rule -> rule.contains("Undefined "))
+            .reduce(false, (prev, next) -> (prev || next))) {
+                return true;
+            }
         Rule start  = parserRules.get(0);
         String touchedRules = "";
         if(!start.containsInfLoop(parserRules, touchedRules)) {
-            System.out.println(this + " contains no infLoops");
+            // System.out.println(this + " contains no infLoops");
             return false;
         }  else {
-            System.out.println(this + " contains an infLoops");
+            // System.out.println(this + " contains an infLoop");
             return true;
 
         }
@@ -711,17 +891,18 @@ public class GrammarReader {
     public void demoChangeRuleCount(outputLambda logOut, outputLambda grammarOut) {
         if (parserRules.size() < Constants.MAX_RULE_COUNT && Math.random() < Constants.P_ADD_RULE) {
             int ruleLen = 1 + randInt(Constants.MAX_RHS_SIZE);
-            logOut.output("Generating new rule of length " + + ruleLen);
-            generateNewRule(ruleLen);
+            logOut.output("Generating new rule of length " + ruleLen);
+            generateNewRule("rule_"+parserRules.size(),ruleLen);
             grammarOut.output("New rule " + parserRules.get(0) + "\n");
-        } else if (parserRules.size() > 0) {
+        } else if (parserRules.size() > 1) {
             int ruleIndex = randInt(parserRules.size());
             logOut.output("Removing " + parserRules.get(ruleIndex).getName() + " from " + grammarName);
+            grammarOut.output("Removing " + parserRules.get(ruleIndex).getName() + " from " + grammarName);
             removeRule(ruleIndex);
         } else if (parserRules.size() < Constants.MAX_RULE_COUNT) {
             int ruleLen = 1 + randInt(Constants.MAX_RHS_SIZE);
             logOut.output("Last resort generating new rule of length " + + ruleLen);
-            generateNewRule(ruleLen);
+            generateNewRule("rule_"+parserRules.size(),ruleLen);
             grammarOut.output("New rule " + parserRules.get(0) + "\n");
         }
     }
@@ -743,7 +924,14 @@ public class GrammarReader {
             logOut.output("Reducing symbol count of " +  toDec.getName());
             toDec.reduce();
             grammarOut.output("New rule " +  toDec);
-        } 
+        }  else if(canInc.size() > 0) {
+            Rule toAdd = new Rule(parserRules.get(randInt(parserRules.size())));
+            Rule toInc = canInc.get(randInt(canInc.size()));
+            grammarOut.output("Adding " + toAdd.getName() + " to " + toInc);
+            logOut.output("Adding " + toAdd.getName() + " to " + toInc.getName());
+            toInc.extend(toAdd);
+            grammarOut.output("New rule " + toInc);
+        }
     }
 
     public void demoGroupMutate(outputLambda logOutput, outputLambda grammarOutput) {
@@ -763,6 +951,12 @@ public class GrammarReader {
             grammarOutput.output("Undoing grouping in " + toUnGroup);
             toUnGroup.unGroupProductions();
             grammarOutput.output("New rule " + toUnGroup);
+        } else if(groupAbles.size() > 0) {
+            Rule toGroup = groupAbles.get(randInt(groupAbles.size()));
+            logOutput.output("Grouping in " + toGroup.getName());
+            grammarOutput.output("Applying group mutation to " + toGroup);
+            toGroup.groupProductions();
+            grammarOutput.output("New rule " + toGroup);
         }
     }
 
@@ -783,9 +977,10 @@ public class GrammarReader {
             while (newRuleIndex == ruleIndex) newRuleIndex = randInt(parserRules.size());
             Rule ruleToExtend = parserRules.get(newRuleIndex);
             logOutput.output("Making " + toMutate.getName() + " an alternative to " + ruleToExtend.getName());
-            grammarOutput.output("Adding " + toMutate.getName() + " as an alternative in" + ruleToExtend);
+            grammarOutput.output("Adding " + toMutate.getName() + " as an alternative in " + ruleToExtend);
             ruleToExtend.addAlternative(toMutate.getSubRules());
-            boolean toExtendNullable = ruleToExtend.nullable(parserRules);
+            Chelsea.removeDuplicates(ruleToExtend.getSubRules());
+            boolean toExtendNullable = nullable(ruleToExtend.getName());
             parserRules.forEach(rule -> rule.replaceReferences(toMutate, ruleToExtend, toExtendNullable));
             grammarOutput.output("New rule + " + ruleToExtend);
             parserRules.remove(toMutate);
@@ -798,10 +993,52 @@ public class GrammarReader {
             toMutate.setProduction(productionIndex, toInsert);
             grammarOutput.output("New rule " + toMutate);
             if(containsLeftRecursive()) removeLR();
+            if(toRemove())  logOutput.output(grammarName + " is an invalid grammar");
         }
 
     }
 
-    
+    public void demoHeuristic(outputLambda logOutput, outputLambda grammarOutput) {
+        if(parserRules.size() == 0) {
+            logOutput.output(grammarName + " has no parser rules, cannot apply heuristic");
+            return;
+        }
+        int ruleIndex = randInt(parserRules.size());
+        Rule mainToChange = parserRules.get(ruleIndex);
+        int toChangeIndex = randInt(mainToChange.getTotalProductions());
+        logOutput.output("Applying heuristic to " + mainToChange.getName());
+        if (toChangeIndex == 0) {
+            if (!mainToChange.containsEpsilon()) {
+                grammarOutput.output("Adding EPSILON as an alternative production in " + mainToChange.getName());
+                mainToChange.addAlternative(Rule.EPSILON());
+                grammarOutput.output("New rule " + mainToChange);
+                cleanReferences(mainToChange);
+            } else {
+                grammarOutput.output("Removing EPSILON as an alternative production in " + mainToChange.getName());
+                mainToChange.removeEpsilon();
+                grammarOutput.output("New rule " + mainToChange);
+                if(mainToChange.getSubRules().size()  == 0) parserRules.remove(ruleIndex);
+            }
+            return;
+        }
+        Rule toChange = mainToChange.getProduction(toChangeIndex);
+
+        double choice = Math.random();
+        logOutput.output(toChange.getName() + "  " + nullable(toChange.getName()));
+        if (!nullable(toChange.getName())) {
+            if (choice < 0.33) {
+                grammarOutput.output("Making " + toChange.getName() + " in " +  mainToChange.getName() + " iterative");
+                toChange.setIterative(!toChange.isIterative());
+            } else if (choice < 0.66) {
+                grammarOutput.output("Making " + toChange.getName() + " in " +  mainToChange.getName() + " optional");
+                toChange.setOptional(!toChange.isOptional());
+            } else {
+                grammarOutput.output("Making " + toChange.getName() + " in " +  mainToChange.getName() + " optional and iterative");
+                toChange.setOptional(!toChange.isOptional());
+                toChange.setIterative(!toChange.isIterative());
+            }
+            grammarOutput.output("New rule " + mainToChange);
+        }
+    }
 
 }

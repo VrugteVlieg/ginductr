@@ -17,34 +17,54 @@ public class Rule {
     private boolean iterative;
     private boolean mainRule;
     private boolean singular;
+    private boolean nullable;
     private int depth = 0;
     private String ruleText;
+    private boolean toRemove = false;;
 
     public static final Rule EPSILON =  new Rule(" ",1);
     
+
+    public static Rule EPSILON() {
+        Rule out = new Rule(" ",1);
+
+        return new Rule(" ",1);
+    }
 
     /**
      * Creates a deep-copy of a rule
      * @param toCopy
      */
     public Rule(Rule toCopy) {
-        this.name = toCopy.name;
-
-        this.subRules = new ArrayList<LinkedList<Rule>>();
-        for(LinkedList<Rule> prod : toCopy.subRules) {
-            LinkedList<Rule> newList = new LinkedList<Rule>();
-            prod.forEach(rule -> {
-                newList.add(new Rule(rule));
-            });
-            subRules.add(newList);
+        // System.out.println("Copying " + (toCopy.equals(EPSILON) ? " EPSILON " : toCopy));
+        try {
+            this.name = toCopy.name;
+            this.subRules = new ArrayList<LinkedList<Rule>>();
+            if(toCopy.equals(EPSILON)) {
+                // System.out.println("Subrules" +  toCopy.subRules.toString());
+            }
+            for(LinkedList<Rule> prod : toCopy.subRules) {
+                if(toCopy.equals(EPSILON)) {
+                    // System.out.println("prod " +  toCopy.subRules.toString());
+                }
+                LinkedList<Rule> newList = new LinkedList<Rule>();
+                prod.forEach(rule -> {
+                    newList.add(new Rule(rule));
+                });
+                subRules.add(newList);
+            }
+            this.terminal = toCopy.terminal;
+            this.optional = toCopy.optional;
+            this.iterative = toCopy.iterative;
+            this.mainRule = toCopy.mainRule;
+            this.singular = toCopy.singular;
+            this.depth = toCopy.depth;
+            this.ruleText = toCopy.ruleText;
+        } catch (NullPointerException e) {
+            // System.out.println("Null pointer copying rule \n" + toCopy + " " + toCopy.equals(EPSILON) + " singular " + toCopy.singular);
+            e.printStackTrace(System.out);
+            // System.exit(1);
         }
-        this.terminal = toCopy.terminal;
-        this.optional = toCopy.optional;
-        this.iterative = toCopy.iterative;
-        this.mainRule = toCopy.mainRule;
-        this.singular = toCopy.singular;
-        this.depth = toCopy.depth;
-        this.ruleText = toCopy.ruleText;
     }
     /**
      * Creates a rule that collects a list of sub rules
@@ -79,10 +99,10 @@ public class Rule {
             singular = !ruleText.contains(" ");
             subRules = new ArrayList<LinkedList<Rule>>();
         } else {
-            LinkedList<Rule> start = new LinkedList<Rule>();
-            start.add(EPSILON);
-            subRules.add(start);
-            System.out.println("Adding EPSILON in "+ ruleText);
+            // LinkedList<Rule> start = new LinkedList<Rule>();
+            // start.add(EPSILON);
+            // subRules.add(start);
+            this.name = ruleText;
             singular = true;
         }
         this.name = ruleText;
@@ -105,7 +125,7 @@ public class Rule {
         if(!ruleText.equals(" ")) this.name = ruleText.trim();
         
         
-        if(singular) terminal = Character.isUpperCase(name.charAt(0)) || this.name.equals(" "); 
+        if(singular) terminal = Character.isUpperCase(name.charAt(0)); 
         if(!singular) {
             terminal = false;
             addRuleLookahead(ruleText);
@@ -123,7 +143,7 @@ public class Rule {
         name = name.trim();
         this.name = name;
         //This used to be true, might create a cascading effect somewhere
-        singular = false;
+        singular = true;
         printOut("New major rule " + name + " : " + ruleText);
         mainRule = true;
         terminal = Character.isUpperCase(name.charAt(0));
@@ -166,16 +186,21 @@ public class Rule {
                     break;
 
                 case ';':
-                    if(currString.length() != 0) {
-                        if(currString.toString().equals(" ")) {
-                            printOut("Adding EPSILON");
-                            currProduction.add(EPSILON);
-                        } else {
-                            currProduction.add(new Rule(currString.toString(),depth+1));
-                        }
-                        currString = new StringBuilder(); 
-                    } 
-                    subRules.add(currProduction);
+
+                    if(StringLiteral) {
+                        currString.append(";");
+                    } else {
+                        if(currString.length() != 0) {
+                            if(currString.toString().equals(" ")) {
+                                printOut("Adding EPSILON");
+                                currProduction.add(EPSILON);
+                            } else {
+                                currProduction.add(new Rule(currString.toString(),depth+1));
+                            }
+                            currString = new StringBuilder(); 
+                        } 
+                        subRules.add(currProduction);
+                    }
                     break;
 
                case '\'':
@@ -196,7 +221,6 @@ public class Rule {
             }
             index++;
          }
-         printOut("Final subRules " + subRules.toString());
      }
 
     /**
@@ -250,10 +274,23 @@ public class Rule {
      */
     String getName() {
         if(name.equals(" ")) return Constants.DEBUG ? "EPSILON" : " "; //this is nullToken 
-        StringBuilder out = new StringBuilder(name);
-        if(name.contains(" ")) {
-            out.insert(0, "(");
-            out.append(")");
+        StringBuilder out = new StringBuilder();
+        if(singular || mainRule) out.append(name);
+
+        if(!(singular || mainRule)) {
+            for(LinkedList<Rule> prod : subRules) {
+                for (int i = 0; i < prod.size(); i++) {
+                    if(i != prod.size()-1) {
+                        out.append(prod.get(i) + " ");
+                    } else {
+                        out.append(prod.get(i).toString());
+                    }
+                }
+            }
+            if(out.toString().contains(" ")) {
+                out.insert(0, "(");
+                out.append(")");
+            }
         }
         if(optional && iterative){
             out.append("*");
@@ -310,9 +347,12 @@ public class Rule {
      * @param toSet
      */
     public void setProduction(int index, Rule toSet) {
-        System.out.println("Making a copy of "  + toSet);
-        Rule test = new Rule(toSet);
-        test.mainRule = false;
+
+        Rule test = toSet.equals(EPSILON) ? EPSILON : new Rule(toSet);
+        if(test.mainRule) {
+            test.mainRule = false;
+            test.singular = true;
+        }
         int counter = 0;
         int subSetIndex = 0;
         for(LinkedList<Rule> subSet : subRules) {
@@ -423,40 +463,32 @@ public class Rule {
         wrappedToAdd.add(toAdd);
         this.subRules.add(wrappedToAdd);
     }
-    /**
-     * Calculates which rules in parserRules can be reached from this rules, stores names of reachable rules in reachables
-     * @param parserRules 
-     * @param reachables
-     */
-	public void getReachables(ArrayList<Rule> parserRules, ArrayList<String> reachables) {
-        if(reachables.contains(getName())) return;
-        if(singular && !terminal && !parserRules.contains(this)) {
-            //This is a singular rule that is not part of parserRules nor is it terminal so it is undefined
-            reachables.add("Undefined " + name);
-        }   else if(mainRule && !terminal) {
-                //This is a main rule, add its name to reachable and check what can be reach from its productions
-                reachables.add(getName());
-                subRules.forEach(subRule -> {
-                    subRule.forEach(production -> {
-                        if(parserRules.contains(production)) {
-                            parserRules.get(parserRules.indexOf(production)).getReachables(parserRules, reachables);
-                        } else {
-                            production.getReachables(parserRules, reachables);
-                        }
-                    });
+    
+    public void getReachables(ArrayList<Rule> parserRules, ArrayList<String> reachables) {
+        if(reachables.contains(getName()) || terminal) return;
+        if(singular && !terminal && !parserRules.contains(this)){
+            reachables.add("Undefined " + getName());
+            return;
+        } 
+        if(mainRule) {
+            reachables.add(getName());
+            subRules.forEach(prod -> {
+                prod.forEach(rule -> {
+                    rule.getReachables(parserRules, reachables);
                 });
-            } else {
-                //This is a bracketed rule (Addop term) and each subRule is now being evalled
-                subRules.forEach(subRule -> {
-                    subRule.forEach(production -> {
-                        if(parserRules.contains(production)) {
-                            parserRules.get(parserRules.indexOf(production)).getReachables(parserRules, reachables);
-                        } else {
-                            production.getReachables(parserRules, reachables);
-                        }
-                    });
+            });
+        } else if(singular && !mainRule) {
+            int parserIndex = parserRules.indexOf(this);
+            if(parserIndex ==  -1) System.out.println(getName() + " not present in " + prettyPrintRules(parserRules));
+            parserRules.get(parserIndex).getReachables(parserRules,  reachables);
+            return;
+        } else if(!singular) {
+            subRules.forEach(prod -> {
+                prod.forEach(rule -> {
+                    rule.getReachables(parserRules, reachables);
                 });
-            }
+            });
+        }
     }
 
     public ArrayList<String> getReachables(ArrayList<Rule> parserRules) {
@@ -473,32 +505,50 @@ public class Rule {
      * @return
      */
     private boolean nullable(ArrayList<Rule> parserRules, String checkedRules) {
-        
-        if(terminal || checkedRules.contains(getName())) return false;
-        if(this.equals(EPSILON) || isOptional()) return true;
-        
-        if(!singular) { //composed rule (term factor)
-            // System.out.println(getName() + " is not singular consists of " + subRules.get(0));
-            LinkedList<Rule> subProds = subRules.get(0);
-            for (Rule rule : subProds) {
-                if(!rule.nullable(parserRules,checkedRules)) return false;
-            }
-            return true;
-        } else if(!mainRule) { //non terminal on the RHS of a rule
-            Rule mainVersion = parserRules.get(parserRules.indexOf(this));    
-            return mainVersion.nullable(parserRules,checkedRules);
-        } else {    //Main rule
-            // System.out.println(this + " is a main rule, checking nullable");
-            checkedRules = checkedRules + ","  + getName();
-            if(containsEpsilon()) return true;
+
+        // System.out.println("Checking nullable of " + getName() + " terminal " + terminal + " checked " + checkedRules);
+        try {
+            if(terminal || checkedRules.contains(getName())) return false;
+            if(this.equals(EPSILON) || isOptional()) return true;
             
-            for(LinkedList<Rule> prod : subRules) {
-                boolean nullable = true;
-                for(Rule rule : prod) {
-                    nullable &= rule.nullable(parserRules,checkedRules);
+            if(!singular && !mainRule) { //composed rule (term factor)
+                // System.out.println(getName() + " is not singular consists of " + subRules.get(0));
+                if(subRules.size() == 0) {
+                    // System.out.println("No subrules " + this);
                 }
-                if(nullable) return true;
+                LinkedList<Rule> subProds = subRules.get(0);
+                for (Rule rule : subProds) {
+                    if(!rule.nullable(parserRules,checkedRules)) return false;
+                }
+                return true;
+            } else if(!mainRule) { //non terminal on the RHS of a rule
+                // System.out.println("Fetching main version of " + this.name + "\nin\n"  + prettyPrintRules(parserRules));
+                try {
+                    Rule mainVersion = parserRules.get(parserRules.indexOf(this));    
+                    return mainVersion.nullable(parserRules,checkedRules);
+                } catch (NullPointerException e) {
+                    // System.out.println("NullPointer " + this.getName() + " in " + parserRules.stream().map(Rule::toString).collect(Collectors.joining("\n")));
+                    e.printStackTrace();
+                    return true;
+                }
+            } else {    //Main rule
+                // System.out.println(this + " is a main rule, checking nullable");
+                checkedRules = checkedRules + ","  + getName();
+                if(containsEpsilon()) return true;
+                
+                for(LinkedList<Rule> prod : subRules) {
+                    boolean nullable = true;
+                    for(Rule rule : prod) {
+                        nullable &= rule.nullable(parserRules,checkedRules);
+                    }
+                    if(nullable) return true;
+                }
+                return false;
             }
+        } catch (Exception e) {
+            subRules.clear(); 
+            subRules.add(new LinkedList<Rule>());
+            subRules.get(0).add(makeMinorCopy());
             return false;
         }
     }
@@ -507,14 +557,48 @@ public class Rule {
         return nullable(parserRules, "");
     }
 
-    public boolean containsEpsilon() {
-        // System.out.println("Searching for EPSILON in " + subRules);
-        for (LinkedList<Rule> prod : subRules) {
-            // System.out.println("Checking " +  prod);
-            // if(prod.getFirst().equals(EPSILON)) System.out.println("Found EPSILON returning true");;
-            if(prod.getFirst().equals(EPSILON)) return true;
+    public boolean nullable(LinkedList<String> nullableNames) {
+        if(terminal) return false;
+        if(nullableNames.contains(getName())) return true;
+        if(singular && !nullableNames.contains(getName())) return false;
+        if(mainRule) {
+            if(subRules.stream().map(prod -> 
+                prod.stream().map(rule -> 
+                    rule.nullable(nullableNames)
+                ).reduce(true, (prev, next) -> prev && next)
+            ).reduce(false, (prev, next) -> prev || next)) {
+                nullableNames.add(getName());
+                return true;
+            } else {
+                return false;
+            }
+        } else if(!singular) {
+            if(subRules.stream().map(prod -> 
+                prod.stream().map(rule -> 
+                    rule.nullable(nullableNames)
+                ).reduce(true, (prev, next) -> prev && next)
+            ).reduce(false, (prev, next) -> prev || next)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            System.out.println("This does not match anything" + this);
+            return true;
         }
-        return false;
+    }
+    
+    
+
+    public boolean getNullable() {
+        return nullable;
+    }
+
+    public boolean containsEpsilon() {
+        return subRules.stream()
+                .map(LinkedList::getFirst)
+                .map(EPSILON::equals)
+                .reduce(false, (prev, next) -> prev || next);
     }
     
 
@@ -546,6 +630,7 @@ public class Rule {
                 while(currRule.size() > 1 && currRule.get(1).getName().equals(getName())) currRule.removeFirst();
             }
         }
+        subRules.removeIf(list -> list.size() == 0);
     }
 
     
@@ -676,20 +761,44 @@ public class Rule {
             });
         });
     }
+
+    public String getDebugName() {
+        if(this.equals(EPSILON)) return "EPSILON";
+        return getName();
+    }
     
     /**
      * Inserts toAdd at a random position on the RHS of this rule
      * Changes toAdd to be a minor rule if it is not
      */
 	public void extend(Rule toAdd) {
-        toAdd.mainRule = false;
+        if(toAdd.mainRule) {
+            toAdd.mainRule = false;
+            toAdd.singular = true;
+        }
+        // if(mainRule)System.out.println("Adding " + toAdd.getDebugName() + " to " + this + " SRSize " + subRules.size());
+        if(subRules.size()  == 0) {
+            System.err.println("Subrules size 0 " + this);
+        }
         int prodIndex = randInt(subRules.size());
         LinkedList<Rule> prod = subRules.get(prodIndex);
+        //If the selected production was epsilon leave it and add a new production
+        if(prod.getFirst().equals(EPSILON)) {
+            LinkedList<Rule> newProd = new LinkedList<Rule>();
+            newProd.add(toAdd);
+            subRules.add(newProd);
+            return;
+        }
         int ruleIndex = randInt(prod.size());
         Rule toShift = prod.get(ruleIndex);
+        // System.out.println(toShift.getDebugName() + " " + toShift.singular);
+        if(toShift.equals(EPSILON)) {
+            // System.out.println("Shifting epsilon " + toShift.singular);
+        }
         if(!toShift.singular) {
             toShift.extend(toAdd);
         } else {
+            // System.out.println("Adding " + toAdd + " at index " + ruleIndex + " in " + name + " shifting " + toShift.name);
             prod.add(ruleIndex, toAdd);
         }
     }
@@ -700,8 +809,22 @@ public class Rule {
         int ruleIndex = randInt(prod.size());
         Rule toShift = prod.get(ruleIndex);
         //half the time we just remove the whole combined rule
-        if(!toShift.singular && Math.random() < 1.0/toShift.getSubRules().get(0).size()) {
+        if(toShift.getSubRules().size() == 0) {
+            // System.out.println(toShift + " in " + this + " has no subrules ");
+        }
+        int toDiv = toShift.getSubRules().size() == 0 ? 1 : toShift.getSubRules().get(0).size();
+        if(!toShift.singular && Math.random() < 1.0/toDiv) {
+            if(toShift.getSubRules().get(0).size() == 1) {
+                if(toShift.getTotalProductions() == 2) {
+                    // System.out.println("Shit matched for " + toShift + " singular " + toShift.singular);
+                } else {
+                    // System.out.println("Shit did not match for " + toShift + " num prod " + toShift.getTotalProductions());
+                }
             toShift.reduce();
+            }
+            if(toShift.getSubRules().get(0).size() == 1) {
+                prod.set(ruleIndex, toShift.getSubRules().get(0).getFirst());
+            }
         } else {
             prod.remove(ruleIndex);
             if(prod.size() == 0) {
@@ -726,38 +849,39 @@ public class Rule {
      * @param newRuleNullable is newRule nullable in the context of the calling grammar
      */
 	public void replaceReferences(Rule oldRule, Rule newRule, boolean newRuleNullable) {
+        if(singular && !mainRule) return;
+        System.out.println("Replacing references to " + oldRule.getName() + " in " + this);
         for (int i = 0; i < subRules.size(); i++) {
             LinkedList<Rule> prod = subRules.get(i);
             for (int j = 0; j < prod.size(); j++) {
                 Rule currRule = prod.get(j);
                 if(currRule.equals(oldRule)) {
-                    currRule.name = newRule.name;
-                    if(newRuleNullable) {
-                        currRule.setIterative(false);
-                        currRule.setOptional(false);
-                    }
+                    prod.set(j,newRule.makeMinorCopy());
+                    prod.get(j).setIterative(currRule.iterative && !newRuleNullable);
+                    prod.get(j).setOptional(currRule.optional && !newRuleNullable);
                 } else {
                     currRule.replaceReferences(oldRule, newRule, newRuleNullable);
                 }
             }
         }
+        System.out.println("Finshed replace " + this);
     }
 
     /**
      * removes all references to toRemove
      */
 	public void removeReferences(String toRemoveName) {
+        // System.out.println("Removing references to " + toRemoveName + " in " + this);
         for (int i = 0; i < subRules.size(); i++) {
             LinkedList<Rule> prod = subRules.get(i);
-            for (int j = 0; j < prod.size(); j++) {
-                Rule currRule = prod.get(j);
-                if(currRule.name.equals(toRemoveName)) {
-                    prod.remove(j);
-                } else if(!currRule.singular) {
-                    currRule.removeReferences(toRemoveName);
-                }
-            }
+            prod.removeIf(rule -> rule.name.equals(toRemoveName));
+            prod.forEach(rule -> {
+                if(!rule.singular) rule.removeReferences(toRemoveName);
+                if(rule.getSubRules().size() == 0) rule.toRemove = true;
+            });
         }
+        subRules.removeIf(prod -> prod.size() == 0);
+        // System.out.println("Post removal " +  this);
     }
 
 
@@ -771,23 +895,23 @@ public class Rule {
         return out;
     }
 	public boolean containsInfLoop(ArrayList<Rule> parserRules, String touchedRules) {
-        System.out.println("Checking if " + getName() + " contains an infLoop touchedRules " + touchedRules);
-        System.out.println("SubRule Size " + subRules.size() + " prod sizes\n" + subRules.stream().map(list -> {
-            return list.toString() + " : " + list.size() + "\n";
-        }).collect(Collectors.joining()));
-        if(containsEpsilon()) {
-            System.out.println(name + " contains epsilon returning false singular " + singular);
-        }
+        // System.out.println("Checking if " + getName() + " contains an infLoop touchedRules " + touchedRules);
+        // System.out.println("SubRule Size " + subRules.size() + " prod sizes\n" + subRules.stream().map(list -> {
+            // return list.toString() + " : " + list.size() + "\n";
+        // }).collect(Collectors.joining()));
+        // if(containsEpsilon()) {
+        //     // System.out.println(name + " contains epsilon returning false singular " + singular);
+        // }
         if(containsEpsilon()) return false;
         if(touchedRules.contains(getName()) && !containsEpsilon()) return true;
         if(mainRule) touchedRules = touchedRules + "," + getName();
         for(LinkedList<Rule> prod : subRules) {
             boolean out = true;
             for(Rule rule : prod) {
-                System.out.println("Checking " + rule.getName());
+                // System.out.println("Checking " + rule.getName());
                 if(rule.singular) {
                     if(!rule.terminal) {
-                        System.out.println("Fetching " + rule.name + " from parserRules");
+                        // System.out.println("\n Fetching " + rule.name + " from \n" + prettyPrintRules(parserRules) + "\n");
                         Rule mainVer = parserRules.get(parserRules.indexOf(rule));
                         if(mainVer.containsInfLoop(parserRules, touchedRules)) return true;
                     }
@@ -799,7 +923,20 @@ public class Rule {
 
 
         return false;
-	}
+    }
+    
+
+    private String prettyPrintRules(List<Rule> rules) {
+        return rules.stream().map(Rule::toString).collect(Collectors.joining("\n"));
+    }
+
+    public Rule makeMinorCopy() {
+        Rule out = new Rule(this);
+        out.mainRule = false;
+        return out;
+    }
+
+    
 
     
 }

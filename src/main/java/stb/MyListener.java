@@ -20,9 +20,12 @@ https://stackoverflow.com/questions/45406853/whats-the-difference-between-antlr4
 public class MyListener implements ANTLRErrorListener {
     private LinkedList<Stack<String>> errors;
     String grammarName;
-    public MyListener(String grammarName){
+    public MyListener(){
         errors = new LinkedList<Stack<String>>();
-        this.grammarName = grammarName;
+    }
+
+    public void setGrammarName(String newName) {
+        grammarName = newName;
     }
     
     @Override
@@ -38,10 +41,6 @@ public class MyListener implements ANTLRErrorListener {
         errors.add(toAdd);
 
     }
-
-
-
-    
 
 
 

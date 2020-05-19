@@ -15,6 +15,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
@@ -24,6 +25,7 @@ import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.Tool;
 
 import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -69,6 +71,7 @@ public class Chelsea {
             DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
 
             dynamicClassCompiler.compile(new File(Constants.ANTLR_DIR));
+           
 
             hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR));
 
@@ -87,11 +90,18 @@ public class Chelsea {
             parserConstructor = parser.getConstructor(TokenStream.class);
 
         } catch (Exception e) {
-            System.err.println(e.getLocalizedMessage() + " for " + finName);
-            System.err.println(grammar);
-            System.err.println(hm.keySet());
-            removeCurr.removeGrammar();
+            e.printStackTrace(System.out);
+            if(hm == null) {
+                System.out.println("Looking for " +  myReader+"\n found");
+                 List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
+                System.out.println(files.stream().map(File::getName).collect(Collectors.joining("\n")));
+
+            } else {
+                System.out.println(grammar);
+                System.out.println(hm.keySet());
+            }
             
+            removeCurr.removeGrammar();
         }
     }
     /**
@@ -103,15 +113,17 @@ public class Chelsea {
      * @throws InstantiationException
      * @throws NoSuchMethodException
      */
-    public static HashMap<String, LinkedList<Stack<String>>> runTestcases(lamdaArg removeCurr) throws IOException, IllegalAccessException, InvocationTargetException,
+    public static int[] runTestcases(lamdaArg removeCurr, String testPath) throws IOException, IllegalAccessException, InvocationTargetException,
             InstantiationException, NoSuchMethodException {
+        int[] out = {0, 0};
         // Gettting a list of test cases from the database
-        HashMap<String,LinkedList<Stack<String>>> errors = new HashMap<String,LinkedList<Stack<String>>>();
-        try (Stream<Path> paths = Files.walk(Paths.get(Constants.TEST_DIR)).filter(Files::isRegularFile)) {
+
+        try (Stream<Path> paths = Files.walk(Paths.get(testPath)).filter(Files::isRegularFile)) {
             // System.out.println("Running " + paths.count() + " tests");
             paths.forEach(path -> {
                 String fileName = path.getFileName().toString();
                 // System.out.println("Testing " + fileName);
+                MyListener myListen = new MyListener();
                 try {
                     StringBuilder rawContent = new StringBuilder(Files.readString(path));
                     while (rawContent.indexOf("/*") != -1) {
@@ -129,8 +141,11 @@ public class Chelsea {
 
                     // Creating a new parser constructor instance using the lexer tokens
                     Parser parser = (Parser) parserConstructor.newInstance(tokens);
-                    MyListener testListen = new MyListener(parser.getGrammarFileName());
-                    parser.addErrorListener(testListen);
+                    
+                    myListen.setGrammarName(parser.getGrammarFileName());
+
+                    parser.addErrorListener(myListen);
+                    parser.setErrorHandler(new BailErrorStrategy());
                     // parser.setErrorHandler(new myErrorStrategy());
                     
                     // Begin parsing at the first rule of the grammar. In this case it was *program*
@@ -143,7 +158,8 @@ public class Chelsea {
                     // the rest of this function.
                     parseEntrypoint.invoke(parser);
                     
-                    LinkedList<Stack<String>> fileErrors = testListen.getErrors();
+                    // LinkedList<Stack<String>> fileErrors = myListen.getErrors();
+                    // System.out.println("\n\n\n\n" + fileErrors);
                     // if(fileErrors.isEmpty()) {
                     //     System.out.println(fileErrors);
                     //     System.err.println(myReader.getName() + " passes for " + content);
@@ -152,22 +168,24 @@ public class Chelsea {
                     //     System.err.println(myReader.getName() + " fails for " + content);
                     //     System.out.println(myReader.getName() + " fails for " + content);
                     // }
-                    removeDuplicates(fileErrors);
-                                        
-                    errors.put(fileName.toString(), fileErrors);
-
+                    // removeDuplicates(fileErrors);
+                    
+                    // errors.put(fileName.toString(), fileErrors);
+                    out[0]++;
+                    out[1]++;
+                    
                 } catch(NoSuchMethodException e) {
                     // System.err.println("No  such method exception " + e.getCause());
                     System.out.println("Removing " + myReader.getName() + " from grammar");
                     removeCurr.removeGrammar();
                 } catch (ParseCancellationException e) {
                     System.out.println("Parse cancelled for " + myReader.getName());
-                } catch (StackOverflowError e) {
-                    System.out.println("Stack overflow in chelsea " + errors.toString());
-                    e.printStackTrace(System.out);
-                    System.exit(1);
                 } catch (Exception e) {
-                    System.err.println("Exception lamda in Chelsea " + e.getCause());
+                    System.out.println("Exception lamda in Chelsea " + e.getCause() + "\n " + myReader);
+                    LinkedList<Stack<String>> fileErrors = myListen.getErrors();
+                    System.out.println("\n\n\n\n" + fileErrors);
+                    removeDuplicates(fileErrors);
+                    out[1]++;
                 }
             });
         } catch (Exception e) {
@@ -175,7 +193,7 @@ public class Chelsea {
             e.printStackTrace();
         }
         cleanDirectory(new File(Constants.ANTLR_DIR));
-        return errors;
+        return out;
 
     }
 
