@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -33,6 +34,7 @@ public class GrammarReader {
     private String grammarName;
     private ArrayList<Rule> parserRules = new ArrayList<Rule>();
     private ArrayList<Rule> terminalRules;
+    private List<String>  mutationConsiderations = new LinkedList<String>();
     private double posScore = 0.0;
     private double negScore = 0.0;
     private boolean remove = false;
@@ -80,6 +82,8 @@ public class GrammarReader {
         toCopy.parserRules.forEach(rule -> parserRules.add(new Rule(rule)));
         terminalRules = new ArrayList<Rule>();
         toCopy.terminalRules.forEach(rule -> terminalRules.add(new Rule(rule)));
+        toCopy.mutationConsiderations.forEach(mutationConsiderations::add);
+
         this.posScore = toCopy.posScore;
         this.negScore = toCopy.negScore;
     }
@@ -217,6 +221,11 @@ public class GrammarReader {
      */
     public void mutate() {
         if(parserRules.size() == 0) return;
+        Rule suggestedRule = parserRules.stream()
+                                        .filter(rule -> rule.getName().equals(mutationConsiderations.get(0)))
+                                        .collect(Collectors.toList())
+                                        .get(0);
+                                        
         int ruleIndex = randInt(parserRules.size());
         Rule toMutate = parserRules.get(ruleIndex);
         int productionIndex = randInt(toMutate.getTotalProductions());
@@ -262,8 +271,8 @@ public class GrammarReader {
     public void applyCrossover(GrammarReader toCrossover, outputLambda grammarOut) {
         LinkedList<Rule> otherList = toCrossover.getCrossoverRuleList();
         LinkedList<Rule> myList = getCrossoverRuleList();
-        grammarOut.output("Swapping " + myList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + " with " 
-        + otherList.stream().map(Rule::getName).collect(Collectors.joining(", ")));
+        // grammarOut.output("Swapping " + myList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + " with " 
+        // + otherList.stream().map(Rule::getName).collect(Collectors.joining(", ")));
         boolean toInsNull = toCrossover.nullable(otherList.getFirst().getName());
         boolean toSendNull = nullable(myList.getFirst().getName());
         toCrossover.applyCrossover(myList, otherList.getFirst(), toInsNull);
@@ -711,7 +720,7 @@ public class GrammarReader {
                 // System.out.println("Post grouping " + toAdd);
             }
 
-            if(Constants.MUTATE && Math.random() < Constants.P_M) {
+            if(Constants.MUTATE && Math.random() < Constants.calculatePM(posScore, negScore)) {
                 // System.out.println("Mutating " + toAdd);
                 toAdd.mutate();
                 if(toAdd.toRemove()) {

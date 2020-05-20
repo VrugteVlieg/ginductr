@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import javafx.application.Application;
@@ -159,41 +160,18 @@ public class App {
                 });
                 
     
-                Double[] scoreArr = evaluatedGrammars.keySet().stream()
+                List<Double> scoreList = evaluatedGrammars.keySet().stream()
                                     .sorted(Comparator.reverseOrder())
-                                    .toArray(Double[]::new);
+                                    .collect(Collectors.toList());
 
-                System.out.println("scoreArr " + Arrays.toString(scoreArr));
                 
                 //Add crossover grammars
-                double bestScore = scoreArr[0];
+                double bestScore = scoreList.get(0);
                 //Only start performing crossover if some decent grammar already exist
                 if(bestScore > 0.2) {
 
-                    //Calculate crossoverPop
-                    ArrayList<GrammarReader> crossoverPop = new ArrayList<GrammarReader>();
-                    double numScores = scoreArr.length;
-                    double maxIndex = numScores-1;
-                    ArrayList<GrammarReader> toConsider = new ArrayList<GrammarReader>();
-                    if(maxIndex % 2 == 0) {
-                        toConsider.addAll(evaluatedGrammars.get(scoreArr[(int)(maxIndex/2)]));
-                    } else {
-                        toConsider.addAll(evaluatedGrammars.get(scoreArr[(int)Math.floor(maxIndex/2)]));
-                        toConsider.addAll(evaluatedGrammars.get(scoreArr[(int)Math.ceil(maxIndex/2)]));
-                    }
-                    for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
-                        GrammarReader g1 = new GrammarReader(toConsider.remove(randInt(toConsider.size())));
-                        GrammarReader g2 = new GrammarReader(toConsider.remove(randInt(toConsider.size())));
-                        System.out.println("Performing crossover on " + g1 + " \nand\n" + g2);
-                        g1.applyCrossover(g2, runGrammarOutput);
-                        crossoverPop.add(g1);
-                        crossoverPop.add(g2);
-
-                    }
-
-                    //Run tests on crossoverPop
+                    ArrayList<GrammarReader> crossoverPop = performCrossOver(scoreList);
                     crossoverPop.forEach(grammar -> {
-                        runTests(grammar, Constants.POS_TEST_DIR, Constants.positiveScoring);
                         double outScore = grammar.getScore();
                         if(grammar.getPosScore() == 1.0) positiveGrammars.add(grammar);
                         if(grammar.getPosScore() == 1.0) grammarOutput.output("New positive grammar\n"  +  grammar);
@@ -203,9 +181,6 @@ public class App {
                             setBestGrammar(grammar);
                         }
                     });
-                    crossoverPop.removeIf(GrammarReader::toRemove);
-    
-                    
                     crossoverPop.forEach(grammar -> {
                         double currScore = grammar.getScore();
                         if(evaluatedGrammars.containsKey(currScore)){
@@ -216,11 +191,9 @@ public class App {
                             evaluatedGrammars.put(currScore,thisScoreList);
                         }
                     });
-
-                    scoreArr = evaluatedGrammars.keySet().stream()
+                    scoreList = evaluatedGrammars.keySet().stream()
                                     .sorted(Comparator.reverseOrder())
-                                    .toArray(Double[]::new);
-
+                                    .collect(Collectors.toList());
                 }
 
 
@@ -232,8 +205,8 @@ public class App {
     
                 while(true) {
                     if(grammarsToAdd == 0) break;
-                    for (int i = 0; i < scoreArr.length; i++) {
-                        LinkedList<GrammarReader> currList = evaluatedGrammars.get(scoreArr[i]);
+                    for (int i = 0; i < scoreList.size(); i++) {
+                        LinkedList<GrammarReader> currList = evaluatedGrammars.get(scoreList.get(i));
                         grammarsToAdd = Constants.POP_SIZE-myGrammars.size();
                         if(currList.size() <= grammarsToAdd) {
                             myGrammars.addAll(currList);
@@ -299,6 +272,26 @@ public class App {
             List<Double> scoreList = evaluatedGrammars.keySet().stream()
                                 .sorted(Comparator.reverseOrder())
                                 .collect(Collectors.toList());
+                    
+                                
+
+            //Crossover
+            ArrayList<GrammarReader> crossoverPop = performCrossOver(scoreList);
+            crossoverPop.forEach(grammar -> runTests(grammar, Constants.POS_TEST_DIR, Constants.positiveScoring));
+            crossoverPop.removeIf(grammar -> grammar.getPosScore() != 1.0 || grammar.toRemove());
+            crossoverPop.forEach(grammar -> {
+                double currScore = grammar.getScore();
+                if(evaluatedGrammars.containsKey(currScore)){
+                    evaluatedGrammars.get(currScore).add(grammar);
+                } else {
+                    LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
+                    thisScoreList.add(grammar);
+                    evaluatedGrammars.put(currScore,thisScoreList);
+                }
+            });
+            scoreList = evaluatedGrammars.keySet().stream()
+                                                  .sorted(Comparator.reverseOrder())
+                                                  .collect(Collectors.toList());
             
             
             myGrammars.clear();
@@ -340,8 +333,36 @@ public class App {
 
     }
 
-    public static void positiveTesting() {
-       
+    public static ArrayList<GrammarReader> performCrossOver(List<Double> scoreArr) {
+        //Calculate crossoverPop
+        ArrayList<GrammarReader> crossoverPop = new ArrayList<GrammarReader>();
+        double numScores = scoreArr.size();
+        if(numScores == 0) return crossoverPop;
+        double maxIndex = numScores-1;
+        ArrayList<GrammarReader> toConsider = new ArrayList<GrammarReader>();
+        if(maxIndex % 2 == 0) {
+            toConsider.addAll(evaluatedGrammars.get(scoreArr.get((int)(maxIndex/2))));
+        } else {
+            toConsider.addAll(evaluatedGrammars.get(scoreArr.get((int)Math.floor(maxIndex/2))));
+            toConsider.addAll(evaluatedGrammars.get(scoreArr.get((int)Math.ceil(maxIndex/2))));
+        }
+        for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
+            GrammarReader g1 = new GrammarReader(toConsider.remove(randInt(toConsider.size())));
+            GrammarReader g2 = new GrammarReader(toConsider.remove(randInt(toConsider.size())));
+            System.out.println("Performing crossover on " + g1 + " \nand\n" + g2);
+            g1.applyCrossover(g2, runGrammarOutput);
+            crossoverPop.add(g1);
+            crossoverPop.add(g2);
+
+        }
+
+        //Run tests on crossoverPop
+        crossoverPop.forEach(grammar -> {
+            runTests(grammar, Constants.POS_TEST_DIR, Constants.positiveScoring);
+        });
+        crossoverPop.removeIf(GrammarReader::toRemove);
+        return crossoverPop;
+
     }
 
     public static int randInt(int bound) {
