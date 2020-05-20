@@ -20,7 +20,7 @@ public class Rule {
     private boolean nullable;
     private int depth = 0;
     private String ruleText;
-    private boolean toRemove = false;;
+    private boolean toRemove = false;
 
     public static final Rule EPSILON =  new Rule(" ",1);
     
@@ -28,7 +28,7 @@ public class Rule {
     public static Rule EPSILON() {
         Rule out = new Rule(" ",1);
 
-        return new Rule(" ",1);
+        return out;
     }
 
     /**
@@ -36,17 +36,10 @@ public class Rule {
      * @param toCopy
      */
     public Rule(Rule toCopy) {
-        // System.out.println("Copying " + (toCopy.equals(EPSILON) ? " EPSILON " : toCopy));
         try {
             this.name = toCopy.name;
             this.subRules = new ArrayList<LinkedList<Rule>>();
-            if(toCopy.equals(EPSILON)) {
-                // System.out.println("Subrules" +  toCopy.subRules.toString());
-            }
             for(LinkedList<Rule> prod : toCopy.subRules) {
-                if(toCopy.equals(EPSILON)) {
-                    // System.out.println("prod " +  toCopy.subRules.toString());
-                }
                 LinkedList<Rule> newList = new LinkedList<Rule>();
                 prod.forEach(rule -> {
                     newList.add(new Rule(rule));
@@ -61,9 +54,7 @@ public class Rule {
             this.depth = toCopy.depth;
             this.ruleText = toCopy.ruleText;
         } catch (NullPointerException e) {
-            // System.out.println("Null pointer copying rule \n" + toCopy + " " + toCopy.equals(EPSILON) + " singular " + toCopy.singular);
             e.printStackTrace(System.out);
-            // System.exit(1);
         }
     }
     /**
@@ -99,9 +90,6 @@ public class Rule {
             singular = !ruleText.contains(" ");
             subRules = new ArrayList<LinkedList<Rule>>();
         } else {
-            // LinkedList<Rule> start = new LinkedList<Rule>();
-            // start.add(EPSILON);
-            // subRules.add(start);
             this.name = ruleText;
             singular = true;
         }
@@ -111,7 +99,6 @@ public class Rule {
         this.mainRule = false;
         this.depth = depth;
 
-        // System.out.println(singular ? "it is singular " : " it is not singular");
         optional = ruleText.charAt(ruleText.length()-1) == '?' || ruleText.charAt(ruleText.length()-1) == '*';
         iterative = ruleText.charAt(ruleText.length()-1) == '+' || ruleText.charAt(ruleText.length()-1) == '*';
         
@@ -142,7 +129,6 @@ public class Rule {
         this.ruleText = ruleText;
         name = name.trim();
         this.name = name;
-        //This used to be true, might create a cascading effect somewhere
         singular = true;
         printOut("New major rule " + name + " : " + ruleText);
         mainRule = true;
@@ -361,7 +347,7 @@ public class Rule {
                 int counterPre = counter;
                 if(counterPre == index-1) {
                     subRules.get(subSetIndex).set(subRuleIndex, test);
-                    if(!mainRule)resetName();
+                    // if(!mainRule)resetName();
                     return;
                 } else {
                     counter += subRule.getTotalProductions();
@@ -392,13 +378,11 @@ public class Rule {
         if(index == 0) return this;
         int counter = 0;
         int subSetIndex = 0;
-        // if(mainRule)System.out.println("Calling get production " + index + " on " + this);
         for(LinkedList<Rule> subSet : subRules) {
             int subRuleIndex = 0;
             for(Rule subRule : subSet) {
                 int counterPre = counter;
                 if(counterPre == index-1) {
-                    // printOut("Setting " + subRules.get(subSetIndex).get(subRuleIndex) + " to " + test.name);
                     return subRules.get(subSetIndex).get(subRuleIndex);
                 } else {
                     counter += subRule.getTotalProductions();
@@ -415,22 +399,7 @@ public class Rule {
         return new Rule("Default", "Default");
 
     }
-    /**
-     * Recalculates the name of the rule, used after the content of the subRules Arraylist gets changed for minor rules
-     * //TODO figure out if this should actually exist or not
-     */
-    public void resetName() {
-        StringBuilder out = new StringBuilder();
-        subRules.forEach(subProd -> {
-            subProd.forEach(rule -> {
-                out.append(rule + " ");
-            });
-        });
-        printOut("Name set to " + out);
-        this.name = out.toString().trim();
-        this.ruleText = this.toString();
-    }
-
+    
     /**
      *  Returns the total number productions that can be changed by a mutation
      *  Expands out bracketed rules to allow selection of either the whole rule or any of its subrules
@@ -497,66 +466,6 @@ public class Rule {
         return reachables;
     }
 
-
-    /**
-     * Determines if this rule is nullable in the context of a given set of Parserrules
-     * @param parserRules
-     * @param checkedRules
-     * @return
-     */
-    private boolean nullable(ArrayList<Rule> parserRules, String checkedRules) {
-
-        // System.out.println("Checking nullable of " + getName() + " terminal " + terminal + " checked " + checkedRules);
-        try {
-            if(terminal || checkedRules.contains(getName())) return false;
-            if(this.equals(EPSILON) || isOptional()) return true;
-            
-            if(!singular && !mainRule) { //composed rule (term factor)
-                // System.out.println(getName() + " is not singular consists of " + subRules.get(0));
-                if(subRules.size() == 0) {
-                    // System.out.println("No subrules " + this);
-                }
-                LinkedList<Rule> subProds = subRules.get(0);
-                for (Rule rule : subProds) {
-                    if(!rule.nullable(parserRules,checkedRules)) return false;
-                }
-                return true;
-            } else if(!mainRule) { //non terminal on the RHS of a rule
-                // System.out.println("Fetching main version of " + this.name + "\nin\n"  + prettyPrintRules(parserRules));
-                try {
-                    Rule mainVersion = parserRules.get(parserRules.indexOf(this));    
-                    return mainVersion.nullable(parserRules,checkedRules);
-                } catch (NullPointerException e) {
-                    // System.out.println("NullPointer " + this.getName() + " in " + parserRules.stream().map(Rule::toString).collect(Collectors.joining("\n")));
-                    e.printStackTrace();
-                    return true;
-                }
-            } else {    //Main rule
-                // System.out.println(this + " is a main rule, checking nullable");
-                checkedRules = checkedRules + ","  + getName();
-                if(containsEpsilon()) return true;
-                
-                for(LinkedList<Rule> prod : subRules) {
-                    boolean nullable = true;
-                    for(Rule rule : prod) {
-                        nullable &= rule.nullable(parserRules,checkedRules);
-                    }
-                    if(nullable) return true;
-                }
-                return false;
-            }
-        } catch (Exception e) {
-            subRules.clear(); 
-            subRules.add(new LinkedList<Rule>());
-            subRules.get(0).add(makeMinorCopy());
-            return false;
-        }
-    }
-    
-    public boolean nullable(ArrayList<Rule> parserRules) {
-        return nullable(parserRules, "");
-    }
-
     public boolean nullable(LinkedList<String> nullableNames) {
         if(terminal) return false;
         if(nullableNames.contains(getName())) return true;
@@ -583,7 +492,6 @@ public class Rule {
                 return false;
             }
         } else {
-            System.out.println("This does not match anything" + this);
             return true;
         }
     }
@@ -603,7 +511,6 @@ public class Rule {
     
 
     public void setSubRules(ArrayList<LinkedList<Rule>> toSet) {
-        // System.out.println("Changing rules of " + this + " to " + toSet);
         subRules.clear();
         toSet.forEach(prod -> {
             LinkedList<Rule> newProd = new LinkedList<Rule>();
@@ -650,7 +557,6 @@ public class Rule {
     }
 
 	public void removeEpsilon() {
-        // System.out.println("Removing Epsilon from " + this);
         subRules.removeIf(prod -> prod.getFirst().equals(EPSILON));
 	}
     /**
@@ -665,16 +571,12 @@ public class Rule {
         int startIndex = prodToGroup.size() == 2 ? 0 : randInt(prodToGroup.size()-2);
         int endIndex = startIndex + randInt(prodToGroup.size() - startIndex - 1) + 1;
         List<Rule> toRemove = prodToGroup.subList(startIndex, endIndex+1);
-        // System.out.println("Making a new rule from " + toRemove);
         Rule newRule = new Rule(toRemove,depth+1);
-        // System.out.println(getName() + " goes from \n" + subRules);
-        // System.out.println("prodToGroup " + prodToGroup + " start " + startIndex + " end " + endIndex);
         for (int i = startIndex; i < endIndex; i++) {
             prodToGroup.remove(startIndex);
         }
-        // prodToGroup.removeAll(toRemove);
+
         prodToGroup.set(startIndex, newRule);
-        // System.out.println("To " + subRules);
     }
 
     public boolean canGroup() {
@@ -690,7 +592,6 @@ public class Rule {
      */
     public void unGroupProductions() {
         if(this.equals(EPSILON)) return;
-        // System.out.println("Running ungroup on " + this);
         LinkedList<Rule> expandables = new LinkedList<Rule>();
         LinkedList<int[]> indices = new LinkedList<int[]>();
         int prodIndex = 0;
@@ -711,17 +612,14 @@ public class Rule {
         int[] index = indices.get(toExpandIndex);
         
         //50% of the time we try to expand a subrule, if there are no expandable subrules ungroup will return false and the not will become true
-        if(!(Math.random() < 1.0 && toExpand.canUngroup())) {
-            // System.out.println("Expanding " + toExpand);
+        if(!(Math.random() < 0.5 && toExpand.canUngroup())) {
             List<Rule> toInsert = toExpand.subRules.get(0);
             LinkedList<Rule> prod = subRules.get(index[0]);
             prod.remove(index[1]);
             Collections.reverse(toInsert);
             toInsert.forEach(rule -> prod.add(index[1],rule));
             subRules.set(index[0], prod);
-            if(!mainRule) resetName();
         }
-        // System.out.println("New rule " + this);
     }
 
     public boolean canUngroup() {
@@ -744,18 +642,16 @@ public class Rule {
      * @param toClean
      */
 	public void cleanReferences(Rule toClean) {
-        // System.out.println("Cleaning refrences to " + toClean.getName() + " in " + this);
         if(singular && this.equals(toClean)) {
-            // System.out.println("Making " +  this + " mandatory");
             setOptional(false);
+            setIterative(false);
             return;
         }
         subRules.forEach(prod -> {
             prod.forEach(rule -> {
-                // System.out.println("Checking " + rule.getName());
                 if(rule.getName().contains(toClean.getName())) {
-                    // if(rule.isOptional()) System.out.println("Making " + rule + " mandatory due to it containg " + toClean.getName());
-                    if(rule.isOptional()) rule.setOptional(false);
+                    rule.setIterative(false);
+                    rule.setOptional(false);
                     rule.cleanReferences(toClean);
                 }
             });
@@ -776,10 +672,7 @@ public class Rule {
             toAdd.mainRule = false;
             toAdd.singular = true;
         }
-        // if(mainRule)System.out.println("Adding " + toAdd.getDebugName() + " to " + this + " SRSize " + subRules.size());
-        if(subRules.size()  == 0) {
-            System.err.println("Subrules size 0 " + this);
-        }
+
         int prodIndex = randInt(subRules.size());
         LinkedList<Rule> prod = subRules.get(prodIndex);
         //If the selected production was epsilon leave it and add a new production
@@ -791,14 +684,10 @@ public class Rule {
         }
         int ruleIndex = randInt(prod.size());
         Rule toShift = prod.get(ruleIndex);
-        // System.out.println(toShift.getDebugName() + " " + toShift.singular);
-        if(toShift.equals(EPSILON)) {
-            // System.out.println("Shifting epsilon " + toShift.singular);
-        }
+        
         if(!toShift.singular) {
             toShift.extend(toAdd);
         } else {
-            // System.out.println("Adding " + toAdd + " at index " + ruleIndex + " in " + name + " shifting " + toShift.name);
             prod.add(ruleIndex, toAdd);
         }
     }
@@ -809,18 +698,10 @@ public class Rule {
         int ruleIndex = randInt(prod.size());
         Rule toShift = prod.get(ruleIndex);
         //half the time we just remove the whole combined rule
-        if(toShift.getSubRules().size() == 0) {
-            // System.out.println(toShift + " in " + this + " has no subrules ");
-        }
         int toDiv = toShift.getSubRules().size() == 0 ? 1 : toShift.getSubRules().get(0).size();
         if(!toShift.singular && Math.random() < 1.0/toDiv) {
             if(toShift.getSubRules().get(0).size() == 1) {
-                if(toShift.getTotalProductions() == 2) {
-                    // System.out.println("Shit matched for " + toShift + " singular " + toShift.singular);
-                } else {
-                    // System.out.println("Shit did not match for " + toShift + " num prod " + toShift.getTotalProductions());
-                }
-            toShift.reduce();
+                toShift.reduce();
             }
             if(toShift.getSubRules().get(0).size() == 1) {
                 prod.set(ruleIndex, toShift.getSubRules().get(0).getFirst());
@@ -850,7 +731,6 @@ public class Rule {
      */
 	public void replaceReferences(Rule oldRule, Rule newRule, boolean newRuleNullable) {
         if(singular && !mainRule) return;
-        System.out.println("Replacing references to " + oldRule.getName() + " in " + this);
         for (int i = 0; i < subRules.size(); i++) {
             LinkedList<Rule> prod = subRules.get(i);
             for (int j = 0; j < prod.size(); j++) {
@@ -864,14 +744,12 @@ public class Rule {
                 }
             }
         }
-        System.out.println("Finshed replace " + this);
     }
 
     /**
      * removes all references to toRemove
      */
 	public void removeReferences(String toRemoveName) {
-        // System.out.println("Removing references to " + toRemoveName + " in " + this);
         for (int i = 0; i < subRules.size(); i++) {
             LinkedList<Rule> prod = subRules.get(i);
             prod.removeIf(rule -> rule.name.equals(toRemoveName));
@@ -881,7 +759,6 @@ public class Rule {
             });
         }
         subRules.removeIf(prod -> prod.size() == 0);
-        // System.out.println("Post removal " +  this);
     }
 
 
@@ -895,23 +772,13 @@ public class Rule {
         return out;
     }
 	public boolean containsInfLoop(ArrayList<Rule> parserRules, String touchedRules) {
-        // System.out.println("Checking if " + getName() + " contains an infLoop touchedRules " + touchedRules);
-        // System.out.println("SubRule Size " + subRules.size() + " prod sizes\n" + subRules.stream().map(list -> {
-            // return list.toString() + " : " + list.size() + "\n";
-        // }).collect(Collectors.joining()));
-        // if(containsEpsilon()) {
-        //     // System.out.println(name + " contains epsilon returning false singular " + singular);
-        // }
         if(containsEpsilon()) return false;
         if(touchedRules.contains(getName()) && !containsEpsilon()) return true;
         if(mainRule) touchedRules = touchedRules + "," + getName();
         for(LinkedList<Rule> prod : subRules) {
-            boolean out = true;
             for(Rule rule : prod) {
-                // System.out.println("Checking " + rule.getName());
                 if(rule.singular) {
                     if(!rule.terminal) {
-                        // System.out.println("\n Fetching " + rule.name + " from \n" + prettyPrintRules(parserRules) + "\n");
                         Rule mainVer = parserRules.get(parserRules.indexOf(rule));
                         if(mainVer.containsInfLoop(parserRules, touchedRules)) return true;
                     }

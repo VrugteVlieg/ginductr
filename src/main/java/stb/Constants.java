@@ -1,10 +1,5 @@
 package stb;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Stack;
-
 public class Constants {
         
 
@@ -18,6 +13,8 @@ public class Constants {
     public static final String CURR_Terminals_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
     public static final boolean DEBUG = false;
     public static final boolean USE_GUI = true;
+    private static  double P_C_MIN = 0;
+    private static  double P_C_MAX = 0;
 
 
     public static double P_CHANGE_RULE_COUNT = 0.6; //P to add or remove a rule from a grammar
@@ -30,8 +27,7 @@ public class Constants {
     public static double P_OPTIONAL = 0.55;  //P to make a symbol optional
     
     public static double P_C = 0.65; // P to apply crossover
-    public static double P_C_MIN = 0.4; // P to apply crossover
-    public static double P_C_MAX = 0.6; // P to apply crossover
+    public static int NUM_CROSSOVER_PER_GEN = 5;
 
     public static double P_G = 0.4;   // P to group/ungroup symbols on the RHS
     public static double P_GROUP = 0.5;   // P to group symbols

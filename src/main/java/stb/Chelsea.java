@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -234,7 +233,6 @@ public class Chelsea {
         assert directory.isDirectory();
         List<File> files = getDirectoryFiles(directory);
         for (int i = 0; i < files.size(); i++) {
-            String fileName = files.get(i).getName();
             files.get(i).delete();
         }
     }

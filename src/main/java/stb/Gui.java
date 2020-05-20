@@ -1,80 +1,62 @@
 package stb;
 
-import java.io.File;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 
 import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.geometry.Insets;
+
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.Border;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import javafx.scene.Node;
 import javafx.stage.StageStyle;
-import javafx.concurrent.Task;
 
 public class Gui extends Application {
 
-    
     @Override
     public void start(Stage stage) {
         stage.setTitle("gInferrer");
         stage.setWidth(1200);
         stage.setHeight(575);
         stage.initStyle(StageStyle.DECORATED);
-        
+
         TabPane cont = new TabPane();
         cont.setStyle("-fx-font-size:  16;");
         Tab testTab = new Tab("Example", exampleThing());
-        Tab settingsTab = new Tab("Settings",settingsThing(stage));
+        Tab settingsTab = new Tab("Settings", settingsThing(stage));
         Tab runTab = new Tab("Run", runScreen());
-        Arrays.asList(testTab,runTab,settingsTab).forEach(t -> cont.getTabs().add(t));
-        
+        Arrays.asList(testTab, runTab, settingsTab).forEach(t -> cont.getTabs().add(t));
+
         Scene mainScene = new Scene(cont);
         stage.setScene(mainScene);
         stage.show();
         App.loadStartGrammar();
 
-
     }
 
-    public VBox  settingsThing(Stage primStage) {
+    public VBox settingsThing(Stage primStage) {
         VBox out = new VBox();
-        out.setStyle(
-            "-fx-alignment: center;"
-        );
+        out.setStyle("-fx-alignment: center;");
         Button changeOutputDir = new Button("change");
         changeOutputDir.setOnAction(event -> {
             DirectoryChooser newDir = new DirectoryChooser();
             Constants.setAntlrDir(newDir.showDialog(primStage).getAbsolutePath());
             System.out.println("Changing outputDir to " + Constants.ANTLR_DIR);
         });
-        HBox outputDirBox = new HBox(new Label("outputDir: " + Constants.ANTLR_DIR),
-            changeOutputDir);
-        
+        HBox outputDirBox = new HBox(new Label("outputDir: " + Constants.ANTLR_DIR), changeOutputDir);
+
         outputDirBox.setSpacing(10.0);
-        
+
         out.getChildren().add(outputDirBox);
         out.getChildren().add(mutationToggle());
-        
-        
-
 
         return out;
     }
@@ -88,11 +70,11 @@ public class Gui extends Application {
         TextArea logOutput = new TextArea();
         outputLambda logOut = (String toLog) -> logOutput.appendText(toLog + "\n");
         App.setLogOut(logOut);
-        VBox consoleArea = new VBox(new Label("Output"),logOutput);
+        VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
         TextArea grammarOutput = new TextArea();
         outputLambda grammarOut = (String toLog) -> {
-            if(toLog.equals("clear")) {
+            if (toLog.equals("clear")) {
                 grammarOutput.setText("");
             } else {
                 grammarOutput.appendText(toLog + "\n");
@@ -116,11 +98,11 @@ public class Gui extends Application {
         TextArea logOutput = new TextArea();
         outputLambda logOut = (String toLog) -> logOutput.appendText(toLog + "\n");
         App.setRunLogOutput(logOut);
-        VBox consoleArea = new VBox(new Label("Output"),logOutput);
+        VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
         TextArea grammarOutput = new TextArea();
         outputLambda grammarOut = (String toLog) -> grammarOutput.appendText(toLog + "\n");
-        btnRun.setOnAction(event -> backGroundProcess(logOut,grammarOut).start());
+        btnRun.setOnAction(event -> backGroundProcess(logOut, grammarOut).start());
         App.setRunGrammarOutput(grammarOut);
         grammarOutput.setMinWidth(600);
         greaterContainer.getChildren().add(mutationInterface);
@@ -128,7 +110,6 @@ public class Gui extends Application {
         return greaterContainer;
 
     }
-
 
     public HBox testThing() {
         HBox greaterContainer = new HBox();
@@ -157,19 +138,18 @@ public class Gui extends Application {
         Button heuristic = new Button("heuristic");
         heuristic.setOnAction(event -> App.demoHeuristic());
         Button crossover = new Button("crossover");
-        heuristic.setOnAction(event -> App.demoCrossover());
-        List<Button> btns = Arrays.asList(changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic);
-        VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic);
+        crossover.setOnAction(event -> App.demoCrossover());
+        List<Button> btns = Arrays.asList(changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic, crossover);
+        VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic, crossover);
         out.setStyle("-fx-padding: 16;-fx-border-color: black;");
         out.setSpacing(5);
-        
-        
+
         return out;
     }
+
     public VBox mutationToggle() {
         Label heading = new Label("Toggle mutations");
         heading.setStyle("-fx-font-weight: bold;");
-
 
         HBox changeRuleCount = new HBox();
         changeRuleCount.setSpacing(2.0);
@@ -189,8 +169,8 @@ public class Gui extends Application {
         TextField txfPSymbolChange = new TextField(Constants.getP_CHANGE_SYMBOL_COUNT() + "");
         Label lblAddSymb = new Label("\tpAddSymb: ");
         TextField txfPAddSymb = new TextField(Constants.getP_ADD_SYMBOL() + "");
-        changeSymbolCount.getChildren().addAll(changeSymbolCountBox, lblPSymbolCount, txfPSymbolChange, lblAddSymb, txfPAddSymb);
-
+        changeSymbolCount.getChildren().addAll(changeSymbolCountBox, lblPSymbolCount, txfPSymbolChange, lblAddSymb,
+                txfPAddSymb);
 
         HBox changeGroup = new HBox();
         changeGroup.setSpacing(2.0);
@@ -201,7 +181,6 @@ public class Gui extends Application {
         TextField txfPGroup = new TextField(Constants.getP_GROUP() + "");
         changeGroup.getChildren().addAll(changeGroupBox, lblPGroup, txfPGroup);
 
-        
         HBox changeSymbMutation = new HBox();
         changeSymbMutation.setSpacing(2.0);
         CheckBox changeSymbMutationBox = new CheckBox("Symbol Mutation");
@@ -210,9 +189,7 @@ public class Gui extends Application {
         Label lblPSymb = new Label("\tpSymbMutation: ");
         TextField txfPSymb = new TextField(Constants.getP_M() + "");
         changeSymbMutation.getChildren().addAll(changeSymbMutationBox, lblPSymb, txfPSymb);
-        
 
-       
         HBox changeHeuristic = new HBox();
         changeHeuristic.setSpacing(2.0);
         CheckBox changeHeuristicBox = new CheckBox("Heuristic");
@@ -232,23 +209,18 @@ public class Gui extends Application {
         TextField txfCrossMin = new TextField(Constants.getP_C_MIN() + "");
         Label lblPCrossTo = new Label(" to ");
         TextField txfCrossMax = new TextField(Constants.getP_C_MAX() + "");
-        changeCrossover.getChildren().addAll(changeCrossoverBox, lblPCrossover, txfPCross, lblCrossMin, txfCrossMin, lblPCrossTo, txfCrossMax);
-
+        changeCrossover.getChildren().addAll(changeCrossoverBox, lblPCrossover, txfPCross, lblCrossMin, txfCrossMin,
+                lblPCrossTo, txfCrossMax);
 
         Button btnSave = new Button("Save");
-        
 
-
-        
-        VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, changeSymbMutation, changeHeuristic, changeCrossover, btnSave);
+        VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, changeSymbMutation, changeHeuristic,
+                changeCrossover, btnSave);
         out.setStyle("-fx-padding: 16;-fx-border-color: black;");
         out.setSpacing(5);
-        
-        
+
         return out;
     }
-
-    
 
     public VBox settingsContainer(List<Button> comps) {
         VBox out = new VBox();
@@ -265,7 +237,7 @@ public class Gui extends Application {
         Thread taskThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                Thread demoThread = new Thread(){
+                Thread demoThread = new Thread() {
                     public void run() {
                         App.demoMainProgram();
                     }
@@ -277,25 +249,23 @@ public class Gui extends Application {
                 // grammarOut.output(reportedBest.toString());
                 // Platform.runLater(new Runnable() {
 
-                //   @Override
-                //   public void run() {
-                //       logOut.output("awe bru");
-                //     if(App.hasNewBest()) {
-                //         grammarOut.output(reportedBest.toString());
-                //     }
+                // @Override
+                // public void run() {
+                // logOut.output("awe bru");
+                // if(App.hasNewBest()) {
+                // grammarOut.output(reportedBest.toString());
+                // }
 
-                //     if(App.hasNewRunMessage()) {
-                //         logOut.output(App.getMessage());
-                //     }
+                // if(App.hasNewRunMessage()) {
+                // logOut.output(App.getMessage());
+                // }
 
-                //     logOut.output(App.numGrammarsEvalled() + "");
-                //   }
+                // logOut.output(App.numGrammarsEvalled() + "");
+                // }
                 // });
             }
-          });
-          return taskThread;
+        });
+        return taskThread;
     }
-
-    
 
 }
