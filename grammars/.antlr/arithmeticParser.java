@@ -1,4 +1,4 @@
-// Generated from /home/jaco/Code/honsProject/hons/grammars/arithmetic.g4 by ANTLR 4.7.1
+// Generated from /home/jaco/Code/honsProj/grammars/arithmetic.g4 by ANTLR 4.7.1
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
@@ -16,19 +16,18 @@ public class arithmeticParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		T__0=1, T__1=2, Digit=3, Mulop=4, Addop=5, WS=6;
+		LPAR=1, RPAR=2, Digit=3, Mulop=4, Addop=5;
 	public static final int
-		RULE_program = 0, RULE_expression = 1, RULE_term = 2, RULE_factor = 3, 
-		RULE_constant = 4;
+		RULE_expression = 0, RULE_term = 1, RULE_factor = 2, RULE_constant = 3;
 	public static final String[] ruleNames = {
-		"program", "expression", "term", "factor", "constant"
+		"expression", "term", "factor", "constant"
 	};
 
 	private static final String[] _LITERAL_NAMES = {
 		null, "'('", "')'", "'0'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, "Digit", "Mulop", "Addop", "WS"
+		null, "LPAR", "RPAR", "Digit", "Mulop", "Addop"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -79,40 +78,6 @@ public class arithmeticParser extends Parser {
 		super(input);
 		_interp = new ParserATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
 	}
-	public static class ProgramContext extends ParserRuleContext {
-		public ExpressionContext expression() {
-			return getRuleContext(ExpressionContext.class,0);
-		}
-		public TerminalNode EOF() { return getToken(arithmeticParser.EOF, 0); }
-		public ProgramContext(ParserRuleContext parent, int invokingState) {
-			super(parent, invokingState);
-		}
-		@Override public int getRuleIndex() { return RULE_program; }
-	}
-
-	public final ProgramContext program() throws RecognitionException {
-		ProgramContext _localctx = new ProgramContext(_ctx, getState());
-		enterRule(_localctx, 0, RULE_program);
-		try {
-			enterOuterAlt(_localctx, 1);
-			{
-			setState(10);
-			expression();
-			setState(11);
-			match(EOF);
-			}
-		}
-		catch (RecognitionException re) {
-			_localctx.exception = re;
-			_errHandler.reportError(this, re);
-			_errHandler.recover(this, re);
-		}
-		finally {
-			exitRule();
-		}
-		return _localctx;
-	}
-
 	public static class ExpressionContext extends ParserRuleContext {
 		public List<TermContext> term() {
 			return getRuleContexts(TermContext.class);
@@ -132,26 +97,26 @@ public class arithmeticParser extends Parser {
 
 	public final ExpressionContext expression() throws RecognitionException {
 		ExpressionContext _localctx = new ExpressionContext(_ctx, getState());
-		enterRule(_localctx, 2, RULE_expression);
+		enterRule(_localctx, 0, RULE_expression);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(13);
+			setState(8);
 			term();
-			setState(18);
+			setState(13);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			while (_la==Addop) {
 				{
 				{
-				setState(14);
+				setState(9);
 				match(Addop);
-				setState(15);
+				setState(10);
 				term();
 				}
 				}
-				setState(20);
+				setState(15);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
@@ -187,26 +152,26 @@ public class arithmeticParser extends Parser {
 
 	public final TermContext term() throws RecognitionException {
 		TermContext _localctx = new TermContext(_ctx, getState());
-		enterRule(_localctx, 4, RULE_term);
+		enterRule(_localctx, 2, RULE_term);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(21);
+			setState(16);
 			factor();
-			setState(26);
+			setState(21);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			while (_la==Mulop) {
 				{
 				{
-				setState(22);
+				setState(17);
 				match(Mulop);
-				setState(23);
+				setState(18);
 				factor();
 				}
 				}
-				setState(28);
+				setState(23);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
@@ -227,9 +192,11 @@ public class arithmeticParser extends Parser {
 		public ConstantContext constant() {
 			return getRuleContext(ConstantContext.class,0);
 		}
+		public TerminalNode LPAR() { return getToken(arithmeticParser.LPAR, 0); }
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
+		public TerminalNode RPAR() { return getToken(arithmeticParser.RPAR, 0); }
 		public FactorContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -238,27 +205,34 @@ public class arithmeticParser extends Parser {
 
 	public final FactorContext factor() throws RecognitionException {
 		FactorContext _localctx = new FactorContext(_ctx, getState());
-		enterRule(_localctx, 6, RULE_factor);
+		enterRule(_localctx, 4, RULE_factor);
 		try {
-			setState(34);
+			setState(30);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case Digit:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(29);
+				setState(24);
 				constant();
 				}
 				break;
-			case T__0:
+			case LPAR:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(30);
-				match(T__0);
-				setState(31);
+				setState(25);
+				match(LPAR);
+				setState(26);
 				expression();
-				setState(32);
-				match(T__1);
+				setState(27);
+				match(RPAR);
+				}
+				break;
+			case RPAR:
+			case Mulop:
+			case Addop:
+				enterOuterAlt(_localctx, 3);
+				{
 				}
 				break;
 			default:
@@ -289,24 +263,24 @@ public class arithmeticParser extends Parser {
 
 	public final ConstantContext constant() throws RecognitionException {
 		ConstantContext _localctx = new ConstantContext(_ctx, getState());
-		enterRule(_localctx, 8, RULE_constant);
+		enterRule(_localctx, 6, RULE_constant);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(36);
+			setState(32);
 			match(Digit);
-			setState(40);
+			setState(36);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			while (_la==Digit) {
 				{
 				{
-				setState(37);
+				setState(33);
 				match(Digit);
 				}
 				}
-				setState(42);
+				setState(38);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
@@ -324,18 +298,18 @@ public class arithmeticParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\b.\4\2\t\2\4\3\t"+
-		"\3\4\4\t\4\4\5\t\5\4\6\t\6\3\2\3\2\3\2\3\3\3\3\3\3\7\3\23\n\3\f\3\16\3"+
-		"\26\13\3\3\4\3\4\3\4\7\4\33\n\4\f\4\16\4\36\13\4\3\5\3\5\3\5\3\5\3\5\5"+
-		"\5%\n\5\3\6\3\6\7\6)\n\6\f\6\16\6,\13\6\3\6\2\2\7\2\4\6\b\n\2\2\2,\2\f"+
-		"\3\2\2\2\4\17\3\2\2\2\6\27\3\2\2\2\b$\3\2\2\2\n&\3\2\2\2\f\r\5\4\3\2\r"+
-		"\16\7\2\2\3\16\3\3\2\2\2\17\24\5\6\4\2\20\21\7\7\2\2\21\23\5\6\4\2\22"+
-		"\20\3\2\2\2\23\26\3\2\2\2\24\22\3\2\2\2\24\25\3\2\2\2\25\5\3\2\2\2\26"+
-		"\24\3\2\2\2\27\34\5\b\5\2\30\31\7\6\2\2\31\33\5\b\5\2\32\30\3\2\2\2\33"+
-		"\36\3\2\2\2\34\32\3\2\2\2\34\35\3\2\2\2\35\7\3\2\2\2\36\34\3\2\2\2\37"+
-		"%\5\n\6\2 !\7\3\2\2!\"\5\4\3\2\"#\7\4\2\2#%\3\2\2\2$\37\3\2\2\2$ \3\2"+
-		"\2\2%\t\3\2\2\2&*\7\5\2\2\')\7\5\2\2(\'\3\2\2\2),\3\2\2\2*(\3\2\2\2*+"+
-		"\3\2\2\2+\13\3\2\2\2,*\3\2\2\2\6\24\34$*";
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\7*\4\2\t\2\4\3\t"+
+		"\3\4\4\t\4\4\5\t\5\3\2\3\2\3\2\7\2\16\n\2\f\2\16\2\21\13\2\3\3\3\3\3\3"+
+		"\7\3\26\n\3\f\3\16\3\31\13\3\3\4\3\4\3\4\3\4\3\4\3\4\5\4!\n\4\3\5\3\5"+
+		"\7\5%\n\5\f\5\16\5(\13\5\3\5\2\2\6\2\4\6\b\2\2\2*\2\n\3\2\2\2\4\22\3\2"+
+		"\2\2\6 \3\2\2\2\b\"\3\2\2\2\n\17\5\4\3\2\13\f\7\7\2\2\f\16\5\4\3\2\r\13"+
+		"\3\2\2\2\16\21\3\2\2\2\17\r\3\2\2\2\17\20\3\2\2\2\20\3\3\2\2\2\21\17\3"+
+		"\2\2\2\22\27\5\6\4\2\23\24\7\6\2\2\24\26\5\6\4\2\25\23\3\2\2\2\26\31\3"+
+		"\2\2\2\27\25\3\2\2\2\27\30\3\2\2\2\30\5\3\2\2\2\31\27\3\2\2\2\32!\5\b"+
+		"\5\2\33\34\7\3\2\2\34\35\5\2\2\2\35\36\7\4\2\2\36!\3\2\2\2\37!\3\2\2\2"+
+		" \32\3\2\2\2 \33\3\2\2\2 \37\3\2\2\2!\7\3\2\2\2\"&\7\5\2\2#%\7\5\2\2$"+
+		"#\3\2\2\2%(\3\2\2\2&$\3\2\2\2&\'\3\2\2\2\'\t\3\2\2\2(&\3\2\2\2\6\17\27"+
+		" &";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

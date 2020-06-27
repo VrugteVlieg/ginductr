@@ -1,0 +1,69 @@
+driver(packageName, parserName, startRule, extension) ::= <<
+package <packageName>;
+import java.io.*;
+import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.tree.*;
+import java.util.*;
+
+public class TestRunner {
+
+    private static ArrayList\<File> Recursive(File[] arr, ArrayList\<File> files) {
+         for(File f:arr) {
+             if(f.isFile())
+                  files.add(f);
+             else if(f.isDirectory() && f.list().length>0)
+                 Recursive(f.listFiles(), files);
+         }
+         return files;
+    }
+
+    public static void parse(String inputDir) throws Exception {
+         File directory = null;
+         FileInputStream fis = null;
+         CharStream input = null;
+         <parserName>Lexer lexer = null;
+         CommonTokenStream tokens = null;
+         <parserName>Parser parser = null;
+
+         if(inputDir != null)
+             directory = new File(inputDir);
+
+         if(directory.exists() && directory.isDirectory()) {
+              ArrayList\<File> filesList = new ArrayList\<>();
+              File arr[] = directory.listFiles();
+              filesList = Recursive(arr, new ArrayList\<File>());
+
+              if (!filesList.isEmpty()) {
+                   for(File file : filesList) {
+                       if (file.getName().contains("<extension>")) {
+                            fis = new FileInputStream(file);
+                            input = CharStreams.fromStream(fis);
+                            lexer = new <parserName>Lexer(input);
+                            tokens = new CommonTokenStream(lexer);
+                            parser = new <parserName>Parser(tokens);
+                            /* disable anltr error listeners */
+                            parser.removeErrorListeners();
+                            parser.addErrorListener(Spectra.getErrorListener());
+
+                            ParseTree tree = parser.<startRule>();
+                            ParseTreeWalker walker = new ParseTreeWalker();
+                            ArrayList\<String> spec = Spectra.produceSpectra(parser, tree, walker);
+                            int noOfErrors = parser.getNumberOfSyntaxErrors();
+                            boolean pos = file.getPath().contains("pos");
+                            if ((noOfErrors == 0 && pos) || (noOfErrors != 0 && !pos)) {
+                                Logger.trackPassed(file.getPath(), spec);
+                            } else {
+                                Logger.trackFailed(file.getPath(), spec);
+                            
+                            }
+                       }
+                   }
+                   Logger.spitJson();
+              }
+         } else {
+                System.out.println("Input is not a directory");
+                System.exit(0);
+         }
+    }
+}
+>>

@@ -1,0 +1,20 @@
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------------< [0;36mza.ac.sun.cs:antlr-default-localizer[0;1m >----------------[m
+[[1;34mINFO[m] [1mBuilding antlr-default-localizer 1.0-SNAPSHOT[m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m>>> [0;32mexec-maven-plugin:1.2.1:java[m [1m(default-cli)[0;1m > [0;1mvalidate[m @ [36mantlr-default-localizer[0;1m >>>[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m<<< [0;32mexec-maven-plugin:1.2.1:java[m [1m(default-cli)[0;1m < [0;1mvalidate[m @ [36mantlr-default-localizer[0;1m <<<[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mexec-maven-plugin:1.2.1:java[m [1m(default-cli)[m @ [36mantlr-default-localizer[0;1m ---[m
+Failed test 
+[] []
+ errCount: 1
+Failed test 
+ errCount: 1
+Failed test 
+[[]]
+ errCount: 2

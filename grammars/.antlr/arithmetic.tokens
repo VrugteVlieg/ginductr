@@ -1,9 +1,8 @@
-T__0=1
-T__1=2
+LPAR=1
+RPAR=2
 Digit=3
 Mulop=4
 Addop=5
-WS=6
 '('=1
 ')'=2
 '0'=3

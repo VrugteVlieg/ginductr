@@ -1,0 +1,3 @@
+[submodule "st4-maven-plugin"]
+	path = st4-maven-plugin
+	url = git@github.com:miraselimo/st4-maven-plugin.git

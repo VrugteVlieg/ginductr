@@ -13,7 +13,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,23 +47,31 @@ public class Chelsea {
         Map<String, Class<?>> hm = null;
         try {
 
+            /**
+             * TODO, change output directory to localiser and remove mvn  stage
+             */
             // Name of the file, for example ampl.g4
             finName = grammar.getName();
             // Setting up the arguments for th e ANTLR Tool. outputDir is in this case
             // generated-sources/
             String[] args = { "-o", Constants.ANTLR_DIR};
+            
+            //-DcontextSuperClass=RuleContextWithAltNum
 
             // Creating a new Tool object with org.antlr.v4.Tool
 
             Tool tool = new Tool(args);
             GrammarRootAST grast = tool.parseGrammarFromString(grammar.toString());
-
+            
             // Create a new Grammar object from the tool
             Grammar g = tool.createGrammar(grast);
-
+            
             g.fileName = grammar.getName();
-
+            
             tool.process(g, true);
+            if(tool.getNumErrors() != 0) {
+                removeCurr.removeGrammar();
+            }
 
             // Compile source files
             DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
@@ -89,10 +96,10 @@ public class Chelsea {
             parserConstructor = parser.getConstructor(TokenStream.class);
 
         } catch (Exception e) {
-            e.printStackTrace(System.out);
+            e.printStackTrace(System.err);
             if(hm == null) {
                 System.out.println("Looking for " +  myReader+"\n found");
-                 List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
+                List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
                 System.out.println(files.stream().map(File::getName).collect(Collectors.joining("\n")));
 
             } else {
@@ -180,10 +187,10 @@ public class Chelsea {
                 } catch (ParseCancellationException e) {
                     System.out.println("Parse cancelled for " + myReader.getName());
                 } catch (Exception e) {
-                    System.out.println("Exception lamda in Chelsea " + e.getCause() + "\n " + myReader);
-                    LinkedList<Stack<String>> fileErrors = myListen.getErrors();
-                    System.out.println("\n\n\n\n" + fileErrors);
-                    removeDuplicates(fileErrors);
+                    // System.out.println("Exception lamda in Chelsea " + e.getCause() + "\n " + myReader);
+                    // LinkedList<Stack<String>> fileErrors = myListen.getErrors();
+                    // System.out.println("\n\n\n\n" + fileErrors);
+                    // removeDuplicates(fileErrors);
                     out[1]++;
                 }
             });

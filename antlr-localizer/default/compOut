@@ -1,0 +1,25 @@
+[[1;34mINFO[m] Scanning for projects...
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m----------------< [0;36mza.ac.sun.cs:antlr-default-localizer[0;1m >----------------[m
+[[1;34mINFO[m] [1mBuilding antlr-default-localizer 1.0-SNAPSHOT[m
+[[1;34mINFO[m] [1m--------------------------------[ jar ]---------------------------------[m
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mantlr4-maven-plugin:4.7.2:antlr4[m [1m(default)[m @ [36mantlr-default-localizer[0;1m ---[m
+[[1;34mINFO[m] ANTLR 4: Processing source directory /home/jaco/Code/honsProj/antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer
+[[1;34mINFO[m] Processing grammar: UUT.g4
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-resources-plugin:2.6:resources[m [1m(default-resources)[m @ [36mantlr-default-localizer[0;1m ---[m
+[[1;33mWARNING[m] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[[1;34mINFO[m] Copying 2 resources
+[[1;34mINFO[m] 
+[[1;34mINFO[m] [1m--- [0;32mmaven-compiler-plugin:3.8.1:compile[m [1m(default-compile)[m @ [36mantlr-default-localizer[0;1m ---[m
+[[1;34mINFO[m] Changes detected - recompiling the module!
+[[1;33mWARNING[m] File encoding has not been set, using platform encoding UTF-8, i.e. build is platform dependent!
+[[1;34mINFO[m] Compiling 17 source files to /home/jaco/Code/honsProj/antlr-localizer/default/target/classes
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] [1;32mBUILD SUCCESS[m
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+[[1;34mINFO[m] Total time:  2.816 s
+[[1;34mINFO[m] Finished at: 2020-06-25T13:10:32+02:00
+[[1;34mINFO[m] [1m------------------------------------------------------------------------[m
+0

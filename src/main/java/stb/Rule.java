@@ -18,15 +18,14 @@ public class Rule {
     private boolean mainRule;
     private boolean singular;
     private boolean nullable;
-    private int depth = 0;
     private String ruleText;
     private boolean toRemove = false;
 
-    public static final Rule EPSILON =  new Rule(" ",1);
+    public static final Rule EPSILON =  new Rule(" ");
     
 
     public static Rule EPSILON() {
-        Rule out = new Rule(" ",1);
+        Rule out = new Rule(" ");
 
         return out;
     }
@@ -51,7 +50,6 @@ public class Rule {
             this.iterative = toCopy.iterative;
             this.mainRule = toCopy.mainRule;
             this.singular = toCopy.singular;
-            this.depth = toCopy.depth;
             this.ruleText = toCopy.ruleText;
         } catch (NullPointerException e) {
             e.printStackTrace(System.out);
@@ -62,7 +60,7 @@ public class Rule {
      * used when grouping rules together
      * @param rules
      */
-    public Rule(List<Rule> rules, int depth) {
+    public Rule(List<Rule> rules) {
         this.subRules = new ArrayList<LinkedList<Rule>>();
         LinkedList<Rule> myRules = new LinkedList<Rule>();
         rules.forEach(rule -> myRules.add(rule));
@@ -71,7 +69,6 @@ public class Rule {
         mainRule = false;
         iterative = false;
         optional = false;
-        this.depth = depth;
         StringBuilder nameBuilder = new StringBuilder();
         rules.forEach(rule -> nameBuilder.append(rule.getName() + " "));
         name = nameBuilder.toString().trim();
@@ -84,7 +81,7 @@ public class Rule {
      * @param ruleText
      * @param depth how many levels deep is this rule, used to format printOut
      */
-    public Rule(String ruleText, int depth) {
+    public Rule(String ruleText) {
         if(!ruleText.equals(" "))  {
             ruleText = ruleText.trim();
             singular = !ruleText.contains(" ");
@@ -97,7 +94,6 @@ public class Rule {
         this.ruleText = ruleText;
         printOut("New minor rule " + ruleText);
         this.mainRule = false;
-        this.depth = depth;
 
         optional = ruleText.charAt(ruleText.length()-1) == '?' || ruleText.charAt(ruleText.length()-1) == '*';
         iterative = ruleText.charAt(ruleText.length()-1) == '+' || ruleText.charAt(ruleText.length()-1) == '*';
@@ -155,7 +151,7 @@ public class Rule {
                case ' ':
                     if(currString.length() != 0 && !StringLiteral && brackets==0) {
                         printOut("Adding rule " + currString.toString());
-                        currProduction.add(new Rule(currString.toString(),depth+1));
+                        currProduction.add(new Rule(currString.toString()));
                         currString = new StringBuilder(); 
                     } else if(StringLiteral || brackets!=0 || rule.charAt(index+1) == ';'){
                         currString.append(" ");
@@ -181,7 +177,7 @@ public class Rule {
                                 printOut("Adding EPSILON");
                                 currProduction.add(EPSILON);
                             } else {
-                                currProduction.add(new Rule(currString.toString(),depth+1));
+                                currProduction.add(new Rule(currString.toString()));
                             }
                             currString = new StringBuilder(); 
                         } 
@@ -290,7 +286,7 @@ public class Rule {
     ArrayList<LinkedList<Rule>> getSubRules() {return subRules;}
 
     private void printOut(String toPrint) {
-        if(Constants.DEBUG)System.out.println(" ".repeat(depth) + "Context " + name + ": " + toPrint);
+        // if(Constants.DEBUG)System.out.println(" ".repeat(depth) + "Context " + name + ": " + toPrint);
     }
 
     public void setIterative(boolean setTo) {
@@ -571,13 +567,14 @@ public class Rule {
         int startIndex = prodToGroup.size() == 2 ? 0 : randInt(prodToGroup.size()-2);
         int endIndex = startIndex + randInt(prodToGroup.size() - startIndex - 1) + 1;
         List<Rule> toRemove = prodToGroup.subList(startIndex, endIndex+1);
-        Rule newRule = new Rule(toRemove,depth+1);
+        Rule newRule = new Rule(toRemove);
         for (int i = startIndex; i < endIndex; i++) {
             prodToGroup.remove(startIndex);
         }
 
         prodToGroup.set(startIndex, newRule);
     }
+    
 
     public boolean canGroup() {
         for (LinkedList<Rule> prods : subRules) {
@@ -586,12 +583,20 @@ public class Rule {
         return false;
     }
 
+
+
+    private LinkedList<int[]> computeExpandableRules(int prodIndex) {
+        LinkedList<int[]> out = new LinkedList<int[]>();
+        LinkedList<Rule> prod = subRules.get(prodIndex);
+        
+    }
+
     /**
      * Attempts to expand out a bracketd rule into its constituent rules
-     * returns true if a brackted rule was expanded else returns false
      */
     public void unGroupProductions() {
         if(this.equals(EPSILON)) return;
+        //Compute expandable indices
         LinkedList<Rule> expandables = new LinkedList<Rule>();
         LinkedList<int[]> indices = new LinkedList<int[]>();
         int prodIndex = 0;
@@ -761,9 +766,6 @@ public class Rule {
         subRules.removeIf(prod -> prod.size() == 0);
     }
 
-
-
-    
     public int getSymbolCount() {
         int out = 0;
         for (LinkedList<Rule> prod : subRules) {
@@ -771,6 +773,7 @@ public class Rule {
         }
         return out;
     }
+
 	public boolean containsInfLoop(ArrayList<Rule> parserRules, String touchedRules) {
         if(containsEpsilon()) return false;
         if(touchedRules.contains(getName()) && !containsEpsilon()) return true;
@@ -803,7 +806,15 @@ public class Rule {
         return out;
     }
 
-    
+    public boolean canGroupProd(int prodIndex) {
+        return subRules.get(prodIndex).size() > 1;
+    }
 
+    public boolean canUngroupProd(int prodIndex) {
+        for(Rule rule : subRules.get(prodIndex)) {
+            if(!rule.singular) return true;
+        }
+        return false;
+    }
     
 }

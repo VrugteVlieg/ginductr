@@ -23,6 +23,8 @@ public class DynamicClassCompiler {
         optionList.add("-cp");
         // optionList.add(System.getProperty("java.class.path") + ";dist/InlineCompiler.jar");
         optionList.add("./antlr-4.8-complete.jar");
+        // optionList.add("-d");
+        // optionList.add();
     }
 
     /**

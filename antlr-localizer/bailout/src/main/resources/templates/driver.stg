@@ -1,0 +1,112 @@
+driver(package, parserName, startRule, extension) ::= <<
+package <package>;
+import org.antlr.v4.runtime.*;
+import java.util.*;
+import java.io.*;
+
+public class TestRunner {
+
+    /*some global varaibles*/
+    static int testCaseNo = 0;
+    static int totalPassed = 0;
+    static int totalFailed = 0;
+    
+    /* not sure i need this */
+    public static class BailSimpleLexer extends <parserName>Lexer {
+        public BailSimpleLexer(CharStream input) { super(input); }
+        public void recover(LexerNoViableAltException e) {
+            throw new RuntimeException(e); // Bail out
+        }
+    }
+
+    private static ArrayList\<File> Recursive(File[] arr, ArrayList\<File> files) {
+         for(File f:arr) {
+             if(f.isFile())
+                  files.add(f);
+             else if(f.isDirectory() && f.list().length>0)
+                 Recursive(f.listFiles(), files);
+         }
+         return files;
+    }
+
+    public static void parse(String dir) throws Exception  {
+        /* just a bunch of local varaibles */
+        File directory = null;
+        FileInputStream fis = null;
+        CharStream input = null;
+        <parserName>Lexer lexer = null;
+        CommonTokenStream tokens = null;
+        <parserName>Parser parser = null;
+
+        /* check whether exception was thrown */
+        boolean thrown = false;
+        directory = new File(dir);
+
+        if (directory.exists() && directory.isDirectory()) {
+                   ArrayList\<File> filesList = new ArrayList\<>();
+                   File arr[] = directory.listFiles();
+                   filesList = Recursive(arr, new ArrayList\<File>());
+
+                   if (!filesList.isEmpty()) {
+                        for(File file : filesList) {
+                            if (file.getName().contains("<extension>")) {
+                                    testCaseNo++;
+                                    try {
+                                        fis = new FileInputStream(file);
+                                        input = CharStreams.fromStream(fis);
+                                        lexer = new <parserName>Lexer(input);
+                                        tokens = new CommonTokenStream(lexer);
+                                        parser = new <parserName>Parser(tokens);
+                                        /* initialize the ParserAspect, well what collects spectra for us */
+                                        ParserAspect.initSpectra();
+        
+                                        parser.setErrorHandler(new BailErrorStrategy());
+                                        //int err = parser.getNumberOfSyntaxErrors();
+                                        //System.out.println("okay "+err);
+                                        /* lets get it */
+                                         parser.<startRule>();
+                                         /* get the spectra from the  aspect*/
+                                         Set\<String> spec = ParserAspect.getSpectra();
+                                         if(file.getPath().contains("pos")) {
+                                                /* its a passing test */
+                                                totalPassed++;
+                                                /* log it (spectra) to some file */
+                                                Logger.trackPassed(file.getPath(), new ArrayList\<String>(spec));
+                                         } else { /* it should fail */
+                                                /* fail count */
+                                                totalFailed++;
+                                                /* log the negative spectra to a
+                                                 * respctive file */
+                                                Logger.trackFailed(file.getPath(), new ArrayList\<String>(spec));
+                                         }
+                                }
+                                catch(Exception e) {
+                                        Set\<String> spec = ParserAspect.getSpectra();
+                                        if(file.getPath().contains("pos")) {
+                                                /* its a passing test */
+                                                totalFailed++;
+                                                /* log it (spectra) to some file */
+                                                Logger.trackFailed(file.getPath(), new ArrayList\<String>(spec));
+                                         } else { /* it should fail */
+                                                /* fail count */
+                                                totalPassed++;
+                                                /* log the positive spectra to a
+                                                 * respctive file */
+                                                Logger.trackPassed(file.getPath(), new ArrayList\<String>(spec));
+                                         } 
+                                }
+                            }
+                        }
+                        Logger.spitJson();
+                }
+             } else {
+                    System.out.println("Input is not a directory");
+                System.exit(0);
+            }
+        /*} catch (Exception e) {
+                 System.out.println(ParserAspect.getSpectra());
+           // e.printStackTrace();
+        }*/
+    }
+}
+>>

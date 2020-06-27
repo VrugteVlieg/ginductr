@@ -4,11 +4,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import javafx.application.Application;
-
+import javafx.concurrent.Task;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
@@ -36,6 +37,7 @@ public class Gui extends Application {
         Arrays.asList(testTab, runTab, settingsTab).forEach(t -> cont.getTabs().add(t));
 
         Scene mainScene = new Scene(cont);
+        ProgressBar bar = new ProgressBar();
         stage.setScene(mainScene);
         stage.show();
         App.loadStartGrammar();
@@ -89,6 +91,7 @@ public class Gui extends Application {
     }
 
     public HBox runScreen() {
+        Task<Void> runOut = backGroundProcess();
 
         HBox greaterContainer = new HBox();
         VBox mutationInterface = new VBox();
@@ -96,14 +99,23 @@ public class Gui extends Application {
         Button btnRun = new Button("Run");
         mutationInterface.getChildren().add(btnRun);
         TextArea logOutput = new TextArea();
-        outputLambda logOut = (String toLog) -> logOutput.appendText(toLog + "\n");
-        App.setRunLogOutput(logOut);
+        
         VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
+        
+        
         TextArea grammarOutput = new TextArea();
-        outputLambda grammarOut = (String toLog) -> grammarOutput.appendText(toLog + "\n");
-        btnRun.setOnAction(event -> backGroundProcess(logOut, grammarOut).start());
-        App.setRunGrammarOutput(grammarOut);
+        
+        runOut.messageProperty().addListener((obs, prev, newVal) -> {
+            if(newVal.charAt(0)  == 'g') {
+                grammarOutput.setText(newVal.substring(1));
+            } else {
+                logOutput.setText(newVal.substring(1));
+            }
+        });
+        
+        btnRun.setOnAction(event -> new Thread(runOut).start());
+        
         grammarOutput.setMinWidth(600);
         greaterContainer.getChildren().add(mutationInterface);
         greaterContainer.getChildren().add(grammarOutput);
@@ -233,39 +245,34 @@ public class Gui extends Application {
         launch();
     }
 
-    public Thread backGroundProcess(outputLambda logOut, outputLambda grammarOut) {
-        Thread taskThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Thread demoThread = new Thread() {
-                    public void run() {
-                        App.demoMainProgram();
+    public Task<Void> backGroundProcess() {
+        Task<Void> out = new Task<Void>() {
+            @Override public Void call() {
+                outputLambda grammarOut = (String toLog) -> {
+                    if (toLog.equals("clear")) {
+                        updateMessage("g");
+                    } else {
+                        updateMessage("g" + toLog);
                     }
                 };
-                demoThread.start();
-                // while(!App.hasNewBestGrammar){}
-                // System.out.println("Fuck me bro");
-                // GrammarReader reportedBest = App.getCurrBestGrammar();
-                // grammarOut.output(reportedBest.toString());
-                // Platform.runLater(new Runnable() {
 
-                // @Override
-                // public void run() {
-                // logOut.output("awe bru");
-                // if(App.hasNewBest()) {
-                // grammarOut.output(reportedBest.toString());
-                // }
-
-                // if(App.hasNewRunMessage()) {
-                // logOut.output(App.getMessage());
-                // }
-
-                // logOut.output(App.numGrammarsEvalled() + "");
-                // }
-                // });
+                outputLambda logOut = (String toLog) -> {
+                    if (toLog.equals("clear")) {
+                        updateMessage("l");
+                    } else {
+                        updateMessage("l" + toLog);
+                    }
+                };
+                App.setRunGrammarOutput(grammarOut);
+                App.setRunLogOutput(logOut);
+                App.demoMainProgram();
+                return null;
             }
-        });
-        return taskThread;
+
+        };
+        return out;
+        
+        // return taskThread;
     }
 
 }

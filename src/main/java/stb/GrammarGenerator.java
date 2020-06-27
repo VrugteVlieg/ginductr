@@ -17,7 +17,6 @@ public class GrammarGenerator {
             String grammarName = "Grammar_" + grammarCount++;
             GrammarReader currGrammar = new GrammarReader(grammarName,terminalGrammar.getAllRules());
             int grammarRuleCount = ThreadLocalRandom.current().nextInt(Constants.MAX_RULE_COUNT) + 1;
-            if(popSize == 1) grammarRuleCount = 3;
             // System.out.println("Creating new grammar " + grammarName + " with " + grammarRuleCount + " rules");
             for (int j = 0; j < grammarRuleCount; j++) {
                 int currRuleLen = 1 + ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE-1);
@@ -27,12 +26,13 @@ public class GrammarGenerator {
             }
             currGrammar.removeDuplicateProductions();
             currGrammar.removeUnreachable();
-            currGrammar.removeLR();
+            // currGrammar.removeLR();
             // System.out.println("New grammar \n" + currGrammar.toString());
             output.add(currGrammar);
         }
-        System.out.println("New Grammars ");
-        output.forEach(grammar -> System.out.println(grammar));
+        // System.out.println("New Grammars ");
+        // output.forEach(grammar -> System.out.println(grammar));
+
         return output; 
     }
 
@@ -70,6 +70,26 @@ public class GrammarGenerator {
        }
 
        return out;
+    }
+
+
+    public static LinkedList<GrammarReader> generateLocalisablePop(int popSize, HashMap<Integer, Boolean> checkedGrammar, scoringLambda criteria) {
+        LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
+        while(out.size() < popSize) {
+            App.runGrammarOutput.output("Init size " + out.size() + "/" + popSize);
+            LinkedList<GrammarReader> newPop = generatePopulation(200);
+            newPop.stream()
+            .filter(grammar -> !checkedGrammar.containsKey(grammar.hashCode()))
+            .forEach(grammar -> checkedGrammar.put(grammar.hashCode(), true));
+            newPop.stream()
+            .map(grammar -> {
+                App.runTests(grammar, Constants.POS_TEST_DIR, criteria);
+                return grammar; })
+            .filter(grammar -> grammar.getPosScore() != 0.0)
+            .limit(popSize-out.size())
+            .forEach(out::add);
+        }
+        return out;
     }
 
     public static int randInt(int bound) {

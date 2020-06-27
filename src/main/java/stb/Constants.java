@@ -3,16 +3,20 @@ package stb;
 public class Constants {
         
 
+    // public static  String ANTLR_DIR = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
+    public static  String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
+    public static  String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
     public static  String ANTLR_DIR = "./antlrOut";
     public static final String GRAMMARS_PATH = "./grammars/";
     public static final String CURR_GRAMMAR_NAME = "dyck";
-    public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/toyExample.g4";
+    public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
     public static final String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/pos";
     public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
     public static final String CURR_GRAMMAR_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".g4";
     public static final String CURR_Terminals_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
     public static final boolean DEBUG = false;
     public static final boolean USE_GUI = true;
+	public static final boolean USE_LOCALIZATION = true;
     private static  double P_C_MIN = 0;
     private static  double P_C_MAX = 0;
 
@@ -21,7 +25,7 @@ public class Constants {
     public static double P_ADD_RULE = 0.5;    //P to add a rule when adding/removing rules
     public static double P_CHANGE_SYMBOL_COUNT = 0.6; //P to add or remove a rule from a grammar
     public static double P_ADD_SYMBOL = 0.6; //P to add a symbol when adding/removing symbols
-	public static double P_M = 0.4;   //P to mutate a symbol in a grammar
+	public static double P_M = 0.6;   //P to mutate a symbol in a grammar
     public static double P_H = 0.55;  //P to make a symbol iterative or optional
     public static double P_ITER = 0.55;  //P to make a symbol iterative 
     public static double P_OPTIONAL = 0.55;  //P to make a symbol optional
@@ -40,18 +44,26 @@ public class Constants {
 	public static boolean HEURISTIC = true;
 	public static boolean CROSSOVER = false;
     
-	public static int MAX_GRAMMAR_AGE = 15;
-    public static int POP_SIZE = 10;
-    public static int MAX_GRAMMARS = 100;
+    public static int MAX_GRAMMAR_AGE = 15;
+    public static int INIT_POP_SIZE = 5;
+    public static int POP_SIZE = 5;
+    public static int MAX_GRAMMARS = 10000;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
 
-    public static int NUM_ITERATIONS = 10;
+    public static int NUM_ITERATIONS = 2;
     public static int NUM_NEGATIVE_ITERATIONS = 10;
 	public static int RULENAME_LEN = 7;
 	public static int BEST_GRAMMAR_COPY_COUNT = 5;
-    public static int MAX_RULE_COUNT = 3;
+    public static int MAX_RULE_COUNT = 5;
     public static int MAX_RHS_SIZE = 6;
     public static int FRESH_POP_PER_GEN = 5;
+
+
+    public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
+    public static String localizerSPath = "./antlr-localizer/default/test.sh";
+    public static String CSV_PATH = "./antlr-localizer/default/scores.csv";
+
+    
 
 
     public static scoringLambda positiveScoring = (int[] testResult, GrammarReader GUT) -> {
@@ -70,7 +82,17 @@ public class Constants {
         GUT.setNegScore(numPass/totalTests);
     };
 
+    public static scoringLambda localiserScoring = (int[] testResult, GrammarReader GUT) -> {
+
+        int totalTests = testResult[0] + testResult[1];
+        
+        double numPass = testResult[0];
+        GUT.setNegScore(numPass/totalTests);
+        GUT.setPosScore(numPass/totalTests);
+    };
+
     public static double calculatePM(double posScore, double negScore) {
+
         return (1-(posScore+negScore)/2.0)*P_M;
     }
         

@@ -1,4 +1,5 @@
 package stb;
+
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -51,8 +52,10 @@ public class DynamicClassLoader {
 
         Map<String, Class<?>> classList = new HashMap<>();
         Path absPath = Paths.get(directory.getAbsolutePath());
+        // System.err.println(getDirectoryFiles(directory).stream().map(File::toString).collect(Collectors.joining("\n")));
 
         for (File javaFile : getDirectoryFiles(directory)) {
+
             Path relPath = absPath.relativize(Paths.get(javaFile.getParentFile().getAbsolutePath()));
             String classPackage = relPath.toString().replace("/", ".");
             if (!classPackage.isEmpty()) {
