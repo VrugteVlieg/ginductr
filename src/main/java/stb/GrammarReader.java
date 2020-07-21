@@ -301,6 +301,7 @@ public class GrammarReader {
                                                     .map(Rule::getName)
                                                     .filter(rule -> !reachableRules.contains(rule))
                                                     .collect(toList());
+        if(unreachableRules.size() == 0) return;
         Rule toMakeReach = getRuleByName(randGet(unreachableRules, false));
         Rule toExtend =  getRuleByName(randGet(reachableRules, true));
         int indexToExtend = 1  + randInt(toExtend.getTotalProductions()-1);

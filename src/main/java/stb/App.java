@@ -33,7 +33,7 @@ public class App {
 
     static GrammarReader bestGrammar;
 
-    static LinkedList<GrammarReader> myGrammars;
+    static List<GrammarReader> myGrammars;
 
 
 
@@ -319,7 +319,7 @@ public class App {
                 // Only start performing crossover if some decent grammars already exist
                 if (bestScore > 0.2) {
 
-                    ArrayList<GrammarReader> crossoverPop = performCrossover(scoreList);
+                    ArrayList<GrammarReader> crossoverPop = performCrossover(scoreList, totalPop);
                     crossoverPop.forEach(gram -> runTests(gram, Constants.POS_MODE, Constants.positiveScoring));
                     crossoverPop.removeIf(GrammarReader::toRemove);
                     crossoverPop.forEach(grammar -> {
@@ -415,7 +415,7 @@ public class App {
                         .collect(Collectors.toList());
 
                 // Crossover
-                ArrayList<GrammarReader> crossoverPop = performCrossover(scoreList);
+                ArrayList<GrammarReader> crossoverPop = performCrossover(scoreList, totalPop);
                 crossoverPop.forEach(grammar -> runTests(grammar, Constants.POS_MODE, Constants.positiveScoring));
                 crossoverPop.removeIf(grammar -> grammar.getPosScore() != 1.0 || grammar.toRemove());
                 crossoverPop.forEach(grammar -> {
@@ -510,11 +510,7 @@ public class App {
                         runLogOutput.output(out);
                         setBestGrammar(grammar);
                     }
-                });
-                totalPop.removeIf(GrammarReader::toRemove);
 
-                totalPop.forEach(grammar -> {
-                    double currScore = grammar.getScore();
                     if (evaluatedGrammars.containsKey(currScore)) {
                         evaluatedGrammars.get(currScore).add(grammar);
                     } else {
@@ -523,6 +519,9 @@ public class App {
                         evaluatedGrammars.put(currScore, thisScoreList);
                     }
                 });
+                totalPop.removeIf(GrammarReader::toRemove);
+
+                
 
                 List<Double> scoreList = evaluatedGrammars.keySet().stream()
                                             .sorted(Comparator.reverseOrder())
@@ -563,24 +562,16 @@ public class App {
 
                     scoreList = evaluatedGrammars.keySet().stream().sorted(Comparator.reverseOrder())
                             .collect(Collectors.toList());
+                    totalPop.addAll(crossoverPop);
                 }
 
-                
-                myGrammars.clear();
+                recordMetrics(totalPop);
                 // int grammarsToCarry = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
 
                 List<GrammarReader> allGrammars = scoreList.stream().map(evaluatedGrammars::get)
                         .flatMap(LinkedList::stream).collect(Collectors.toList());
 
-                for (int i = 0; i < Constants.HALL_OF_FAME_COUNT; i++) {
-                    myGrammars.add(tournamentSelect(allGrammars, Constants.TOUR_SIZE));
-                }
-
-                for (int i = 0; i < Constants.POP_SIZE - myGrammars.size(); i++) {
-                    myGrammars.add(tournamentSelect(totalPop, Constants.TOUR_SIZE));
-                }
-
-                recordMetrics(myGrammars);
+                myGrammars = selectNewPop(totalPop, allGrammars);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -595,7 +586,7 @@ public class App {
             if (Constants.USE_LOCALIZATION) {
                 demoMainWLocal();
             } else {
-                demoMainNoLocal();
+                demoMainNoLocalCombScoring();
             }
             
     }
@@ -868,10 +859,10 @@ public class App {
     }
 
     public static void recordMetrics(List<GrammarReader> pop) {
-        double minScore = myGrammars.stream().mapToDouble(GrammarReader::getScore).min().getAsDouble();
-        double avgScore = myGrammars.stream().mapToDouble(GrammarReader::getScore).average().getAsDouble();
-        double maxScore = myGrammars.stream().mapToDouble(GrammarReader::getScore).max().getAsDouble();
-        double scoreDelta = maxScore - scores.getLast()[MAX_SCORE_INDEX];
+        double minScore = pop.stream().mapToDouble(GrammarReader::getScore).min().getAsDouble();
+        double avgScore = pop.stream().mapToDouble(GrammarReader::getScore).average().getAsDouble();
+        double maxScore = pop.stream().mapToDouble(GrammarReader::getScore).max().getAsDouble();
+        double scoreDelta = scores.size() == 0 ? 0 : maxScore - scores.getLast()[MAX_SCORE_INDEX];
         scores.add(new double[]{minScore, avgScore, maxScore, scoreDelta});
     }
 
@@ -890,5 +881,18 @@ public class App {
 
     public static void RECORD_SCORE_DELTA(double score) {
         scores.getLast()[SCORE_DELTA_INDEX] = score;
+    }
+
+    public static List<GrammarReader> selectNewPop(List<GrammarReader> currGen, List<GrammarReader> HOF) {
+        List<GrammarReader> out = new LinkedList<>();
+        for (int i = 0; i < Constants.HALL_OF_FAME_COUNT; i++) {
+            out.add(tournamentSelect(HOF, Constants.TOUR_SIZE));
+        }
+        
+
+        for (int i = 0; i < Constants.POP_SIZE - myGrammars.size(); i++) {
+            out.add(tournamentSelect(currGen, Constants.TOUR_SIZE));
+        }
+        return out;
     }
 }
