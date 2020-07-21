@@ -37,7 +37,6 @@ public class Gui extends Application {
         Arrays.asList(testTab, runTab, settingsTab).forEach(t -> cont.getTabs().add(t));
 
         Scene mainScene = new Scene(cont);
-        ProgressBar bar = new ProgressBar();
         stage.setScene(mainScene);
         stage.show();
         App.loadStartGrammar();
@@ -151,7 +150,6 @@ public class Gui extends Application {
         heuristic.setOnAction(event -> App.demoHeuristic());
         Button crossover = new Button("crossover");
         crossover.setOnAction(event -> App.demoCrossover());
-        List<Button> btns = Arrays.asList(changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic, crossover);
         VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic, crossover);
         out.setStyle("-fx-padding: 16;-fx-border-color: black;");
         out.setSpacing(5);

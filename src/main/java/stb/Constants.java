@@ -8,15 +8,17 @@ public class Constants {
     public static  String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
     public static  String ANTLR_DIR = "./antlrOut";
     public static final String GRAMMARS_PATH = "./grammars/";
-    public static final String CURR_GRAMMAR_NAME = "dyck";
+    public static final String CURR_GRAMMAR_NAME = "slearith";
     public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
     public static final String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/pos";
     public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
     public static final String CURR_GRAMMAR_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".g4";
-    public static final String CURR_Terminals_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
+    public static final String CURR_TERMINALS_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
     public static final boolean DEBUG = false;
     public static final boolean USE_GUI = true;
 	public static final boolean USE_LOCALIZATION = true;
+	public static final String POS_MODE = "pos";
+	public static final String NEG_MODE = "neg";
     private static  double P_C_MIN = 0;
     private static  double P_C_MAX = 0;
 
@@ -29,6 +31,7 @@ public class Constants {
     public static double P_H = 0.55;  //P to make a symbol iterative or optional
     public static double P_ITER = 0.55;  //P to make a symbol iterative 
     public static double P_OPTIONAL = 0.55;  //P to make a symbol optional
+    public static int TOUR_SIZE = 5; //Size of tournaments when performing tour selection
     
     public static double P_C = 0.65; // P to apply crossover
     public static int NUM_CROSSOVER_PER_GEN = 5;
@@ -44,19 +47,19 @@ public class Constants {
 	public static boolean HEURISTIC = true;
 	public static boolean CROSSOVER = false;
     
-    public static int MAX_GRAMMAR_AGE = 15;
-    public static int INIT_POP_SIZE = 5;
-    public static int POP_SIZE = 5;
+    public static int INIT_POP_SIZE = 500;
+    public static int INIT_POP_SIZE_LOCAL = 10;
+    public static int POP_SIZE = 50;
     public static int MAX_GRAMMARS = 10000;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
+    //How many grammars from the hall of fame are selected for the next generation
+    public static int HALL_OF_FAME_COUNT = 10;
 
-    public static int NUM_ITERATIONS = 2;
+    public static int NUM_ITERATIONS = 10;
     public static int NUM_NEGATIVE_ITERATIONS = 10;
 	public static int RULENAME_LEN = 7;
-	public static int BEST_GRAMMAR_COPY_COUNT = 5;
     public static int MAX_RULE_COUNT = 5;
     public static int MAX_RHS_SIZE = 6;
-    public static int FRESH_POP_PER_GEN = 5;
 
 
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
@@ -71,6 +74,8 @@ public class Constants {
         
         
         double numPass = testResult[0];
+        GUT.truePositivesPos = (int)numPass;
+        GUT.falseNegatives = totalTests-(int)numPass;
         
         GUT.setPosScore(numPass/totalTests);
     };
@@ -79,9 +84,17 @@ public class Constants {
         int totalTests = testResult[1];
         
         double numPass = totalTests - testResult[0];
+        GUT.truePositivesNeg = (int)numPass;
+        GUT.falsePositives = testResult[0];
+        
+
         GUT.setNegScore(numPass/totalTests);
     };
 
+    /**
+     * Sets the pos and negscores to numPass/totalTests
+     * This is done because localisastion does not use pos and neg testing phases
+     */
     public static scoringLambda localiserScoring = (int[] testResult, GrammarReader GUT) -> {
 
         int totalTests = testResult[0] + testResult[1];
@@ -266,14 +279,6 @@ public class Constants {
 
     public static void setNUM_ITERATIONS(int nUM_ITERATIONS) {
         NUM_ITERATIONS = nUM_ITERATIONS;
-    }
-
-    public static int getFRESH_POP_PER_GEN() {
-        return FRESH_POP_PER_GEN;
-    }
-
-    public static void setFRESH_POP_PER_GEN(int fRESH_POP_PER_GEN) {
-        FRESH_POP_PER_GEN = fRESH_POP_PER_GEN;
     }
 
     public static double getP_C_MIN() {
