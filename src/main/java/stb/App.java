@@ -105,16 +105,8 @@ public class App {
 
     public static void runTestsWithLocalisation(GrammarReader myReader, scoringLambda scoreCalc) {
         System.err.println("Testing " + myReader);
-        if (myReader.getParserRules().size() == 0 || myReader.containsInfLoop()) {
-            System.err.println("Flagging " + myReader.getName() + " for removal");
-            myReader.flagForRemoval();
-            return;
-        }
-        myReader.injectEOF();
-        long startTime = System.nanoTime();
+       
         List<String> result = runLocaliser(myReader);
-        numGrammarsChecked++;
-        myReader.stripEOF();
         if (result.isEmpty()) {
             myReader.flagForRemoval();
         } else {
@@ -153,28 +145,32 @@ public class App {
                 runLogOutput.output("Hashtable hits : " + hashtableHits + "\n");
                 
                 totalPop.clear();
-                totalPop.addAll(myGrammars);
-
+                
                 if (genNum != 0) {
                     // runGrammarOutput.output("Computing suggested mutants of " +
                     // myGrammars.stream().map(GrammarReader::getName).collect(Collectors.joining("\n")));
                     // Dont generate mutants on the first gen, we use a lot of initial grammars to
                     // cover search space
-                    myGrammars.forEach(grammar -> totalPop
-                            .addAll(grammar.computeMutants(Constants.MUTANTS_PER_BASE, generatedGrammars)));
-                            totalPop.forEach(gram -> System.out.println(gram.getName()));
-                            totalPop.forEach( gram -> runTests(gram, Constants.POS_MODE, Constants.positiveScoring));
-                            int sizePre = totalPop.size();
-                            totalPop.removeIf(gram -> gram.getPosScore() == 0.0);
-                            int sizePost = totalPop.size();
-                            runLogOutput.output("Filtered " + (sizePre-sizePost) + " broken grammars");
+                    myGrammars.forEach(grammar -> {
+                        LinkedList<GrammarReader> mutants = grammar.computeMutants(Constants.MUTANTS_PER_BASE, generatedGrammars));
+                        mutants.forEach(gram -> runTests(gram, Constants.POS_MODE, Constants.positiveScoring));
+                        mutants.forEach(gram -> runTests(gram, Constants.NEG, Constants.negativeScoring));
+                        totalPop.addAll(mutants);
+                    }
+                    totalPop.add(myGrammars);
+
+
+                    //If grammars were broken during mutation we dont want to localize them
+                    int sizePre = totalPop.size();
+                    totalPop.removeIf(gram -> gram.getPosScore() == 0.0);
+                    int sizePost = totalPop.size();
+                    runLogOutput.output("Filtered " + (sizePre-sizePost) + " broken grammars");
 
                 }
                 
 
                 totalPop.forEach(grammar -> {
-                    runGrammarOutput
-                            .output("Testing " + totalPop.indexOf(grammar) + "/" + totalPop.size() + "\n" + grammar);
+                    runGrammarOutput.output("Localizing" + totalPop.indexOf(grammar) + "/" + totalPop.size() + "\n" + grammar);
                     runTestsWithLocalisation(grammar, Constants.localiserScoring);
                     // System.out.println(grammar.getMutationConsideration().stream().map(Arrays::toString).collect(Collectors.joining("\n")));
                     double outScore = grammar.getScore();
@@ -804,6 +800,7 @@ public class App {
         return new LinkedList<String>();
     }
 
+    //TODO eliminate the use of scoring func duing localization
     public static List<String> runLocaliser(GrammarReader currGrammar) {
         List<String> out = new LinkedList<String>();
         try (FileWriter outFile = new FileWriter(new File(Constants.localizerGPath))) {

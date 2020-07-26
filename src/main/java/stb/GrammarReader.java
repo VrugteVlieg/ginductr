@@ -17,16 +17,16 @@ import java.util.stream.Stream;
 
 
 
-public static final String RANDOM_MUTATION = "RANDOM_MUTATION";
-public static final String HEUR_MUTATION = "HEUR_MUTATION";
-public static final String GROUP_MUTATION = "_MUTGROUPATION";
-public static final String UNGROUP_MUTATION = "_MUTATUNGROUPION";
-public static final String NEWNT_MUTATION = "_MUTNEWNTATION";
-public static final String NT_MUTATION = "_MUTNEWNTATION";
-public static final String NEWNT_MUTATION = "_MUTNEWNTATION";
 
 public class GrammarReader implements Comparable<GrammarReader> {
-
+    
+    public static final String RANDOM_MUTATION = "RANDOM_MUTATION";
+    public static final String HEUR_MUTATION = "HEUR_MUTATION";
+    public static final String GROUP_MUTATION = "_GROUP_MUTATION";
+    public static final String UNGROUP_MUTATION = "UNGROUP_MUTATION";
+    public static final String NEWNT_MUTATION = "NEWNT_MUTATION";
+    public static final String MODEXSTNEWNT_MUTATION = "MOD_MUTATION";
+    
     private File grammarFile;
     private List<String> fileLines = new LinkedList<String>();
     private String grammarName;

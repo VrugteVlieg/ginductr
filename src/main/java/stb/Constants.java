@@ -100,6 +100,7 @@ public class Constants {
         int totalTests = testResult[0] + testResult[1];
         
         double numPass = testResult[0];
+        
         GUT.setNegScore(numPass/totalTests);
         GUT.setPosScore(numPass/totalTests);
     };
