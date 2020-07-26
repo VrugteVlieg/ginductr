@@ -34,8 +34,8 @@ public class MyListener implements ANTLRErrorListener {
                             RecognitionException e) 
     {
         List<String> stack = ((Parser)recognizer).getRuleInvocationStack(); Collections.reverse(stack);
-        System.err.println(grammarName + " error " + msg);
-        System.err.println("Stack " + stack);
+        // System.err.println(grammarName + " error " + msg);
+        // System.err.println("Stack " + stack);
         Stack<String> toAdd = new Stack<String>();
         stack.forEach(rule -> toAdd.add(rule));
         errors.add(toAdd);

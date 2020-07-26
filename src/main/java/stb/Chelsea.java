@@ -25,7 +25,6 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.TokenStream;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.ast.GrammarRootAST;
 
@@ -258,6 +257,8 @@ public class Chelsea {
         input.forEach(element -> {
             if (!out.contains(element)) {
                 out.add(element);
+            } else {
+                System.err.println("Filtering " + element + " from " +  input.toString());
             }
         });
         input.clear();

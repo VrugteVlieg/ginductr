@@ -15,7 +15,17 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toCollection;
 import java.util.stream.Stream;
 
-public class GrammarReader {
+
+
+public static final String RANDOM_MUTATION = "RANDOM_MUTATION";
+public static final String HEUR_MUTATION = "HEUR_MUTATION";
+public static final String GROUP_MUTATION = "_MUTGROUPATION";
+public static final String UNGROUP_MUTATION = "_MUTATUNGROUPION";
+public static final String NEWNT_MUTATION = "_MUTNEWNTATION";
+public static final String NT_MUTATION = "_MUTNEWNTATION";
+public static final String NEWNT_MUTATION = "_MUTNEWNTATION";
+
+public class GrammarReader implements Comparable<GrammarReader> {
 
     private File grammarFile;
     private List<String> fileLines = new LinkedList<String>();
@@ -268,6 +278,7 @@ public class GrammarReader {
     }
 
     public int randInt(int bound) {
+        if(bound == 0) return 0;
         return ThreadLocalRandom.current().nextInt(bound);
     }
 
@@ -302,12 +313,14 @@ public class GrammarReader {
                                                     .filter(rule -> !reachableRules.contains(rule))
                                                     .collect(toList());
         if(unreachableRules.size() == 0) return;
-        Rule toMakeReach = getRuleByName(randGet(unreachableRules, false));
-        Rule toExtend =  getRuleByName(randGet(reachableRules, true));
-        int indexToExtend = 1  + randInt(toExtend.getTotalProductions()-1);
-        Rule toMakeAlt  = toExtend.getProduction(indexToExtend);
-        toMakeReach.addAlternative(toMakeAlt);
-        toExtend.setProduction(indexToExtend, toMakeReach);
+        while(unreachableRules.size() > 0) {
+            Rule toMakeReach = getRuleByName(randGet(unreachableRules, false));
+            Rule toExtend =  getRuleByName(randGet(reachableRules, true));
+            int indexToExtend = 1  + randInt(toExtend.getTotalProductions()-1);
+            Rule toMakeAlt  = toExtend.getProduction(indexToExtend);
+            toMakeReach.addAlternative(toMakeAlt);
+            toExtend.setProduction(indexToExtend, toMakeReach);
+        }
     }
 
     /**
@@ -448,8 +461,7 @@ public class GrammarReader {
                 rule.simplifyRepeatingLR();
                 rule.removeSimpleLeftRecursives();
             });
-            while (parserRules.stream().map(rule -> rule.getTotalProductions() == 1).reduce(false,
-                    (curr, next) -> curr || next)) {
+            while (parserRules.stream().anyMatch(rule -> rule.getTotalProductions() == 1)) {
                 LinkedList<String> toCleanList = new LinkedList<String>();
                 for (Rule rule : parserRules) {
 
@@ -808,9 +820,10 @@ public class GrammarReader {
         return rulename;
 
     }
+    
 
     public boolean containsInfLoop() {
-        // System.out.println("Checking if " + this + " contains an infLoop");
+        System.err.println("Checking if " + this + " contains an infLoop");
         if (getUndefinedRules().stream().anyMatch(rule -> rule.contains("Undefined "))) {
             return true;
         }
@@ -999,7 +1012,7 @@ public class GrammarReader {
     }
 
     public Rule getRuleByName(String name) {
-        System.err.println("Searching for " + name + " in " + this);
+        // System.err.println("Searching for " + name + " in " + this);
 
         return parserRules.stream().filter(rule -> rule.getName().equals(name)).findFirst().get();
     }
@@ -1010,52 +1023,59 @@ public class GrammarReader {
         App.runGrammarOutput.output("clear");
         App.runGrammarOutput.output("Computing suggested mutants for " + this + "\n"
                 + mutationConsiderations.stream().map(Arrays::toString).collect(Collectors.joining("\n")));
+                
         mutationConsiderations.stream().forEach(strArr -> {
             LinkedList<GrammarReader> currAdditions = new LinkedList<>();
             App.runGrammarOutput.output("\nUsing key " + Arrays.toString(strArr));
-            System.err.println(Arrays.toString(strArr));
-            System.err.println(strArr[0]);
-            System.err.println(strArr[1]);
+            
             String ruleName = strArr[0];
             int prodIndex = Integer.parseInt(strArr[1]) - 1;
+            Rule origRule = getRuleByName(ruleName);
+            StringBuilder toShow = new StringBuilder("Suggestions for " + grammarName + " " + Arrays.toString(strArr) + " default: " + origRule +  "\n");
             // Randomised new productions
+            toShow.append("***Randomised productions***\n");
+            System.err.println("Computer randomised productions for " + getName());
             for (int i = 0; i < 3; i++) {
+                System.err.println("Computing rand mutant " + i);
                 GrammarReader grammarToAdd = new GrammarReader(this);
                 LinkedList<Rule> newProd = new LinkedList<Rule>();
-                int prodLen = randInt(5);
+                int prodLen = 2 + randInt(3);
                 for (int j = 0; j < prodLen; j++) {
                     // Rule ruleToAdd =
                     // parserRules.get(randInt(parserRules.size())).makeMinorCopy();
                     Rule ruleToAdd = randGet(getAllRules(), true).makeMinorCopy();
                     newProd.add(ruleToAdd);
                 }
-                App.runGrammarOutput.output("new prod [" + newProd.stream().map(Rule::getName).collect(Collectors.joining("  ")) + "]");
-                
-                if (prodLen == 0) {
-                    grammarToAdd.getRuleByName(ruleName).getSubRules().remove(prodIndex);
 
-                } else {
-                    grammarToAdd.getRuleByName(ruleName).getSubRules().set(prodIndex, newProd);
-                }
+                System.err.println("Searching for " + ruleName + " in \n" + grammarToAdd + "\n to change " + prodIndex + " to " + newProd.toString());
+                grammarToAdd.getRuleByName(ruleName).getSubRules().set(prodIndex, newProd);
+                System.err.println("Found");
+        
                 if (checkedGrammars.contains(grammarToAdd.hashString())) {
                     App.hashtableHits++;
-                    // System.out.println(toAdd + " already generated");
-                    i--;
+                    System.err.println(grammarToAdd + " already generated");
                 } else {
+                    System.err.println();
                     // App.runGrammarOutput.output("clear");
                     // App.runGrammarOutput.output("Alternate grammars generated from \n" + this +
                     // "\n" +
                     // out.stream().map(GrammarReader::toString).collect(Collectors.joining("\n\n")));
                     checkedGrammars.add(grammarToAdd.hashString());
+                    toShow.append(i + ":\n" + prettyPrintRules(grammarToAdd.parserRules) + "\n");
+                    grammarToAdd.setName(grammarToAdd.getName() + "_RAND");
+                    grammarToAdd.setName(grammarToAdd.genMutantName());
+                    System.err.println("Checking if " + grammarToAdd + " contains an infLoop");
                     currAdditions.add(grammarToAdd);
                 }
             }
 
+            toShow.append("***Grouping Mutations***\n");
             // Grouping operation, this should be skipped if the target prod cannot be
             // group/ungrouped when it is only 1 rule
-            Rule origRule = getRuleByName(ruleName);
+            System.err.println("Computing grouping mutations for " + getName());
             if (origRule.canGroupProd(prodIndex)) {
                 for (int i = 0; i < 3; i++) {
+                    System.err.println("Computing grouping mutation  " + i);
                     GrammarReader grammarToAdd = new GrammarReader(this);
                     grammarToAdd.setName(grammarToAdd.genMutantName());
                     Rule targetRule = grammarToAdd.getRuleByName(ruleName);
@@ -1079,12 +1099,23 @@ public class GrammarReader {
                             newRule.setIterative(!newRule.isIterative());
                         }
                     }
-                    checkedGrammars.add(grammarToAdd.hashString());
-                    currAdditions.add(grammarToAdd);
+                    if(checkedGrammars.contains(grammarToAdd.hashString())) {
+                        App.hashtableHits++;
+                    } else {
+                        checkedGrammars.add(grammarToAdd.hashString());
+                        toShow.append(i + ":\n" + prettyPrintRules(grammarToAdd.parserRules) + "\n");
+
+                        grammarToAdd.setName(grammarToAdd.getName() + "_GROUP");
+                        grammarToAdd.setName(grammarToAdd.genMutantName());
+                        currAdditions.add(grammarToAdd);
+                    }
                 }
             }
+            toShow.append("***Ungrouping mutation***\n");
+            System.err.println("Computing ungrouping mutations for " + getName());
             if (origRule.canUngroupProd(prodIndex)) {
                 for (int i = 0; i < 3; i++) {
+                    System.err.println("Ungroup mutant " + i);
                     GrammarReader grammarToAdd = new GrammarReader(this);
                     grammarToAdd.setName(grammarToAdd.genMutantName());
                     Rule targetRule = grammarToAdd.getRuleByName(ruleName);
@@ -1097,13 +1128,25 @@ public class GrammarReader {
                     int toUngroupIndex = randGet(ungroupAbleIndices, true);
                     Rule toUngroup = targetProd.get(toUngroupIndex);
                     targetProd.addAll(toUngroupIndex, toUngroup.getSubRules().get(0));
-
-                    currAdditions.add(grammarToAdd);
+                    if(checkedGrammars.contains(grammarToAdd.hashString())) {
+                        App.hashtableHits++;
+                    } else {
+                        checkedGrammars.add(grammarToAdd.hashString());
+                        toShow.append(i + ":\n" + prettyPrintRules(grammarToAdd.parserRules) + "\n");
+                        grammarToAdd.setName(grammarToAdd.getName() + "_UNGROUP");
+                        grammarToAdd.setName(grammarToAdd.genMutantName());
+                        currAdditions.add(grammarToAdd);
+                    }
                 }
             }
 
+            toShow.append("***Heuristic mutation***\n");
             // Heuristics
-            for (int i = 0; i < 3; i++) {
+            System.err.println("Computing heuristic mutants for "  + getName());
+            int numMutants = Math.min(getRuleByName(ruleName).getTotalProductions(prodIndex),3);
+            System.err.println("Computing " + numMutants + " heuristic mutants");
+            for (int i = 0; i < numMutants; i++) {
+                System.err.println("Computing heur mutant " + i);
                 GrammarReader grammarToAdd = new GrammarReader(this);
                 grammarToAdd.setName(grammarToAdd.genMutantName());
                 Rule targetRule = grammarToAdd.getRuleByName(ruleName);
@@ -1113,11 +1156,18 @@ public class GrammarReader {
                 } else {
                     int[] prodCounts = new int[targetRule.getSubRules().size()];
                     for (int j = 0; j < prodCounts.length; j++) {
-                        prodCounts[j] = targetRule.getTotalProductions(j)
-                                + Arrays.stream(prodCounts).limit(Math.max(j - 1,0)).sum();
+                        int currProdCount = targetRule.getTotalProductions(j);
+                        System.err.println("There are " + currProdCount + " prods in " + targetRule.toString() +  " prod " + j);
+                        if(j == 0) {
+                            prodCounts[j] = currProdCount;
+                        } else {
+                            prodCounts[j] = prodCounts[j-1] + currProdCount;
+                        }
                     }
+                    System.err.println(Arrays.toString(prodCounts) +  "\nprodIndex "  + prodIndex);
                     int lowerProdBound = 1 + (prodIndex == 0 ? 0 : prodCounts[prodIndex - 1]);
                     int upperProdBound = 1 + prodCounts[prodIndex];
+                    System.err.println("lowerProdBound " + lowerProdBound + "\nupperProdBound " + upperProdBound);
                     int range = upperProdBound - lowerProdBound + 1;
                     int targetIndex = randInt(range);
                     if(targetIndex == 0) { //Add EPSILON as an alternative to the rule
@@ -1137,47 +1187,82 @@ public class GrammarReader {
                         }
                     }
                 }
-                currAdditions.add(grammarToAdd);
+                if(checkedGrammars.contains(grammarToAdd.hashString())) {
+                    App.hashtableHits++;
+                } else {
+                    checkedGrammars.add(grammarToAdd.hashString());
+                    toShow.append(i + ":\n" + prettyPrintRules(grammarToAdd.parserRules) + "\n");
+                    grammarToAdd.setName(grammarToAdd.getName() + "_HEUR");
+                    grammarToAdd.setName(grammarToAdd.genMutantName());
+                    System.err.println("Checking if " + grammarToAdd + " contains an infLoop");
+                    currAdditions.add(grammarToAdd);
+                }
             }
 
+
+            toShow.append("***New non-terminals***\n");
+            //new non-terminals
+            System.err.println("Computing new terminals for " + getName());
+            for (int i = 0; i < 3; i++) {
+                System.err.println("Computing non-terminal mutant " + i);
+                GrammarReader grammarToAdd = new GrammarReader(this);
+                int newRuleIndex = 1 + randInt(parserRules.size()-1);
+                grammarToAdd.generateNewRule(genRuleName(), newRuleIndex, 2 + randInt(Constants.MAX_RHS_SIZE-2));
+                Rule newRule = grammarToAdd.parserRules.get(newRuleIndex);
+                Rule targetRule = grammarToAdd.getRuleByName(ruleName);
+                targetRule.setProduction(1 + randInt(targetRule.getTotalProductions()-1), newRule);
+                 if(checkedGrammars.contains(grammarToAdd.hashString())) {
+                    App.hashtableHits++;
+                } else {
+                    checkedGrammars.add(grammarToAdd.hashString());
+                    toShow.append(i + ":\n" + prettyPrintRules(grammarToAdd.parserRules) + "\n");
+                    grammarToAdd.setName(grammarToAdd.getName() + "_NEWNT");
+                    grammarToAdd.setName(grammarToAdd.genMutantName());
+                    System.err.println("Checking if " + grammarToAdd + " contains an infLoop");
+                    currAdditions.add(grammarToAdd);
+                }
+            }
+
+            toShow.append("***Modifying existing prod***\n");
+            //modify prods
+            System.err.println("Modifying existing prods for " + getName());
+            for (int i = 0; i < 3; i++) {
+                System.err.println("Computing mod mutant " + i);
+                GrammarReader grammarToAdd = new GrammarReader(this);
+                Rule targetRule = grammarToAdd.getRuleByName(ruleName);
+                List<Rule> targetProd = targetRule.getSubRules().get(prodIndex);
+                LinkedList<Rule> newProd = targetProd.stream().map(rule -> new Rule(rule)).collect(Collectors.toCollection(LinkedList::new));
+                int toChangeIndex = randInt(newProd.size());
+                List<Rule> allRules = grammarToAdd.getAllRules();
+                Rule newAlternative = randGet(allRules, true).makeMinorCopy();
+                while(newAlternative.equals(newProd.get(toChangeIndex))) newAlternative = randGet(allRules, true).makeMinorCopy();
+                // String newRuleText = newProd.get(toChangeIndex).getName() + " | " + newAlternative.getName() + ";";
+                // Rule newRule = new Rule(newRuleText);
+                newProd.set(toChangeIndex, newAlternative);
+                targetRule.getSubRules().set(prodIndex, newProd);
+
+                if(checkedGrammars.contains(grammarToAdd.hashString())) {
+                    App.hashtableHits++;
+                } else {
+                    checkedGrammars.add(grammarToAdd.hashString());
+                    toShow.append(i + ":\n" + prettyPrintRules(grammarToAdd.parserRules) + "\n");
+                    grammarToAdd.setName(grammarToAdd.getName() + "_MOD");
+                    grammarToAdd.setName(grammarToAdd.genMutantName());
+                    System.err.println("Checking if " + grammarToAdd + " contains an infLoop");
+                    currAdditions.add(grammarToAdd);
+                }
+            }
+            // currAdditions.forEach(gram  -> gram.setName(genMutantName()));
+            out.addAll(currAdditions);
 
             
-            //new non-terminals
-            for (int i = 0; i < 3; i++) {
-                GrammarReader toAdd = new GrammarReader(this);
-                int newRuleIndex = 1 + randInt(parserRules.size()-1);
-                toAdd.generateNewRule(genRuleName(), newRuleIndex, randInt(Constants.MAX_RHS_SIZE));
-                Rule newRule = toAdd.parserRules.get(newRuleIndex);
-                Rule targetRule = toAdd.getRuleByName(ruleName);
-                targetRule.setProduction(randInt(targetRule.getTotalProductions()), newRule);
-                currAdditions.add(toAdd);
-            }
-
-            //modify prods
-            for (int i = 0; i < 3; i++) {
-                GrammarReader toAdd = new GrammarReader(this);
-                Rule targetRule = toAdd.getRuleByName(ruleName);
-                List<Rule> targetProd = targetRule.getSubRules().get(prodIndex);
-                List<Rule> newProd = targetProd.stream().map(rule -> new Rule(rule)).collect(Collectors.toList());
-                int toChangeIndex = randInt(newProd.size());
-                List<Rule> allRules = toAdd.getAllRules();
-                Rule newAlternative = randGet(allRules, true);
-                String newRuleText = newProd.get(toChangeIndex).getName() + " | " + newAlternative.getName() + ";";
-                Rule newRule = new Rule(newRuleText);
-                toAdd.parserRules.add(newRule);
-                newProd.set(toChangeIndex, newRule.makeMinorCopy());
-                currAdditions.add(toAdd);
-            }
-
-            out.addAll(currAdditions);
-            StringBuilder toShow = new StringBuilder("Suggestions for " + Arrays.toString(strArr) + " default: " + origRule +  "\n");
-            currAdditions.forEach(gram -> toShow.append(gram.getRuleByName(ruleName).toString() + "\n"));
+            // currAdditions.forEach(gram -> toShow.append(gram.getRuleByName(ruleName).toString() + "\n"));
             App.runGrammarOutput.output(toShow.toString());
-            try {
-                System.in.read();
-            } catch(Exception e) {
+            // try {
+            //     System.in.read();
+            // } catch(Exception e) {
 
-            }
+            // }
 
         });
 
@@ -1272,6 +1357,20 @@ public class GrammarReader {
         }
     }
 
+    @Override
+    public int compareTo(GrammarReader other) {
+        return Double.compare(getScore(), other.getScore());
+    }
+
+    private String prettyPrintRules(List<Rule> rules) {
+        return rules.stream().map(Rule::toString).collect(Collectors.joining("\n"));
+    }
+
+
+    public String getLastMutation() {
+        String[] splitArr = getName().split("_");
+        return splitArr[splitArr.length-2];
+    }
 
 
 }

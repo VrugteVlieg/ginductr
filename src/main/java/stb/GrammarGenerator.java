@@ -2,12 +2,9 @@ package stb;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 public class GrammarGenerator {
     
@@ -31,8 +28,13 @@ public class GrammarGenerator {
             currGrammar.removeUnreachable();
             // currGrammar.removeLR();
             // System.out.println("New grammar \n" + currGrammar.toString());
-            App.generatedGrammars.add(currGrammar.hashString());
-            output.add(currGrammar);
+            if(App.generatedGrammars.contains(currGrammar.hashString())) {
+                i--;
+                continue;
+            } else {
+                App.generatedGrammars.add(currGrammar.hashString());
+                output.add(currGrammar);
+            }
         }
         // System.out.println("New Grammars ");
         // output.forEach(grammar -> System.out.println(grammar));
@@ -64,20 +66,17 @@ public class GrammarGenerator {
 
     public static LinkedList<GrammarReader> generateLocalisablePop(int popSize, HashSet<String> checkedGrammar, scoringLambda criteria) {
         LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
+        int numLoops = 0;
         while(out.size() < popSize) {
-            App.runGrammarOutput.output("Init size " + out.size() + "/" + popSize);
+            App.runGrammarOutput.output("Init size " + out.size() + "/" + popSize + " " + numLoops++);
             LinkedList<GrammarReader> newPop = generatePopulation(200);
             
             newPop.stream()
-            .filter(grammar -> !checkedGrammar.contains(grammar.hashString()))
-            .peek(grammar -> checkedGrammar.add(grammar.hashString()))
-            .map(grammar -> {
-                App.runTests(grammar, Constants.POS_MODE, criteria);
-                return grammar; })
-            .filter(grammar -> grammar.getPosScore() != 0.0)
-            .limit(popSize-out.size())
+            .peek(grammar -> App.runTests(grammar, Constants.POS_MODE, criteria))
+            .filter(grammar -> grammar.getPosScore() > 0)
             .forEach(out::add);
         }
+        while(out.size() > popSize) out.removeLast();
         return out;
     }
 

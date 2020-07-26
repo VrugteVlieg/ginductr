@@ -16,7 +16,6 @@ public class Rule {
     private boolean iterative;
     private boolean mainRule;
     private boolean singular;
-    private boolean nullable;
     private String ruleText;
     private boolean toRemove = false;
 
@@ -495,10 +494,7 @@ public class Rule {
         }
     }
 
-    /**
-     * TODO: if a rule is ruleA: prodB prodC; is  unreacheable, choose a reachable symbol prodD, 
-     * make that symbol an alternative to the rule, ruleA: prodB prodC | prodD;
-     */
+    
     public ArrayList<String> getReachables(ArrayList<Rule> parserRules) {
         ArrayList<String> reachables = new ArrayList<String>();
         getReachables(parserRules, reachables);
@@ -530,6 +526,7 @@ public class Rule {
     }
 
     public boolean containsEpsilon() {
+        System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
         return subRules.stream().map(LinkedList::getFirst).map(EPSILON::equals).reduce(false,
                 (prev, next) -> prev || next);
     }

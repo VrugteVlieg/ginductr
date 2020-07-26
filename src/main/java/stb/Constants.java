@@ -16,7 +16,7 @@ public class Constants {
     public static final String CURR_TERMINALS_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
     public static final boolean DEBUG = false;
     public static final boolean USE_GUI = true;
-	public static final boolean USE_LOCALIZATION = false;
+	public static final boolean USE_LOCALIZATION = true;
 	public static final String POS_MODE = "pos";
 	public static final String NEG_MODE = "neg";
     private static  double P_C_MIN = 0;
@@ -47,10 +47,10 @@ public class Constants {
 	public static boolean HEURISTIC = true;
 	public static boolean CROSSOVER = false;
     
-    public static int INIT_POP_SIZE = 50;
-    public static int INIT_POP_SIZE_LOCAL = 10;
-    public static int POP_SIZE = 50;
-    public static int MAX_GRAMMARS = 10000;
+    public static int INIT_POP_SIZE = 10000;
+    public static int INIT_POP_SIZE_LOCAL = 5;
+    public static int POP_SIZE = 100;
+    public static int MAX_GRAMMARS = 100000;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
     //How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;

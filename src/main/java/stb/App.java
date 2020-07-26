@@ -47,7 +47,6 @@ public class App {
     // reconstructing when needed
     static LinkedList<GrammarReader> positiveGrammars = new LinkedList<GrammarReader>();
     static LinkedList<GrammarReader> perfectGrammars = new LinkedList<GrammarReader>();
-    //TODO evaluatedGrammars does not get cleared after each iteration, the population for the new generation is selected from all evaluated grammars, should this be changed to just use curr gen grammars
     static HashMap<Double, LinkedList<GrammarReader>> evaluatedGrammars = new HashMap<Double, LinkedList<GrammarReader>>();
     static HashSet<String> generatedGrammars = new HashSet<String>();
 
@@ -67,9 +66,9 @@ public class App {
         runLocaliser(seededGrammar);
     }
 
-    public static void runTests(GrammarReader myReader, String testDir, scoringLambda scoreCalc) {
+    public static void runTests(GrammarReader myReader, String testMode, scoringLambda scoreCalc) {
         if (myReader.getParserRules().size() == 0 || myReader.containsInfLoop()) {
-            System.out.println("Flagging " + myReader.getName() + " for removal");
+            System.err.println("Flagging " + myReader.getName() + " for removal");
             myReader.flagForRemoval();
             return;
         }
@@ -89,7 +88,7 @@ public class App {
         numGrammarsChecked++;
         try {
 
-            int[] testResult = Chelsea.runTestcases(removeCurr, testDir);
+            int[] testResult = Chelsea.runTestcases(removeCurr, testMode);
             myReader.stripEOF();
             if (myReader.toRemove()) {
                 return;
@@ -105,8 +104,9 @@ public class App {
     }
 
     public static void runTestsWithLocalisation(GrammarReader myReader, scoringLambda scoreCalc) {
+        System.err.println("Testing " + myReader);
         if (myReader.getParserRules().size() == 0 || myReader.containsInfLoop()) {
-            System.out.println("Flagging " + myReader.getName() + " for removal");
+            System.err.println("Flagging " + myReader.getName() + " for removal");
             myReader.flagForRemoval();
             return;
         }
@@ -162,6 +162,13 @@ public class App {
                     // cover search space
                     myGrammars.forEach(grammar -> totalPop
                             .addAll(grammar.computeMutants(Constants.MUTANTS_PER_BASE, generatedGrammars)));
+                            totalPop.forEach(gram -> System.out.println(gram.getName()));
+                            totalPop.forEach( gram -> runTests(gram, Constants.POS_MODE, Constants.positiveScoring));
+                            int sizePre = totalPop.size();
+                            totalPop.removeIf(gram -> gram.getPosScore() == 0.0);
+                            int sizePost = totalPop.size();
+                            runLogOutput.output("Filtered " + (sizePre-sizePost) + " broken grammars");
+
                 }
                 
 
@@ -478,6 +485,7 @@ public class App {
         try {
 
             myGrammars = GrammarGenerator.generatePopulation(Constants.INIT_POP_SIZE);
+            // myGrammars = GrammarGenerator.generatePopulation(Constants.INIT_POP_SIZE);
             // Postive testing
             for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
                 runLogOutput.output("Inferring " + Constants.CURR_GRAMMAR_NAME + " without localisation");
@@ -571,7 +579,14 @@ public class App {
                 List<GrammarReader> allGrammars = scoreList.stream().map(evaluatedGrammars::get)
                         .flatMap(LinkedList::stream).collect(Collectors.toList());
 
+                //TODO check whether the suggested mutants are calculated correctly in next gen, the grammars that were localised shouls use guided mutation otherwise do random
                 myGrammars = selectNewPop(totalPop, allGrammars);
+                myGrammars.sort(Comparator.reverseOrder());
+                myGrammars.stream()
+                            .filter(gram -> gram.getMutationConsideration().isEmpty() && gram.getScore() > 0)
+                            .limit(10)
+                            .forEach(gram -> runTestsWithLocalisation(gram, Constants.localiserScoring));
+                
             }
         } catch (Exception e) {
             e.printStackTrace();
