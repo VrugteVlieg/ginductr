@@ -682,7 +682,8 @@ public class GrammarReader implements Comparable<GrammarReader> {
         }
     }
 
-    public LinkedList<GrammarReader> computeMutants(int numMutants, HashSet<String> checkedGrammars) {
+    public LinkedList<GrammarReader> computeMutants() {
+        checkedGrammars = App.generatedGrammars;
         // System.err.println(getName() + "   "+ mutationConsiderations.stream().map(Arrays::toString).collect(Collectors.joining(",")));
         if (!mutationConsiderations.isEmpty()) {
             return computeSuggestedMutants(checkedGrammars);
@@ -691,6 +692,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
 
         }
 
+        int numMutants = Constants.MUTANTS_PER_BASE;
         LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
         for (int i = 0; i < numMutants; i++) {
 

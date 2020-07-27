@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
-
 import javafx.application.Application;
 
 public class App {
@@ -66,7 +65,7 @@ public class App {
         runLocaliser(seededGrammar);
     }
 
-    public static void runTests(GrammarReader myReader, String testMode, scoringLambda scoreCalc) {
+    public static void runTests(GrammarReader myReader) {
         if (myReader.getParserRules().size() == 0 || myReader.containsInfLoop()) {
             System.err.println("Flagging " + myReader.getName() + " for removal");
             myReader.flagForRemoval();
@@ -77,10 +76,10 @@ public class App {
         lamdaArg removeCurr = () -> myReader.flagForRemoval();
         long startTime = System.nanoTime();
         Chelsea.generateSources(myReader, removeCurr);
+        myReader.stripEOF();
 
         if (myReader.toRemove()) {
             System.out.println("Code gen failed for \n" + myReader);
-            myReader.stripEOF();
             return;
         }
 
@@ -88,15 +87,24 @@ public class App {
         numGrammarsChecked++;
         try {
 
-            int[] testResult = Chelsea.runTestcases(removeCurr, testMode);
-            myReader.stripEOF();
+            int[] testResult = Chelsea.runTestcases(removeCurr, Constants.POS_MODE);
             if (myReader.toRemove()) {
                 return;
             }
 
-            scoreCalc.eval(testResult, myReader);
-            testingTime  += System.nanoTime() - startTime;
+            Constants.positiveScoring.eval(testResult, myReader);
+
+            testingTime += System.nanoTime() - startTime;
             numTests++;
+
+            //Only do negative testing if all pos tests pass
+            if(myReader.getPosScore() == 1.0) {
+                testResult = Chelsea.runTestcases(removeCurr, Constants.NEG_MODE);
+                Constants.negativeScoring.eval(testResult, myReader);
+            }
+
+            //Clears out the generated files
+            Chelsea.clearGenerated();
 
         } catch (Exception e) {
             System.err.println("Exception in runTests " + e.getCause());
@@ -104,29 +112,9 @@ public class App {
     }
 
     public static void runTestsWithLocalisation(GrammarReader myReader, scoringLambda scoreCalc) {
-        System.err.println("Testing " + myReader);
-       
-        List<String> result = runLocaliser(myReader);
-        if (result.isEmpty()) {
-            myReader.flagForRemoval();
-        } else {
-            String[] scores = result.get(0).split(",");
-            int numPass = Integer.parseInt(scores[0]);
-            int numFail = Integer.parseInt(scores[1]);
-            int[] passFail = { numPass, numFail };
-            scoreCalc.eval(passFail, myReader);
-            // System.out.println(myReader.getName() + " has a score of " +
-            // myReader.getScore() + " with " + Arrays.toString(passFail));
-            if (myReader.getScore() != 0.0) {
-                System.out.println("Mutation suggestions for " + myReader +  "\n" + result);
-                myReader.setMutationConsideration(result.subList(1, result.size()));
-            } else {
-                myReader.setMutationConsideration(new LinkedList<String>());
-            }
-            testingTime += System.nanoTime() - startTime;
-
-        }
-
+        // System.err.println(" " + myReader);
+        // List<String> result = runLocaliser(myReader);
+        // myReader.setMutationConsideration(result);
     }
     /**
      * Try to infer currGram using localisation, 
@@ -151,53 +139,18 @@ public class App {
                     // myGrammars.stream().map(GrammarReader::getName).collect(Collectors.joining("\n")));
                     // Dont generate mutants on the first gen, we use a lot of initial grammars to
                     // cover search space
-                    myGrammars.forEach(grammar -> {
-                        LinkedList<GrammarReader> mutants = grammar.computeMutants(Constants.MUTANTS_PER_BASE, generatedGrammars));
-                        mutants.forEach(gram -> runTests(gram, Constants.POS_MODE, Constants.positiveScoring));
-                        mutants.forEach(gram -> runTests(gram, Constants.NEG, Constants.negativeScoring));
-                        totalPop.addAll(mutants);
-                    }
-                    totalPop.add(myGrammars);
-
-
-                    //If grammars were broken during mutation we dont want to localize them
-                    int sizePre = totalPop.size();
-                    totalPop.removeIf(gram -> gram.getPosScore() == 0.0);
-                    int sizePost = totalPop.size();
-                    runLogOutput.output("Filtered " + (sizePre-sizePost) + " broken grammars");
-
+                    myGrammars.stream()
+                                .map(GrammarReader::computeMutants)
+                                .flatMap(LinkedList<GrammarReader>::stream)
+                                .peek(App::runTests)
+                                .filter(gram -> gram.getPosScore() > 0 && !gram.toRemove())
+                                .forEach(totalPop::add);
                 }
                 
 
-                totalPop.forEach(grammar -> {
-                    runGrammarOutput.output("Localizing" + totalPop.indexOf(grammar) + "/" + totalPop.size() + "\n" + grammar);
-                    runTestsWithLocalisation(grammar, Constants.localiserScoring);
-                    // System.out.println(grammar.getMutationConsideration().stream().map(Arrays::toString).collect(Collectors.joining("\n")));
-                    double outScore = grammar.getScore();
-                    if (grammar.getScore() == 1.0) {
-                        perfectGrammars.add(new GrammarReader(grammar));
-                        runGrammarOutput.output("New perfect grammar\n" + grammar);
-                    }
-                    if (outScore > getBestScore()) {
-                        runLogOutput.output("\nNew best grammar\nBest score " + getBestScore() + " -> " + outScore);
-                        runLogOutput.output(grammar.hashString() + '\n' + grammar.getTerminalRules().stream()
-                                .map(Rule::toString).collect(Collectors.joining("\n")));
-                        setBestGrammar(grammar);
-                    }
-                });
+                
 
-                totalPop.removeIf(GrammarReader::toRemove);
 
-                totalPop.forEach(grammar -> {
-                    double currScore = grammar.getScore();
-                    if (evaluatedGrammars.containsKey(currScore)) {
-                        evaluatedGrammars.get(currScore).add(grammar);
-                    } else {
-                        LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
-                        thisScoreList.add(grammar);
-                        evaluatedGrammars.put(currScore, thisScoreList);
-                    }
-                });
 
                 List<Double> scoreList = evaluatedGrammars.keySet().stream().sorted(Comparator.reverseOrder())
                         .collect(Collectors.toList());
@@ -210,44 +163,60 @@ public class App {
                 if (bestScore > 0.2) {
 
                     ArrayList<GrammarReader> crossoverPop = performCrossover(scoreList, totalPop);
-                    crossoverPop.forEach(gram -> runTestsWithLocalisation(gram, Constants.localiserScoring));
-                    crossoverPop.removeIf(GrammarReader::toRemove);
-                    crossoverPop.forEach(grammar -> {
-                        double currScore = grammar.getScore();
-                        if (currScore == 1.0) {
-                            perfectGrammars.add(new GrammarReader(grammar));
-                            runGrammarOutput.output("Perfect grammar found:\n" + grammar);
-                        }
-                        
-                        if (currScore > getBestScore()) {
-                            runGrammarOutput
-                                    .output("\nNew best grammar\nBest score " + getBestScore() + " -> " + currScore);
-                            runGrammarOutput.output(grammar.hashString() + '\n' + grammar.getTerminalRules().stream()
-                                    .map(Rule::toString).collect(Collectors.joining("\n")));
-                            setBestGrammar(grammar);
-                        }
-                        if (evaluatedGrammars.containsKey(currScore)) {
-                            evaluatedGrammars.get(currScore).add(grammar);
-                        } else {
-                            LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
-                            thisScoreList.add(grammar);
-                            evaluatedGrammars.put(currScore, thisScoreList);
-                        }
-                    });
-
-                    scoreList = evaluatedGrammars.keySet().stream().sorted(Comparator.reverseOrder())
-                            .collect(Collectors.toList());
+                    crossoverPop.stream()
+                                .peek(App::runTests)
+                                .filter(gram -> gram.getPosScore() > 0 && !gram.toRemove())
+                                .forEach(totalPop::add);
+                                
                 }
 
-                int grammarsToCarry = myGrammars.size();
-                myGrammars.clear();
+
+                totalPop.forEach(gram -> {
+                                double currScore = gram.getScore();
+
+                                if(currScore == 1.0) {
+                                    perfectGrammars.add(new GrammarReader(gram));
+                                    runGrammarOutput.output("Perfect grammar found:\n" + grammar);
+                                } 
+
+                                if(currScore > getBestScore()) {
+                                    runGrammarOutput
+                                        .output("\nNew best grammar\nBest score " + getBestScore() + " -> " + currScore);    
+                                    runGrammarOutput.output(gram.hashString() + '\n');
+                                    setBestGrammar(gram);
+                                }
+
+                                if (evaluatedGrammars.containsKey(currScore)) {
+                                    evaluatedGrammars.get(currScore).add(gram);
+                                } else {
+                                    LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
+                                    thisScoreList.add(gram);
+                                    evaluatedGrammars.put(currScore, thisScoreList);
+                                }
+                            });
+                      
+                            
+                //I removed hall of fame, can be readded here
+                // scoreList = evaluatedGrammars.keySet().stream().sorted(Comparator.reverseOrder())
+                //             .collect(Collectors.toList());
+
+
+
+                //TODO further optimisation can be done by having the localiser program printing out num pos pass, num pos fail, num neg pass, num neg fail
+                // it is currently being recorded in the localiser but the pass and fail scores are combined, this way there is no need to use chelseas generation
+                //would still require the maven processes though so look into  it
+                totalPop.forEach(grammar -> {
+                    runGrammarOutput.output("Localizing" + totalPop.indexOf(grammar) + "/" + totalPop.size() + "\n" + grammar);
+                    runLocaliser(grammar);
+                });
+
                 // int grammarsToCarry = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
 
                 List<GrammarReader> allGrammars = scoreList.stream().map(evaluatedGrammars::get)
                         .flatMap(LinkedList::stream).collect(Collectors.toList());
 
-                for (int i = 0; i < grammarsToCarry; i++) {
-                    myGrammars.add(tournamentSelect(allGrammars, 6));
+                for (int i = 0; i < Constants.POP_SIZE; i++) {
+                    myGrammars.add(tournamentSelect(totalPop, 6));
                 }
                 recordMetrics(myGrammars);
 
@@ -477,129 +446,123 @@ public class App {
     }
 
     //Does the ordinary learning w/o localisation but uses both positve and negative testing suites from the start
-    public static void demoMainNoLocalCombScoring() {
-        try {
+    // public static void demoMainNoLocalCombScoring() {
+    //     try {
 
-            myGrammars = GrammarGenerator.generatePopulation(Constants.INIT_POP_SIZE);
-            // myGrammars = GrammarGenerator.generatePopulation(Constants.INIT_POP_SIZE);
-            // Postive testing
-            for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
-                runLogOutput.output("Inferring " + Constants.CURR_GRAMMAR_NAME + " without localisation");
-                runLogOutput.output("Starting generation " + genNum);
-                runLogOutput.output("Hashtable hits : " + hashtableHits + "\n");
+    //         myGrammars = GrammarGenerator.generatePopulation(Constants.INIT_POP_SIZE);
+    //         // myGrammars = GrammarGenerator.generatePopulation(Constants.INIT_POP_SIZE);
+    //         // Postive testing
+    //         for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
+    //             runLogOutput.output("Inferring " + Constants.CURR_GRAMMAR_NAME + " without localisation");
+    //             runLogOutput.output("Starting generation " + genNum);
+    //             runLogOutput.output("Hashtable hits : " + hashtableHits + "\n");
 
-                LinkedList<GrammarReader> totalPop = new LinkedList<GrammarReader>();
-                totalPop.addAll(myGrammars);
-                if (genNum != 0) {
-                    // Dont generate mutants on the first gen, we use a lot of initial grammars to
-                    // cover search space
-                    myGrammars.forEach(grammar -> totalPop
-                            .addAll(grammar.computeMutants(Constants.MUTANTS_PER_BASE, generatedGrammars)));
-                }
-                totalPop.forEach(grammar -> {
-                    runGrammarOutput.output("Testing " + totalPop.indexOf(grammar) + "/" + totalPop.size() + "\n" + grammar);
+    //             LinkedList<GrammarReader> totalPop = new LinkedList<GrammarReader>();
+    //             totalPop.addAll(myGrammars);
+    //             if (genNum != 0) {
+    //                 // Dont generate mutants on the first gen, we use a lot of initial grammars to
+    //                 // cover search space
+    //                 myGrammars.forEach(grammar -> totalPop
+    //                         .addAll(grammar.computeMutants(Constants.MUTANTS_PER_BASE, generatedGrammars)));
+    //             }
+    //             totalPop.forEach(grammar -> {
+    //                 runGrammarOutput.output("Testing " + totalPop.indexOf(grammar) + "/" + totalPop.size() + "\n" + grammar);
 
-                    runTests(grammar, Constants.POS_MODE, Constants.positiveScoring);
-                    runTests(grammar, Constants.NEG_MODE, Constants.negativeScoring);
+    //                 runTests(grammar, Constants.POS_MODE, Constants.positiveScoring);
+    //                 runTests(grammar, Constants.NEG_MODE, Constants.negativeScoring);
 
-                    double currScore = grammar.getScore();
-                    if (currScore == 1.0) {
-                        perfectGrammars.add(grammar);
-                        runGrammarOutput.output("New perfect grammar\n" + grammar);
-                    }
+    //                 double currScore = grammar.getScore();
+    //                 if (currScore == 1.0) {
+    //                     perfectGrammars.add(grammar);
+    //                     runGrammarOutput.output("New perfect grammar\n" + grammar);
+    //                 }
                     
-                    if (currScore > getBestScore()) {
-                        String out = "\nNew best grammar\nBest score " + getBestScore() + " -> " + currScore + '\n' + grammar.hashString() + '\n' + grammar.getTerminalRules().stream()
-                        .map(Rule::toString).collect(Collectors.joining("\n"));
-                        runLogOutput.output(out);
-                        setBestGrammar(grammar);
-                    }
+    //                 if (currScore > getBestScore()) {
+    //                     String out = "\nNew best grammar\nBest score " + getBestScore() + " -> " + currScore + '\n' + grammar.hashString() + '\n' + grammar.getTerminalRules().stream()
+    //                     .map(Rule::toString).collect(Collectors.joining("\n"));
+    //                     runLogOutput.output(out);
+    //                     setBestGrammar(grammar);
+    //                 }
 
-                    if (evaluatedGrammars.containsKey(currScore)) {
-                        evaluatedGrammars.get(currScore).add(grammar);
-                    } else {
-                        LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
-                        thisScoreList.add(grammar);
-                        evaluatedGrammars.put(currScore, thisScoreList);
-                    }
-                });
-                totalPop.removeIf(GrammarReader::toRemove);
+    //                 if (evaluatedGrammars.containsKey(currScore)) {
+    //                     evaluatedGrammars.get(currScore).add(grammar);
+    //                 } else {
+    //                     LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
+    //                     thisScoreList.add(grammar);
+    //                     evaluatedGrammars.put(currScore, thisScoreList);
+    //                 }
+    //             });
+    //             totalPop.removeIf(GrammarReader::toRemove);
 
                 
 
-                List<Double> scoreList = evaluatedGrammars.keySet().stream()
-                                            .sorted(Comparator.reverseOrder())
-                                            .collect(Collectors.toList());
+    //             List<Double> scoreList = evaluatedGrammars.keySet().stream()
+    //                                         .sorted(Comparator.reverseOrder())
+    //                                         .collect(Collectors.toList());
 
-                // Add crossover grammars
-                double bestScore = scoreList.get(0);
-                // Only start performing crossover if some decent grammars already exist
-                if (bestScore > 0.2) {
+    //             // Add crossover grammars
+    //             double bestScore = scoreList.get(0);
+    //             // Only start performing crossover if some decent grammars already exist
+    //             if (bestScore > 0.2) {
 
-                    ArrayList<GrammarReader> crossoverPop = performCrossover(scoreList, totalPop);
-                    crossoverPop.forEach(gram ->  {
-                        runTests(gram, Constants.POS_MODE, Constants.positiveScoring);
-                        runTests(gram, Constants.NEG_MODE, Constants.negativeScoring);
-                    });
-                    crossoverPop.removeIf(GrammarReader::toRemove);
-                    crossoverPop.forEach(grammar -> {
-                        double currScore = grammar.getScore();
-                        if (grammar.getScore() == 1.0) {
-                            perfectGrammars.add(grammar);
-                            runGrammarOutput.output("New perfect grammar\n" + grammar);
-                        }
-                        if (currScore > getBestScore()) {
-                            runGrammarOutput
-                                    .output("\nNew best grammar\nBest score " + getBestScore() + " -> " + currScore);
-                            runGrammarOutput.output(grammar.hashString() + '\n' + grammar.getTerminalRules().stream()
-                                    .map(Rule::toString).collect(Collectors.joining("\n")));
-                            setBestGrammar(grammar);
-                        }
-                        if (evaluatedGrammars.containsKey(currScore)) {
-                            evaluatedGrammars.get(currScore).add(grammar);
-                        } else {
-                            LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
-                            thisScoreList.add(grammar);
-                            evaluatedGrammars.put(currScore, thisScoreList);
-                        }
-                    });
+    //                 ArrayList<GrammarReader> crossoverPop = performCrossover(scoreList, totalPop);
+    //                 crossoverPop.forEach(gram ->  {
+    //                     runTests(gram, Constants.POS_MODE, Constants.positiveScoring);
+    //                     runTests(gram, Constants.NEG_MODE, Constants.negativeScoring);
+    //                 });
+    //                 crossoverPop.removeIf(GrammarReader::toRemove);
+    //                 crossoverPop.forEach(grammar -> {
+    //                     double currScore = grammar.getScore();
+    //                     if (grammar.getScore() == 1.0) {
+    //                         perfectGrammars.add(grammar);
+    //                         runGrammarOutput.output("New perfect grammar\n" + grammar);
+    //                     }
+    //                     if (currScore > getBestScore()) {
+    //                         runGrammarOutput
+    //                                 .output("\nNew best grammar\nBest score " + getBestScore() + " -> " + currScore);
+    //                         runGrammarOutput.output(grammar.hashString() + '\n' + grammar.getTerminalRules().stream()
+    //                                 .map(Rule::toString).collect(Collectors.joining("\n")));
+    //                         setBestGrammar(grammar);
+    //                     }
+    //                     if (evaluatedGrammars.containsKey(currScore)) {
+    //                         evaluatedGrammars.get(currScore).add(grammar);
+    //                     } else {
+    //                         LinkedList<GrammarReader> thisScoreList = new LinkedList<GrammarReader>();
+    //                         thisScoreList.add(grammar);
+    //                         evaluatedGrammars.put(currScore, thisScoreList);
+    //                     }
+    //                 });
 
-                    scoreList = evaluatedGrammars.keySet().stream().sorted(Comparator.reverseOrder())
-                            .collect(Collectors.toList());
-                    totalPop.addAll(crossoverPop);
-                }
+    //                 scoreList = evaluatedGrammars.keySet().stream().sorted(Comparator.reverseOrder())
+    //                         .collect(Collectors.toList());
+    //                 totalPop.addAll(crossoverPop);
+    //             }
 
-                recordMetrics(totalPop);
-                // int grammarsToCarry = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
+    //             recordMetrics(totalPop);
+    //             // int grammarsToCarry = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
 
-                List<GrammarReader> allGrammars = scoreList.stream().map(evaluatedGrammars::get)
-                        .flatMap(LinkedList::stream).collect(Collectors.toList());
+    //             List<GrammarReader> allGrammars = scoreList.stream().map(evaluatedGrammars::get)
+    //                     .flatMap(LinkedList::stream).collect(Collectors.toList());
 
-                //TODO check whether the suggested mutants are calculated correctly in next gen, the grammars that were localised shouls use guided mutation otherwise do random
-                myGrammars = selectNewPop(totalPop, allGrammars);
-                myGrammars.sort(Comparator.reverseOrder());
-                myGrammars.stream()
-                            .filter(gram -> gram.getMutationConsideration().isEmpty() && gram.getScore() > 0)
-                            .limit(10)
-                            .forEach(gram -> runTestsWithLocalisation(gram, Constants.localiserScoring));
+    //             //TODO check whether the suggested mutants are calculated correctly in next gen, the grammars that were localised shouls use guided mutation otherwise do random
+    //             myGrammars = selectNewPop(totalPop, allGrammars);
+    //             myGrammars.sort(Comparator.reverseOrder());
+    //             myGrammars.stream()
+    //                         .filter(gram -> gram.getMutationConsideration().isEmpty() && gram.getScore() > 0)
+    //                         .limit(10)
+    //                         .forEach(gram -> runTestsWithLocalisation(gram, Constants.localiserScoring));
                 
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            System.err.println("Best Grammar " + getBestScore() + "\n" + bestGrammar);
-            System.err.println("Floating EOF " + floatingEOF);
-        }
+    //         }
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //     } finally {
+    //         System.err.println("Best Grammar " + getBestScore() + "\n" + bestGrammar);
+    //         System.err.println("Floating EOF " + floatingEOF);
+    //     }
 
-    }
+    // }
     public static void demoMainProgram() {
-        
-            if (Constants.USE_LOCALIZATION) {
-                demoMainWLocal();
-            } else {
-                demoMainNoLocalCombScoring();
-            }
-            
+        demoMainWLocal();
     }
     /**
      * Performs crossover by selecting NUM_CROSSOVER_PER_GEN pairs of grammars from  and producing 2 new grammars
@@ -801,7 +764,11 @@ public class App {
     }
 
     //TODO eliminate the use of scoring func duing localization
-    public static List<String> runLocaliser(GrammarReader currGrammar) {
+    /**
+     * Runs localiser on current grammar, sets the mutation suggestions of current grammar to a list of strings of the form (ruleName:prodIndex)
+     * @param currGrammar  Grammer being tested
+     */
+    public static void runLocaliser(GrammarReader currGrammar) {
         List<String> out = new LinkedList<String>();
         try (FileWriter outFile = new FileWriter(new File(Constants.localizerGPath))) {
             outFile.append(currGrammar.toString().replaceFirst(currGrammar.getName(), "UUT"));
@@ -811,45 +778,43 @@ public class App {
 
             BufferedReader inputReader = new BufferedReader(new InputStreamReader(testProc.getInputStream()));
             HashMap<Double, LinkedList<String>> susScore = new HashMap<Double, LinkedList<String>>();
-            int[] passFailCount = { -1, -1 };
 
+            //For now this readLine is here to consume the output from the scripts, can be removed if not needed
             String result = inputReader.readLine();
-            if (result.equals("codeGenFailed")) {
-                return out;
-            }
+            // if (result.equals("codeGenFailed")) {
+            //     return null;
+            // }
 
-            if (inputReader.toString().contains("nan"))
-                return out;
-            inputReader.lines().forEach(line -> {
-                System.err.println(line);
-                String[] data = line.split(",");
-                if (data[0].equals("program:1") || data[5].equals("nan"))
-                    return;
-                if (passFailCount[0] == -1) {
-                    passFailCount[0] = (int) Double.parseDouble(data[2]) + (int) Double.parseDouble(data[4]);
-                    passFailCount[1] = (int) Double.parseDouble(data[1]) + (int) Double.parseDouble(data[3]);
-                }
-                Double tarantula = Double.valueOf(data[5]);
-                if (susScore.containsKey(tarantula)) {
-                    susScore.get(tarantula).add(data[0]);
-                } else {
-                    LinkedList<String> toAdd = new LinkedList<String>();
-                    toAdd.add(data[0]);
-                    susScore.put(tarantula, toAdd);
-                }
-            });
-            out.add(passFailCount[0] + "," + passFailCount[1]);
-            out.addAll(susScore.keySet().stream().sorted(Comparator.reverseOrder()).map(susScore::get)
-                    .flatMap(LinkedList::stream).collect(Collectors.toList()));
+            // if (inputReader.toString().contains("nan"))
+            //     return null;
+            inputReader.lines()
+                        .map(line -> line.split(","))
+                        .filter(data -> !(data[0].equals("program:1") || data[5].equals("nan")))
+                        .forEach(data -> {
+                            Double tarantula = Double.valueOf(data[5]);
+                            if (susScore.containsKey(tarantula)) {
+                                susScore.get(tarantula).add(data[0]);
+                            } else {
+                                LinkedList<String> toAdd = new LinkedList<String>();
+                                toAdd.add(data[0]);
+                                susScore.put(tarantula, toAdd);
+                            }
+                        });
+            
 
-            System.err.println("out:  " + out);
-            return out;
+            susScore.keySet().stream()
+                                .sorted(Comparator.reverseOrder())
+                                .map(susScore::get)
+                                .flatMap(LinkedList::stream)
+                                .forEach(out::add);
 
+
+                       
+            currGrammar.setMutationConsideration(out);
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return out;
-
     }
 
     /**

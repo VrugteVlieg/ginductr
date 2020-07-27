@@ -28,6 +28,7 @@ import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.ast.GrammarRootAST;
 
+
 public class Chelsea {
     // Collection of Methods gotten from Chelsea Barraball 19768125@sun.ac.za
     // Generates, compiles and loads parser,lexer classes from the file
@@ -197,7 +198,7 @@ public class Chelsea {
         } else if (mode.equals(Constants.NEG_MODE)) {
             tests = negTests;
         } else {
-            return out;
+            return null;
         }
         // System.out.println("Running " + paths.count() + " tests");
         tests.forEach(test -> {
@@ -247,7 +248,7 @@ public class Chelsea {
                 out[1]++;
             }
         });
-        cleanDirectory(new File(Constants.ANTLR_DIR));
+        
         return out;
 
     }
@@ -284,7 +285,7 @@ public class Chelsea {
     }
 
     /**
-     * Removes all the generated files to keep future hashmaps manageable
+     * Removes all files in target directory, used to keep code gen hashmaps clean
      * 
      * @param directory
      */
@@ -294,6 +295,12 @@ public class Chelsea {
         for (int i = 0; i < files.size(); i++) {
             files.get(i).delete();
         }
+    }
+    /**
+     * Removes the generated files used for current test
+     */
+    public static void clearGenerated() {
+        cleanDirectory(new File(Constants.ANTLR_DIR));
     }
 
 }
