@@ -72,11 +72,11 @@ public class GrammarGenerator {
             LinkedList<GrammarReader> newPop = generatePopulation(200);
             
             newPop.stream()
-            .peek(grammar -> App.runTests(grammar, Constants.POS_MODE, Constants.positiveScoring))
-            .filter(grammar -> grammar.getPosScore() > 0)
-            .peek(grammar -> App.runTests(grammar, Constants.NEG_MODE, Constants.negativeScoring))
+            .peek(App::runTests)
+            .filter(grammar -> grammar.getPosScore() > 0 && !grammar.toRemove())
             .forEach(out::add);
         }
+        
         out = new LinkedList<GrammarReader>(out.subList(0, popSize));
         
         return out;

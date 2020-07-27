@@ -72,7 +72,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     /**
-     * Creates a deep copy of a grammarReader
+     * Creates a deep copy of a grammarReader, does not copy mutation suggestions
      */
     public GrammarReader(GrammarReader toCopy) {
         grammarName = toCopy.grammarName;
@@ -80,7 +80,8 @@ public class GrammarReader implements Comparable<GrammarReader> {
         toCopy.parserRules.forEach(rule -> parserRules.add(new Rule(rule)));
         terminalRules = new ArrayList<Rule>();
         toCopy.terminalRules.forEach(rule -> terminalRules.add(new Rule(rule)));
-        toCopy.mutationConsiderations.forEach(mutationConsiderations::add);
+        
+        // toCopy.mutationConsiderations.forEach(mutationConsiderations::add);
 
         this.posScore = toCopy.posScore;
         this.negScore = toCopy.negScore;
@@ -683,8 +684,8 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public LinkedList<GrammarReader> computeMutants() {
-        checkedGrammars = App.generatedGrammars;
-        // System.err.println(getName() + "   "+ mutationConsiderations.stream().map(Arrays::toString).collect(Collectors.joining(",")));
+        HashSet<String> checkedGrammars = App.generatedGrammars;
+        System.err.println(getName() + "   "+ mutationConsiderations.stream().map(Arrays::toString).collect(Collectors.joining(",")));
         if (!mutationConsiderations.isEmpty()) {
             return computeSuggestedMutants(checkedGrammars);
         } else {
@@ -1005,7 +1006,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public void setMutationConsideration(List<String> newList) {
-        App.runGrammarOutput.output("Setting mutations list for " + getName() + newList + "\n");
+        App.runGrammarOutput.output("Setting mutations list for "  + this + "\n" + newList + "\n");
         mutationConsiderations = newList.stream().limit(3).map(str -> str.split(":")).collect(Collectors.toList());
     }
 
