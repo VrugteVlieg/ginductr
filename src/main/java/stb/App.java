@@ -51,6 +51,10 @@ public class App {
     static HashMap<Double, LinkedList<GrammarReader>> evaluatedGrammars = new HashMap<Double, LinkedList<GrammarReader>>();
     static HashSet<String> generatedGrammars = new HashSet<String>();
 
+
+    //TODO compare .java files produces by chelsea and localiser
+    //TODO move constants into relevant files
+
     public static void main(String[] args) {
         Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR);
         if (Constants.USE_GUI) {

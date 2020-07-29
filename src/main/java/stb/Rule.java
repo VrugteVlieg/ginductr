@@ -346,7 +346,7 @@ public class Rule {
      * @param index
      * @param toSet
      */
-    public void setProduction(int index, Rule toSet) {
+    public void setSelectable(int index, Rule toSet) {
 
         Rule test = toSet.equals(EPSILON) ? EPSILON() : new Rule(toSet);
         if (test.mainRule) {
@@ -364,12 +364,36 @@ public class Rule {
                     // if(!mainRule)resetName();
                     return;
                 } else {
-                    counter += subRule.getTotalProductions();
+                    counter += subRule.getTotalSelectables();
                     if (counter >= index) { // the rule to change was in the the last subrule
                         int indexInRule = index - counterPre - 1; // position withing the rule
-                        subRule.setProduction(indexInRule, test);
+                        subRule.setSelectable(indexInRule, test);
 
                         printOut(subRules.toString());
+                    }
+                }
+                subRuleIndex++;
+            }
+            subSetIndex++;
+        }
+    }
+
+    public void removeSelectable(int index) {
+        int counter = 0;
+        int subSetIndex = 0;
+        for (LinkedList<Rule> subSet : subRules) {
+            int subRuleIndex = 0;
+            for (Rule subRule : subSet) {
+                int counterPre = counter;
+                if (counterPre == index - 1) {
+                    subRules.get(subSetIndex).remove(subRuleIndex);
+                    // if(!mainRule)resetName();
+                    return;
+                } else {
+                    counter += subRule.getTotalSelectables();
+                    if (counter >= index) { // the rule to change was in the the last subrule
+                        int indexInRule = index - counterPre - 1; // position withing the rule
+                        subRule.removeSelectable(indexInRule);
                     }
                 }
                 subRuleIndex++;
@@ -386,7 +410,7 @@ public class Rule {
      * @param index
      * @param toSet
      */
-    public Rule getProduction(int index) {
+    public Rule getSelectable(int index) {
         if (index == 0)
             return this;
         int counter = 0;
@@ -398,10 +422,10 @@ public class Rule {
                 if (counterPre == index - 1) {
                     return subRules.get(subSetIndex).get(subRuleIndex);
                 } else {
-                    counter += subRule.getTotalProductions();
+                    counter += subRule.getTotalSelectables();
                     if (counter >= index) { // the rule to change was in the the last subrule
                         int indexInRule = index - counterPre - 1; // position withing the rule
-                        return subRule.getProduction(indexInRule);
+                        return subRule.getSelectable(indexInRule);
                     }
                 }
                 subRuleIndex++;
@@ -417,14 +441,15 @@ public class Rule {
      * Expands out bracketed rules to allow selection of either the whole rule or
      * any of its subrules
      */
-    public int getTotalProductions() {
-        int out = 1; // always start at 1 so the rule itself can be selected as well
+    public int getTotalSelectables() {
         if (singular && !mainRule) {
-            return out;
+            return 1;
         }
+        int out = 1; // always start at 1 so the rule itself can be selected as well
+
         for (LinkedList<Rule> subSet : subRules) {
             for (Rule subRule : subSet) {
-                out += subRule.getTotalProductions();
+                out += subRule.getTotalSelectables();
             }
         }
         return out;
@@ -433,15 +458,15 @@ public class Rule {
     /**
      * 
      */
-    public int getTotalProductions(int prodIndex) {
-        int out = 0; // always start at 1 so the rule itself can be selected as well
 
+    public int getTotalSelectables(int prodIndex) {
+        int out = 0;
         if (singular && !mainRule) {
             return out;
         }
 
         for (Rule subRule : subRules.get(prodIndex)) {
-            out += subRule.getTotalProductions();
+            out += subRule.getTotalSelectables();
         }
 
         return out;
@@ -598,8 +623,8 @@ public class Rule {
      * production with more than 1 symbol
      */
     public void groupProductions() {
-        if (!canGroup())
-            return;
+        // if (!canGroup())
+        //     return;
 
         LinkedList<Rule> prodToGroup = randGet(subRules);
         while (prodToGroup.size() < 2)
@@ -613,14 +638,6 @@ public class Rule {
         }
 
         prodToGroup.set(startIndex, newRule);
-    }
-
-    public boolean canGroup() {
-        for (LinkedList<Rule> prods : subRules) {
-            if (prods.size() >= 2)
-                return true;
-        }
-        return false;
     }
 
     /**
@@ -739,28 +756,19 @@ public class Rule {
         }
     }
 
+
+    public void insertSelectable(int index, Rule toInsert) {
+        if(mainRule) {
+            System.err.println("Insert selectable " + toInsert + " index " + index + " called on main rule " + this);
+            System.exit(1);
+        }
+        List<Rule> myRules = subRules.get(0);
+    }
+
     // Removes a random rule on the RHS, this includes removing rules inside
     // brackets
     public void reduce() {
-        int prodIndex = randInt(subRules.size());
-        LinkedList<Rule> prod = subRules.get(prodIndex);
-        int ruleIndex = randInt(prod.size());
-        Rule toShift = prod.get(ruleIndex);
-        // half the time we just remove the whole combined rule
-        int toDiv = toShift.getSubRules().size() == 0 ? 1 : toShift.getSubRules().get(0).size();
-        if (!toShift.singular && Math.random() < 1.0 / toDiv) {
-            if (toShift.getSubRules().get(0).size() == 1) {
-                toShift.reduce();
-            }
-            if (toShift.getSubRules().get(0).size() == 1) {
-                prod.set(ruleIndex, toShift.getSubRules().get(0).getFirst());
-            }
-        } else {
-            prod.remove(ruleIndex);
-            if (prod.size() == 0) {
-                subRules.remove(prodIndex);
-            }
-        }
+        removeSelectable(1 + randInt(getTotalSelectables()-1));
     }
 
     /**
