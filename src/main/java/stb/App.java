@@ -25,6 +25,7 @@ public class App {
     static int numTests = 0;
     static double testingTime = 0;
     static double codeGenTime = 0;
+    static long startTime = 0;
 
     public static outputLambda logOutput = (String toPrint) -> System.out.println(toPrint);
     public static outputLambda grammarOutput = (String toPrint) -> System.out.println(toPrint);
@@ -129,11 +130,13 @@ public class App {
      */
     public static void demoMainWLocal() {
         try {
+            startTime = System.currentTimeMillis();
             myGrammars = GrammarGenerator.generateLocalisablePop(Constants.INIT_POP_SIZE_LOCAL, generatedGrammars, Constants.positiveScoring);
             runLogOutput.output("Generated " + myGrammars.size() + " base grammars\n");
             LinkedList<GrammarReader> totalPop = new LinkedList<GrammarReader>();
             
-            for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
+            int genNum = 0;
+            for (genNum = 0; perfectGrammars.size() == 0 && genNum < Constants.NUM_ITERATIONS; genNum++) {
 
                 runLogOutput.output("Inferring " + Constants.CURR_GRAMMAR_NAME + " with localisation");
                 runLogOutput.output("Starting generation " + genNum);
@@ -147,6 +150,7 @@ public class App {
                     // myGrammars.stream().map(GrammarReader::getName).collect(Collectors.joining("\n")));
                     // Dont generate mutants on the first gen, we use a lot of initial grammars to
                     // cover search space
+
                     myGrammars.stream()
                                 .map(GrammarReader::computeMutants)
                                 .flatMap(LinkedList<GrammarReader>::stream)
@@ -178,11 +182,13 @@ public class App {
                                 
                 }
 
-
+                final int currGenNum = genNum;
                 totalPop.forEach(gram -> {
                                 double currScore = gram.getScore();
 
                                 if(currScore == 1.0) {
+                                    GrammarReader toAdd = new GrammarReader(gram);
+                                    toAdd.genNum = currGenNum;
                                     perfectGrammars.add(new GrammarReader(gram));
                                     runGrammarOutput.output("Perfect grammar found:\n" + gram);
                                 } 
@@ -235,12 +241,32 @@ public class App {
 
             }
 
+
+
+
+            if(perfectGrammars.size() > 0) {
+                writePerfectGrammars(perfectGrammars, genNum);
+
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
             System.err.println("Best Grammar " + getBestScore() + "\n" + bestGrammar);
             System.err.println("Floating EOF " + floatingEOF);
         }
+    }
+
+
+    static void writePerfectGrammars(List<GrammarReader> grammars, int genNum) {
+        System.out.println("Found " + perfectGrammars.size() + " perfect grammars");
+        grammars.forEach(gram -> {
+            try(FileWriter out = new FileWriter(new File(gram.getName()))) {
+                out.write(String.format("startTime: %s\nfoundTime%s\niteration count: %d\n%s", System.currentTimeMillis(), gram.genNum, gram));
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     // public static void demoMainNoLocal() {

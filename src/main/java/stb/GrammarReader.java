@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -29,6 +30,9 @@ public class GrammarReader implements Comparable<GrammarReader> {
     public static final String UNGROUP_MUTATION = "UNGROUP_MUTATION";
     public static final String NEWNT_MUTATION = "NEWNT_MUTATION";
     public static final String MODEXSTNEWNT_MUTATION = "MOD_MUTATION";
+
+
+    public int genNum = 0;
     
     private File grammarFile;
     private List<String> fileLines = new LinkedList<String>();
@@ -197,10 +201,10 @@ public class GrammarReader implements Comparable<GrammarReader> {
             //if the new rule would have had len 1 it would be of the form newRule: ruleA;
             //Instead of making a new rule just insert ruleA where the newRule would have gone
             List<Rule> allRules = getAllRules();
-            
-            do {
+            toInsert = randGet(allRules, true);
+            while(toInsert.equals(toReplace)) {
                 toInsert = randGet(allRules, true);
-            } while(toInsert.equals(toReplace));
+            }
 
         } else {
             int newRuleIndex = 1 + randInt(parserRules.size()-1);
@@ -665,6 +669,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
             //If there is only 1 rule in the prod removing it would break the grammar
             //if the index is not 0 however then the rule must be a composite rule and we proceed
             removeSelectable(targetProd, index);
+            fixSingulars
 
         }       
     }
@@ -868,7 +873,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
     
 
     public boolean containsInfLoop() {
-        System.err.println("Checking if " + this + " contains an infLoop");
+        // System.err.println("Checking if " + this + " contains an infLoop");
         if (getUndefinedRules().stream().anyMatch(rule -> rule.contains("Undefined "))) {
             return true;
         }
@@ -1073,7 +1078,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
             App.runGrammarOutput.output("\nUsing key " + Arrays.toString(strArr));
             String targetRuleName = strArr[0];
             int prodIndex =  Integer.parseInt(strArr[1]) - 1;
-            int numMutants = randInt(5);
+            int numMutants = 100;
 
             for (int mutantNum = 0; mutantNum <  numMutants; mutantNum++) {
                 try {
@@ -1111,10 +1116,12 @@ public class GrammarReader implements Comparable<GrammarReader> {
                             LinkedList<Rule> newProd = new LinkedList<Rule>();
                             List<Rule> allRules = getAllRules();
                             for (int i = 0; i < prodSize; i++) {
-                                Rule newRule;
-                                do {
+                                Rule  newRule = randGet(allRules, true);
+
+                                while(prevRule != null && newRule == prevRule) {
                                     newRule = randGet(allRules, true);
-                                } while(prevRule != null && newRule == prevRule);
+                                }
+                                
                                 prevRule = newRule;
                                 newProd.add(newRule);
                             }
@@ -1154,7 +1161,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
                 }   
             }
         });
-
+        System.out.println("New mutants \n" + out.stream().map(GrammarReader::toString).collect(Collectors.joining("]n")));
 
         return out;
         
@@ -1216,12 +1223,11 @@ public class GrammarReader implements Comparable<GrammarReader> {
     public void applyHeuristic(List<Rule> prod) {
         int totalSelectables = getTotalSelectables(prod);
 
-        Rule toSelect;
-
-        do {
+        Rule toSelect = getSelectable(prod, randInt(totalSelectables));
+        while(nullable(toSelect.getName())) {
             toSelect = getSelectable(prod, randInt(totalSelectables));
-        } while(nullable(toSelect.getName()));
-
+        }
+        
         double choice = Math.random();
         if(choice < 0.33) {
             toSelect.setIterative(!toSelect.isIterative());
@@ -1278,9 +1284,13 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public static int getTotalSelectables(List<Rule> prod) {
-        return prod.stream()
-                .mapToInt(Rule::getTotalSelectables)
-                .sum();
+
+        int out = prod.stream()
+        .mapToInt(Rule::getTotalSelectables)
+        .sum();
+
+        System.out.println("getTotalSelectables " + stringProd(prod) + " returns " + out);
+        return out;
     }
 
     public static int getTotalSelectables(Rule mainRule) {
@@ -1291,9 +1301,12 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public void setSelectable(List<Rule> prod, int index, Rule toSet) {
+        int startIndex = index;
         toSet =  toSet.equals(Rule.EPSILON) ? Rule.EPSILON() : toSet.makeMinorCopy();
         for (int i = 0; i < prod.size(); i++) {
             if(index == 0) {
+                Rule target = prod.get(i);
+                System.out.println(String.format("setSelectable(%d, %s, %s) replaces %s",startIndex, toSet, stringProd(prod), target));
                 prod.set(i, toSet);
                 return;
             } else {
@@ -1340,8 +1353,10 @@ public class GrammarReader implements Comparable<GrammarReader> {
      * @param index
      */
     public static void removeSelectable(List<Rule> prod, int index) {
+        int startIndex = index;
         for (int i = 0; i < prod.size(); i++) {
             if(index == 0) {
+                System.err.println("removeSelectable " + index + stringProd(prod) + " removes " + prod.get(i));
                 prod.remove(i);
                 return;
             } else {
@@ -1350,7 +1365,8 @@ public class GrammarReader implements Comparable<GrammarReader> {
                 int currRuleProds = rule.getTotalSelectables();
 
                 if(index < currRuleProds) {
-                    rule.removeSelectable(index);
+                    List<Rule> currProd = rule.getSubRules().get(0);
+                    removeSelectable(currProd, index);
                     return;
                 } else {
                     index -= currRuleProds;
@@ -1360,8 +1376,11 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public static Rule getSelectable(List<Rule> prod, int index) {
+        int startIndex = index;
         for (int i = 0; i < prod.size(); i++) {
             if(index == 0) {
+                Rule out = prod.get(i);
+                System.err.println("getSelectable " + startIndex + stringProd(prod) + " returns " + out);
                 return prod.get(i);
             } else {
                 Rule rule = prod.get(i);
@@ -1400,6 +1419,12 @@ public class GrammarReader implements Comparable<GrammarReader> {
     public static boolean canUngroup(List<Rule> prod){
         return !prod.stream().allMatch(Rule::isSingular);
 
+    }
+
+    public static String stringProd(List<Rule> prod) {
+        return "len: " + prod.size() + "| " + prod.stream().map(rule -> {
+            return rule.toString() + " (" + (rule.isSingular() ? "Singular" : rule.getTotalSelectables() + " [" + rule.stringSelectables()+"]" ) + ") ";
+        }).collect(Collectors.joining(" ")) + " |";
     }
 
 
