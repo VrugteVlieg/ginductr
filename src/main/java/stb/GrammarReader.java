@@ -679,7 +679,8 @@ public class GrammarReader implements Comparable<GrammarReader> {
         if(prodSize) {
             int startIndex = randInt(prod.size()-1);
             int endIndex = startIndex + 1 + randInt(prod.size()-startIndex-1);
-            List<Rule> toGroup = prod.subList(startIndex, endIndex);
+            List<Rule> toGroup = new LinkedList<>();
+            prod.subList(startIndex, endIndex).forEach(toGroup::add);
             Rule toInsert = new Rule(toGroup);
             prod.removeAll(toGroup);
             prod.add(startIndex, toInsert);
