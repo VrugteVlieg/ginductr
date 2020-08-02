@@ -453,6 +453,7 @@ public class Rule {
                 out += subRule.getTotalSelectables();
             }
         }
+        if(out == 2) return 1;
         return out;
     }
 

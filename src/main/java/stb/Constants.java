@@ -1,5 +1,7 @@
 package stb;
 
+import java.util.Arrays;
+
 public class Constants {
         
 
@@ -14,6 +16,7 @@ public class Constants {
     public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
     public static final String CURR_GRAMMAR_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".g4";
     public static final String CURR_TERMINALS_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
+    public static final String LOG_GRAMMAR_PATH = GRAMMARS_PATH + "/loggedGrammars/";
     public static final boolean DEBUG = false;
     public static final boolean USE_GUI = true;
 	public static final boolean USE_LOCALIZATION = true;
@@ -76,7 +79,19 @@ public class Constants {
         double numPass = testResult[0];
         GUT.truePositivesPos = (int)numPass;
         GUT.falseNegatives = totalTests-(int)numPass;
+        double out = numPass*1.0/totalTests;
         
+        if(out == 1.0) {
+            System.err.println(Arrays.toString(testResult));
+            System.err.println("Positive grammar\n" + GUT);
+            System.err.println("Press enter to continue");
+            try {
+                int result = System.in.read();
+                if(result == 0) GUT.logGrammar();
+            } catch (Exception e) {
+
+            }
+        }
         GUT.setPosScore(numPass/totalTests);
     };
 

@@ -3,6 +3,7 @@ package stb;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,12 +25,14 @@ import java.util.stream.Stream;
 
 public class GrammarReader implements Comparable<GrammarReader> {
     
-    public static final String RANDOM_MUTATION = "RANDOM_MUTATION";
-    public static final String HEUR_MUTATION = "HEUR_MUTATION";
-    public static final String GROUP_MUTATION = "_GROUP_MUTATION";
-    public static final String UNGROUP_MUTATION = "UNGROUP_MUTATION";
-    public static final String NEWNT_MUTATION = "NEWNT_MUTATION";
-    public static final String MODEXSTNEWNT_MUTATION = "MOD_MUTATION";
+    public static final String RANDOM_MUTATION = "RANDOM";
+    public static final String HEUR_MUTATION = "HEUR";
+    public static final String GROUP_MUTATION = "GROUP";
+    public static final String UNGROUP_MUTATION = "UNGROUP";
+    public static final String NEWNT_MUTATION = "NEWNT";
+    public static final String MODEXSTNEWNT_MUTATION = "MOD";
+    public static final String SYMCOUNT_MUTATION = "SYMCOUNT";
+    public static int NUM_SUGGESTED_MUTANTS  = 100;
 
 
     public int genNum = 0;
@@ -43,6 +46,8 @@ public class GrammarReader implements Comparable<GrammarReader> {
     private double posScore = 0.0;
     private double negScore = 0.0;
     int truePositivesPos = 0;
+    private double posScoreDelta = 0.0;
+    private double negScoreDelta = 0.0;
     int truePositivesNeg = 0;
     int falsePositives = 0;
     int falseNegatives = 0;
@@ -160,7 +165,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
     ArrayList<Rule> getParserRules() {
         return parserRules;
     }
-    //TODO add/find abstraction to apply mutation to arbitrary List<Rule>, can be used to improve rule generation exploration
+
     //TODO: Add variable number of production alternatives
     /**
      * Generates a new rule and sets it as the start symbol, this rule can
@@ -213,8 +218,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         }
 
         setSelectable(targetProd, replacementIndex, toInsert);
-        setName(getName() + "_NEWNT");
-        setName(genMutantName());
+        setName(getName() + "_" + NEWNT_MUTATION);
     }
 
     public void generateNewRule(String ruleName, int index, int RHSLen) {
@@ -326,11 +330,26 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public void setPosScore(double newScore) {
+        posScoreDelta = newScore-posScore;
+        
         posScore = newScore;
     }
 
     public void setNegScore(double newScore) {
+        negScoreDelta = newScore-negScore;
         negScore = newScore;
+    }
+
+    public double getPosScoreDelta() {
+        return posScoreDelta;
+    }
+
+    public double getNegScoreDelta() {
+        return negScoreDelta;
+    }
+
+    public double getScoreDelta() {
+        return (posScoreDelta+negScoreDelta)/2;
     }
 
     public double getScore() {
@@ -426,6 +445,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
     /**
      * Computes all nullable rules in this grammar and checks if the targetName is in the list
+     * TODO should be  updated to run allMatch on rule of the form (ruleA ruleB ruleC)
      */
     public boolean nullable(String targetName) {
         return constrNullable().contains(targetName);
@@ -665,12 +685,12 @@ public class GrammarReader implements Comparable<GrammarReader> {
         int index = randInt(numSelectables);
         if(Math.random() < Constants.P_ADD_SYMBOL) {
             insertSelectable(targetProd, index, randGet(parserRules, true));
+            setName(getName() + "_" + SYMCOUNT_MUTATION);
         } else if(targetProd.size() > 1 || index > 0) {
             //If there is only 1 rule in the prod removing it would break the grammar
             //if the index is not 0 however then the rule must be a composite rule and we proceed
             removeSelectable(targetProd, index);
-            fixSingulars
-
+            setName(getName() + "_" + SYMCOUNT_MUTATION);
         }       
     }
     
@@ -680,20 +700,31 @@ public class GrammarReader implements Comparable<GrammarReader> {
          * this first check makes us favor grouping at higher levels
          * in general this should be a better solution than equally weighting all levels 
          */
+
         boolean prodSize = prod.size() > 1;
         if(prodSize) {
             int startIndex = randInt(prod.size()-1);
             int endIndex = startIndex + 1 + randInt(prod.size()-startIndex-1);
+            String origProd = stringProd(prod);
             List<Rule> toGroup = new LinkedList<>();
             prod.subList(startIndex, endIndex).forEach(toGroup::add);
             Rule toInsert = new Rule(toGroup);
             prod.removeAll(toGroup);
-            prod.add(startIndex, toInsert);
+            System.err.println("Removing indices "  + startIndex+ " - " + endIndex + " " + toInsert + " from " + origProd);
+            System.err.println("Inserting  " + toInsert + " at " + startIndex  + " in " + stringProd(prod));
+            //If we grouped untill the end of the prod, e.g | ruleA (ruleB ruleC)  | then start index would be 2, after removing ruleB and ruleC however, the prod is only len1 so we cannot insert at index2 we need to append
+            if(startIndex == prod.size()+1) {
+                prod.add(toInsert);
+            } else {
+                prod.add(startIndex, toInsert);
+            }
         } else {
+            System.err.println("Getting the sole rule in " + stringProd(prod) + " in "  +  this);
             Rule soleRule = prod.get(0);
             List<Rule> innerRules = soleRule.getSubRules().get(0);
             groupMutate(innerRules);
         }
+        setName(getName() + "_" + GROUP_MUTATION);
     }
 
     /**
@@ -714,9 +745,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         List<Rule> targetSubRules = getSelectable(prod, toUngroupIndex).getSubRules().get(0);
         Collections.reverse(targetSubRules);
         targetSubRules.forEach(rule -> insertSelectable(prod, toUngroupIndex, rule));
-
-        
-
+        setName(getName() + "_" + UNGROUP_MUTATION);
     }
 
     /**
@@ -849,6 +878,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         });
         String out = finalRules.stream().collect(Collectors.joining("\n"));
         return out;
+
 
     }
     /**
@@ -1053,8 +1083,9 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public void setMutationConsideration(List<String> newList) {
-        App.runGrammarOutput.output("Setting mutations list for "  + this + "\n" + newList + "\n");
-        mutationConsiderations = newList.stream().limit(3).map(str -> str.split(":")).collect(Collectors.toList());
+        App.rgoSetText("Setting mutations list for " + "bla bla bla");
+        mutationConsiderations.clear();
+        mutationConsiderations.addAll(newList.stream().limit(3).map(str -> str.split(":")).collect(Collectors.toList()));
     }
 
     public List<String[]> getMutationConsideration() {
@@ -1070,24 +1101,18 @@ public class GrammarReader implements Comparable<GrammarReader> {
     public LinkedList<GrammarReader> computeSuggestedMutants(HashSet<String> checkedGrammars) {
         LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
 
-        App.runGrammarOutput.output("clear");
-        // App.runGrammarOutput.output("Computing suggested mutants for " + this + "\n"
-        //         + mutationConsiderations.stream().map(Arrays::toString).collect(Collectors.joining("\n")));
-                
+        App.rgoSetText("Computing suggested mutants for " + this);
         mutationConsiderations.stream().forEach(strArr -> {
-            App.runGrammarOutput.output("\nUsing key " + Arrays.toString(strArr));
+            StringBuilder currMutants = new StringBuilder("\nUsing key " + Arrays.toString(strArr));
             String targetRuleName = strArr[0];
             int prodIndex =  Integer.parseInt(strArr[1]) - 1;
-            int numMutants = 100;
 
-            for (int mutantNum = 0; mutantNum <  numMutants; mutantNum++) {
+            for (int mutantNum = 0; mutantNum <  NUM_SUGGESTED_MUTANTS; mutantNum++) {
                 try {
-
                     GrammarReader toAdd = new GrammarReader(this);
                     Rule targetRule = toAdd.getRuleByName(targetRuleName);
                     List<Rule> targetProd  = targetRule.getSubRules().get(prodIndex);
 
-                    
                     //newNT mutation, this favors expanding the grammar, should be balanced with contracting rule
                     if (Constants.CHANGE_RULE_COUNT && Math.random() < Constants.P_CHANGE_RULE_COUNT) {
                         toAdd.genNewNT(targetProd);
@@ -1098,32 +1123,27 @@ public class GrammarReader implements Comparable<GrammarReader> {
                         toAdd.changeSymbolCount(targetProd);
                     }
     
-                    if (Constants.GROUP && Math.random() < Constants.P_G) {
+                    if (Constants.GROUP && Math.random() < 1.0) {
                         // System.out.println("Grouping in " + toAdd);
                         if(Math.random() < Constants.P_GROUP && canGroup(targetProd)) {
+                            // System.err.println(stringProd(targetProd) + " is considered groupable");
                             toAdd.groupMutate(targetProd);
                         } else if (canUngroup(targetProd)) {
                             toAdd.ungroupMutate(targetProd);
                         }
                     }
     
+                    //TODO add naming modifiers to remaining mutations and add a random string after all modifiers
                     if (Constants.MUTATE && Math.random() < Constants.calculatePM(posScore, negScore)) {
                         // System.out.println("Mutating " + toAdd);
                         if(Math.random() < 0.3) {
                             //wholly new production
                             int prodSize = 1 + randInt(4);
-                            Rule prevRule = null;
                             LinkedList<Rule> newProd = new LinkedList<Rule>();
                             List<Rule> allRules = getAllRules();
                             for (int i = 0; i < prodSize; i++) {
                                 Rule  newRule = randGet(allRules, true);
-
-                                while(prevRule != null && newRule == prevRule) {
-                                    newRule = randGet(allRules, true);
-                                }
-                                
-                                prevRule = newRule;
-                                newProd.add(newRule);
+                                appendSelectable(newProd, newRule);
                             }
                             targetRule.getSubRules().set(prodIndex, newProd);
 
@@ -1147,6 +1167,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
                         mutantNum--;
                     } else {
                         checkedGrammars.add(toAdd.hashString());
+                        currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
                         out.add(toAdd);
                     }
                     // System.out.println(toAdd);
@@ -1154,11 +1175,19 @@ public class GrammarReader implements Comparable<GrammarReader> {
                     System.out.println("Exception during mutant calc\n" + this);
                     e.printStackTrace(System.out);
                     try  {
+                        System.out.println("Press enter to continue");
                         System.in.read();
                     } catch(Exception f) {
     
                     }
                 }   
+            }
+            App.rgoAppendText(currMutants.toString());
+            try  {
+                System.out.println("Press enter to continue");
+                System.in.read();
+            } catch(Exception f) {
+
             }
         });
         System.out.println("New mutants \n" + out.stream().map(GrammarReader::toString).collect(Collectors.joining("]n")));
@@ -1222,8 +1251,10 @@ public class GrammarReader implements Comparable<GrammarReader> {
      */
     public void applyHeuristic(List<Rule> prod) {
         int totalSelectables = getTotalSelectables(prod);
+        int toSelectIndex = randInt(totalSelectables);
+        // System.err.println("heuristic Calling getSelectable " + toSelectIndex + " " + stringProd(prod));
 
-        Rule toSelect = getSelectable(prod, randInt(totalSelectables));
+        Rule toSelect = getSelectable(prod, toSelectIndex);
         while(nullable(toSelect.getName())) {
             toSelect = getSelectable(prod, randInt(totalSelectables));
         }
@@ -1289,7 +1320,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         .mapToInt(Rule::getTotalSelectables)
         .sum();
 
-        System.out.println("getTotalSelectables " + stringProd(prod) + " returns " + out);
+        // System.out.println("getTotalSelectables " + stringProd(prod) + " returns " + out);
         return out;
     }
 
@@ -1306,7 +1337,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         for (int i = 0; i < prod.size(); i++) {
             if(index == 0) {
                 Rule target = prod.get(i);
-                System.out.println(String.format("setSelectable(%d, %s, %s) replaces %s",startIndex, toSet, stringProd(prod), target));
+                // System.out.println(String.format("setSelectable(%d, %s, %s) replaces %s",startIndex, toSet, stringProd(prod), target));
                 prod.set(i, toSet);
                 return;
             } else {
@@ -1337,13 +1368,19 @@ public class GrammarReader implements Comparable<GrammarReader> {
                 int currRuleProds = currRule.getTotalSelectables();
 
                 if( index < currRuleProds) {
-                    currRule.insertSelectable(index, toInsert);
+                    currRule.insertSelectable(index-1, toInsert);
                     return;
                 } else {
                     index -= currRuleProds;
                 }
             }
         }
+    }
+
+    public static void appendSelectable(List<Rule> prod, Rule toInsert) {
+        toInsert = toInsert.equals(Rule.EPSILON) ? Rule.EPSILON() : toInsert.makeMinorCopy();
+        prod.add(toInsert);
+
     }
 
     /**
@@ -1356,7 +1393,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         int startIndex = index;
         for (int i = 0; i < prod.size(); i++) {
             if(index == 0) {
-                System.err.println("removeSelectable " + index + stringProd(prod) + " removes " + prod.get(i));
+                // System.err.println("removeSelectable " + index + stringProd(prod) + " removes " + prod.get(i));
                 prod.remove(i);
                 return;
             } else {
@@ -1366,7 +1403,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
 
                 if(index < currRuleProds) {
                     List<Rule> currProd = rule.getSubRules().get(0);
-                    removeSelectable(currProd, index);
+                    removeSelectable(currProd, index-1);
                     return;
                 } else {
                     index -= currRuleProds;
@@ -1380,7 +1417,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         for (int i = 0; i < prod.size(); i++) {
             if(index == 0) {
                 Rule out = prod.get(i);
-                System.err.println("getSelectable " + startIndex + stringProd(prod) + " returns " + out);
+                // System.err.println("getSelectable " + startIndex + stringProd(prod) + " returns " + out);
                 return prod.get(i);
             } else {
                 Rule rule = prod.get(i);
@@ -1388,12 +1425,13 @@ public class GrammarReader implements Comparable<GrammarReader> {
 
                 if(index < currRuleProds) {
                     List<Rule> currSelectables = rule.getSubRules().get(0);
-                    return getSelectable(currSelectables, index);
+                    return getSelectable(currSelectables, index-1);
                 } else {
                     index -= currRuleProds;
                 }
             }
         }
+        System.err.println("getSelectable " + startIndex + stringProd(prod) + " returns null");
         return null;
     }
 
@@ -1405,7 +1443,13 @@ public class GrammarReader implements Comparable<GrammarReader> {
      * @return
      */
     public static boolean canGroup(List<Rule> prod) {
-        if(prod.size() > 1) return true;
+        boolean out = prod.size() > 1;
+
+        if(out) {
+            System.err.println(stringProd(prod) + " has more than 1 element and can be grouped");
+        }
+        boolean fallback = !prod.get(0).isSingular();
+        System.err.println("Fallback for " + stringProd(prod) + " is " + fallback);
 
         return !prod.get(0).isSingular();
     }
@@ -1423,9 +1467,21 @@ public class GrammarReader implements Comparable<GrammarReader> {
 
     public static String stringProd(List<Rule> prod) {
         return "len: " + prod.size() + "| " + prod.stream().map(rule -> {
-            return rule.toString() + " (" + (rule.isSingular() ? "Singular" : rule.getTotalSelectables() + " [" + rule.stringSelectables()+"]" ) + ") ";
+            return rule.toString() + " (" + (rule.isSingular() ? "S" : rule.getTotalSelectables() + " [" + rule.stringSelectables()+"]" ) + ") ";
         }).collect(Collectors.joining(" ")) + " |";
     }
+
+
+    public void logGrammar() {
+        try(FileWriter out = new FileWriter(new File(Constants.LOG_GRAMMAR_PATH + grammarName + ".g4"))) {
+            out.write(hashString());
+            out.write(prettyPrintRules(terminalRules));
+        } catch(Exception e) {
+
+        }
+    }
+
+    
 
 
 

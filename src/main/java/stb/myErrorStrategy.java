@@ -14,7 +14,7 @@ public class myErrorStrategy extends DefaultErrorStrategy{
 		for (ParserRuleContext context = recognizer.getContext(); context != null; context = context.getParent()) {
 			context.exception = e;
 		}
-        System.out.println("recover context " + recognizer.getContext());
+        // System.out.println("recover context " + recognizer.getContext());
         throw new ParseCancellationException("Fuck recover");
     }
 

@@ -64,12 +64,11 @@ public class GrammarGenerator {
         
     }
 
-    public static LinkedList<GrammarReader> generateLocalisablePop(int popSize, HashSet<String> checkedGrammar, scoringLambda criteria) {
+    public static LinkedList<GrammarReader> generateLocalisablePop(int popSize, HashSet<String> checkedGrammar) {
         LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
-        int numLoops = 0;
         while(out.size() < popSize) {
-            App.runGrammarOutput.output("Init size " + out.size() + "/" + popSize + " " + numLoops++);
-            LinkedList<GrammarReader> newPop = generatePopulation(200);
+            App.rgoSetText("Init size " + out.size() + "/" + popSize);
+            LinkedList<GrammarReader> newPop = generatePopulation(10);
             
             newPop.stream()
             .peek(App::runTests)

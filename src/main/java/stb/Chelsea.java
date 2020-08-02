@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,6 +26,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.ast.GrammarRootAST;
 
@@ -86,7 +88,7 @@ public class Chelsea {
                     }
 
                     String content = rawContent.toString().trim().replaceAll(" ", "");
-                    posTests.add(content);
+                    negTests.add(content);
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -200,22 +202,26 @@ public class Chelsea {
         } else {
             return null;
         }
+        Stack<String> passingTests = new Stack<String>();
+        Stack<String> failingTests = new Stack<String>();
         // System.out.println("Running " + paths.count() + " tests");
+        App.rgoSetText("Testing " + myReader.getName() + "\n");
         tests.forEach(test -> {
             // System.out.println("Testing " + fileName);
             MyListener myListen = new MyListener();
+            out[1]++;
             try {
-
+                
                 Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
-
+                
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
-
+                
                 // Creating a new parser constructor instance using the lexer tokens
                 Parser parser = (Parser) parserConstructor.newInstance(tokens);
-
-                myListen.setGrammarName(parser.getGrammarFileName());
-
+                
+                
                 parser.addErrorListener(myListen);
+                myListen.setGrammarName(parser.getGrammarFileName());
                 parser.setErrorHandler(new BailErrorStrategy());
                 // parser.setErrorHandler(new myErrorStrategy());
 
@@ -225,29 +231,42 @@ public class Chelsea {
                 // System.err.println("Testing " + myReader.getName() + " on " + fileName + "
                 // entrypoint " + myReader.getStartSymbol());
                 Method parseEntrypoint = parser.getClass().getMethod(myReader.getStartSymbol());
+                parseEntrypoint.invoke(parser);
 
                 // Finally, this will run the parser with the provided test case. Yay! Ignore
                 // the rest of this function.
-                parseEntrypoint.invoke(parser);
+                passingTests.push(test);
+                out[0]++;
 
                 // If this code is reached the test case was successfully parsed and numPasses
                 // should be incremented
-                out[0]++;
-                out[1]++;
+                
 
             } catch (NoSuchMethodException e) {
                 // System.err.println("No such method exception " + e.getCause());
                 System.out.println("Removing " + myReader.getName() + " from grammar");
                 removeCurr.removeGrammar();
             } catch (Exception e) {
-                // System.out.println("Exception lamda in Chelsea " + e.getCause() + "\n " +
-                // myReader);
-                // LinkedList<Stack<String>> fileErrors = myListen.getErrors();
-                // System.out.println("\n\n\n\n" + fileErrors);
-                // removeDuplicates(fileErrors);
-                out[1]++;
-            }
+                failingTests.push(test);
+            } 
         });
+
+        if(failingTests.size() == 0) {
+            StringBuilder toPrint = new StringBuilder();
+            toPrint.append("No failing tests\n" + myReader.hashString());
+            toPrint.append("Passing tests: " + passingTests.size() +  "\n");
+            passingTests.forEach(test ->  toPrint.append(test + "\n"));
+            toPrint.append("Failing tests: " + failingTests.size() + "\n");
+            failingTests.forEach(test ->  toPrint.append(test + "\n"));
+            App.rgoAppendText(toPrint.toString());
+            try  {
+                System.out.println("Press enter to continue");
+                System.in.read();
+            } catch(Exception e) {
+                
+            }
+        }
+
         
         return out;
 
@@ -272,7 +291,7 @@ public class Chelsea {
      * @param directory Input directory.
      * @return ArrayList of class files.
      */
-    private static List<File> getDirectoryFiles(File directory) {
+    public static List<File> getDirectoryFiles(File directory) {
         List<File> fileList = new ArrayList<>();
         if (directory.isDirectory()) {
             for (File file : directory.listFiles()) {

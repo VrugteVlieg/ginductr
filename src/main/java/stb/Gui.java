@@ -1,6 +1,10 @@
 package stb;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import javafx.application.Application;
@@ -15,11 +19,58 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 public class Gui extends Application {
+
+    public static String RUN_GRAMMAR_OUT = "RGO";
+    public static String RUN_LOG_OUT = "RLO";
+    public static String GRAMMAR_OUT = "go";
+    public static String LOG_OUT = "lo";
+    public static String TOKEN_DELIM = "=";
+    public static String LOG_FILE_NAME = "GUI_TOKENS.out";
+    FileWriter logger;
+    public HashMap<String, TextArea> outputAreas = new HashMap<String, TextArea>();
+
+    // format for output messages is target_type_message?
+
+    // Wrappers for different output token type
+    public static String appendToken(String toAppend) {
+
+        return outputLambda.APPEND + TOKEN_DELIM + toAppend;
+    }
+
+    public static String clearToken() {
+        return outputLambda.CLEAR;
+    }
+
+    public static String setToken(String newText) {
+        return outputLambda.SET + TOKEN_DELIM + newText;
+    }
+
+    public static String updateToken(String newText) {
+        return outputLambda.UPDATE + TOKEN_DELIM + newText;
+    }
+
+    // Wrapper for different output areas
+    public static String RGOToken(String output) {
+        return RUN_GRAMMAR_OUT + TOKEN_DELIM + output;
+    }
+
+    public static String RLOToken(String output) {
+        return RUN_LOG_OUT + TOKEN_DELIM + output;
+    }
+
+    public static String GOToken(String output) {
+        return GRAMMAR_OUT + TOKEN_DELIM + output;
+    }
+
+    public static String LOToken(String output) {
+        return LOG_OUT + TOKEN_DELIM + output;
+    }
 
     @Override
     public void start(Stage stage) {
@@ -27,6 +78,7 @@ public class Gui extends Application {
         stage.setWidth(1200);
         stage.setHeight(575);
         stage.initStyle(StageStyle.DECORATED);
+        outputAreas = new HashMap<String, TextArea>();
 
         TabPane cont = new TabPane();
         cont.setStyle("-fx-font-size:  16;");
@@ -68,16 +120,27 @@ public class Gui extends Application {
         mutationInterface.setMinWidth(200);
         mutationInterface.getChildren().add(mutationBtns());
         TextArea logOutput = new TextArea();
+        outputAreas.put(LOG_OUT, logOutput);
         outputLambda logOut = (String toLog) -> logOutput.appendText(toLog + "\n");
         App.setLogOut(logOut);
         VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
         TextArea grammarOutput = new TextArea();
+        outputAreas.put(GRAMMAR_OUT, grammarOutput);
         outputLambda grammarOut = (String toLog) -> {
-            if (toLog.equals("clear")) {
-                grammarOutput.setText("");
-            } else {
-                grammarOutput.appendText(toLog + "\n");
+            String[] data = toLog.split(TOKEN_DELIM);
+            switch (data[0]) {
+                case outputLambda.CLEAR:
+                    grammarOutput.setText("");
+                    break;
+
+                case outputLambda.APPEND:
+                    grammarOutput.appendText(data[1]);
+                    break;
+
+                case outputLambda.SET:
+                    grammarOutput.setText(data[1]);
+                    break;
             }
         };
         App.setGrammarOut(grammarOut);
@@ -97,23 +160,20 @@ public class Gui extends Application {
         Button btnRun = new Button("Run");
         mutationInterface.getChildren().add(btnRun);
         TextArea logOutput = new TextArea();
-        
+        outputAreas.put(RUN_LOG_OUT, logOutput);
+
         VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
-        
-        
+
         TextArea grammarOutput = new TextArea();
-        
+        outputAreas.put(RUN_GRAMMAR_OUT, grammarOutput);
+
         runOut.messageProperty().addListener((obs, prev, newVal) -> {
-            if(newVal.charAt(0)  == 'g') {
-                grammarOutput.setText(newVal.substring(1));
-            } else {
-                logOutput.setText(newVal.substring(1));
-            }
+            handleToken(newVal);
         });
-        
+
         btnRun.setOnAction(event -> new Thread(runOut).start());
-        
+
         grammarOutput.setMinWidth(600);
         greaterContainer.getChildren().add(mutationInterface);
         greaterContainer.getChildren().add(grammarOutput);
@@ -244,32 +304,61 @@ public class Gui extends Application {
 
     public Task<Void> backGroundProcess() {
         Task<Void> out = new Task<Void>() {
-            @Override public Void call() {
-                outputLambda grammarOut = (String toLog) -> {
-                    if (toLog.equals("clear")) {
-                        updateMessage("g");
-                    } else {
-                        updateMessage("g" + toLog);
-                    }
+            @Override
+            public Void call() {
+                outputLambda runOut = (String toLog) -> {
+                    updateMessage(toLog);
                 };
 
-                outputLambda logOut = (String toLog) -> {
-                    if (toLog.equals("clear")) {
-                        updateMessage("l");
-                    } else {
-                        updateMessage("l" + toLog);
-                    }
-                };
-                App.setRunGrammarOutput(grammarOut);
-                App.setRunLogOutput(logOut);
+                App.setRunGrammarOutput(runOut);
+                // App.setRunLogOutput(logOut);
                 App.demoMainProgram();
                 return null;
             }
 
         };
         return out;
-        
+
         // return taskThread;
+    }
+
+    public void handleToken(String token) {
+        logToken(token);
+        String[] data = token.split(TOKEN_DELIM);
+        TextArea target = outputAreas.get(data[0]);
+        switch (data[1]) {
+            case outputLambda.CLEAR:
+                target.setText("");
+                break;
+            case outputLambda.APPEND:
+                target.appendText(data[2]);
+                break;
+            case outputLambda.SET:
+                target.setText(data[2]);
+                break;
+            case outputLambda.UPDATE:
+                String curr = target.getText();
+                int lastIndex = curr.lastIndexOf("\n");
+                String out = curr.substring(0, lastIndex + 1) + data[2];
+                target.setText(out);
+                break;
+        }
+
+    }
+
+    public void logToken(String token) {
+        try {
+            if(logger == null) {
+                logger = new FileWriter(LOG_FILE_NAME, false);
+            } else {
+                logger = new FileWriter(LOG_FILE_NAME, true);
+            }
+            token = "\n" + token.replace("\n", "") + "\n";
+            logger.write(token);
+            logger.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }
