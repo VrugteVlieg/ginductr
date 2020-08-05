@@ -8,9 +8,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -31,6 +34,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
     public static final String UNGROUP_MUTATION = "UNGROUP";
     public static final String NEWNT_MUTATION = "NEWNT";
     public static final String MODEXSTNEWNT_MUTATION = "MOD";
+    public static final String NEWPROD_MUTATION = "NEWPROD";
     public static final String SYMCOUNT_MUTATION = "SYMCOUNT";
     public static int NUM_SUGGESTED_MUTANTS  = 100;
 
@@ -373,7 +377,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         List<String> unreachableRules = parserRules.stream()
                                                     .map(Rule::getName)
                                                     .filter(rule -> !reachableRules.contains(rule))
-                                                    .collect(toList());
+                                                    .collect(toCollection(ArrayList::new));
         if(unreachableRules.size() == 0) return;
         while(unreachableRules.size() > 0) {
             Rule toMakeReach = getRuleByName(randGet(unreachableRules, false));
@@ -383,6 +387,66 @@ public class GrammarReader implements Comparable<GrammarReader> {
             toMakeReach.addAlternative(toMakeAlt);
             toExtend.setSelectable(indexToExtend, toMakeReach);
         }
+    }
+
+    /**
+     * Makes all rules in the grammar reachable, useful for ensuring that all terminal rules are involved in some rule
+     */
+    public void removeUnreachableBoogaloo() {
+        List<String> reachables = getReachables();
+        List<String> unreachables = getAllRules().stream()
+                                    .map(Rule::getName)
+                                    .filter(name ->  !reachables.contains(name))
+                                    .collect(toCollection(ArrayList::new));
+
+        List<Rule> reachableParserRules = reachables.stream()
+                                            .map(this::getRuleByName)
+                                            .filter(parserRules::contains)
+                                            .collect(toCollection(ArrayList::new));
+
+        /**
+         * Process
+         * 1 compute which rules can be reached/ not reached from start symbol
+         * 2 compute which parserRules can be reached 
+         * 3 for every unreachable rule ruleA, choose a reachable rule ruleB
+         * 4 choose a symbol on the RHS of reachable ruleB
+         * 5a if the unreachable rule was a parserRule, let symbA be an alternative to ruleA, replace symbA in ruleB with ruleA
+         * 5b if the unreachable rule was a lexerRule, create a new rule RuleC: ruleA | symbA;, replace symbA in ruleB with ruleC
+         */
+        while(unreachables.size() > 0) {
+            Rule toMakeReachable = getRuleByName(randGet(unreachables, false));
+            System.err.println("Making " + toMakeReachable.getName() +  " reachable");
+            Rule toExtend =  randGet(reachableParserRules, true);
+            int indexToExtend = 1  + randInt(toExtend.getTotalSelectables()-1);
+            Rule toMakeAlt  = toExtend.getSelectable(indexToExtend);
+            if(toMakeReachable.isTerminal()) { 
+                /**
+                 * If we are trying to make a terminal rule RuleA reachable we make a new rule ruleB: RuleA | toMakeAlt
+                 */
+                boolean makeNewRule = Math.random() < 0.4; //if we are making a new rule or simply adding the terminal as an alternative to an existing reachable
+                if(makeNewRule) {
+                    String newRuleName = genRuleName();
+                    String ruleText = toMakeReachable.getName() + " | " + toMakeAlt.getName()  + " ;";
+                    Rule newRule = new Rule(newRuleName, ruleText);
+                    // System.err.println("Making " + toMakeReachable.getName() + " reachble adding new Rule " + newRule + "\nreplacing\n" + toMakeAlt.getName() + "  in " + toExtend);
+                    parserRules.add(newRule);
+                    toMakeReachable = newRule;
+                    toExtend.setSelectable(indexToExtend, toMakeReachable);
+                } else {
+                    // System.err.println("Making " + toMakeReachable.getName() + "  by adding it as an alternative to\n" + toExtend);
+                    toExtend.addAlternative(toMakeReachable.makeMinorCopy());
+                }
+            } else {
+                
+                // System.err.println("Making " + toMakeReachable.getName() + " reachable by making subbing in " + toMakeAlt.getName() + " in " + toExtend);
+                toMakeReachable.addAlternative(toMakeAlt);
+                toExtend.setSelectable(indexToExtend, toMakeReachable);
+            }
+            System.err.println("Leads to " + this + '\n' + "Remaining unreachables " + unreachables);
+        }
+
+
+
     }
 
     /**
@@ -494,7 +558,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
                                             .flatMap(ArrayList::stream)
                                             .filter(s -> s.contains("Undefined "))
                                             .distinct()
-                                            .collect(toList());
+                                            .collect(toCollection(ArrayList::new));
         return undefined;
     }
 
@@ -1083,7 +1147,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
     }
 
     public void setMutationConsideration(List<String> newList) {
-        App.rgoSetText("Setting mutations list for " + "bla bla bla");
+        App.rgoSetText("Setting mutations list for " + this);
         mutationConsiderations.clear();
         mutationConsiderations.addAll(newList.stream().limit(3).map(str -> str.split(":")).collect(Collectors.toList()));
     }
@@ -1094,8 +1158,9 @@ public class GrammarReader implements Comparable<GrammarReader> {
 
     public Rule getRuleByName(String name) {
         // System.err.println("Searching for " + name + " in " + this);
+        
 
-        return parserRules.stream().filter(rule -> rule.getName().equals(name)).findFirst().get();
+        return getAllRules().stream().filter(rule -> rule.getName().equals(name)).findFirst().get();
     }
 
     public LinkedList<GrammarReader> computeSuggestedMutants(HashSet<String> checkedGrammars) {
@@ -1146,8 +1211,10 @@ public class GrammarReader implements Comparable<GrammarReader> {
                                 appendSelectable(newProd, newRule);
                             }
                             targetRule.getSubRules().set(prodIndex, newProd);
-
-
+                            toAdd.setName(toAdd.getName() + "_" + NEWPROD_MUTATION);
+                            
+                            
+                            
                         } else {
                             toAdd.symbolMutation(targetProd);
                         }
@@ -1160,7 +1227,8 @@ public class GrammarReader implements Comparable<GrammarReader> {
                         // System.out.println(toAdd);
                     }
 
-                    
+                    toAdd.setName(toAdd.genMutantName());
+
                     if (checkedGrammars.contains(toAdd.hashString())) {
                         App.hashtableHits++;
                         // System.out.println(toAdd + " already generated");
@@ -1174,21 +1242,21 @@ public class GrammarReader implements Comparable<GrammarReader> {
                 } catch (Exception e) {
                     System.out.println("Exception during mutant calc\n" + this);
                     e.printStackTrace(System.out);
-                    try  {
-                        System.out.println("Press enter to continue");
-                        System.in.read();
-                    } catch(Exception f) {
+                    // try  {
+                    //     System.out.println("Press enter to continue");
+                    //     System.in.read();
+                    // } catch(Exception f) {
     
-                    }
+                    // }
                 }   
             }
             App.rgoAppendText(currMutants.toString());
-            try  {
-                System.out.println("Press enter to continue");
-                System.in.read();
-            } catch(Exception f) {
+            // try  {
+            //     System.out.println("Press enter to continue");
+            //     System.in.read();
+            // } catch(Exception f) {
 
-            }
+            // }
         });
         System.out.println("New mutants \n" + out.stream().map(GrammarReader::toString).collect(Collectors.joining("]n")));
 
@@ -1268,20 +1336,24 @@ public class GrammarReader implements Comparable<GrammarReader> {
             toSelect.setIterative(!toSelect.isIterative());
             toSelect.setOptional(!toSelect.isOptional());
         }
+        setName(getName() + "_" + HEUR_MUTATION);
     }
 
 
+    /**
+     * Modifies an existing prod by randomly replacing one of the rules with another rule
+     * @param prod
+     */
     public void symbolMutation(List<Rule> prod) {
         int toMutateIndex = randInt(getTotalSelectables(prod));
         Rule toReplace = getSelectable(prod, toMutateIndex);
-        Rule toInsert;
+        Rule toInsert = randGet(getAllRules(), true);
 
-        do {
-            toInsert = randGet(getAllRules(), true);
-
-        } while(toInsert.equals(toReplace));
-
+        int earlyExit = 0;
+        while(toInsert.equals(toReplace) && earlyExit++ < 5) toInsert = randGet(getAllRules(), true);
+            
         setSelectable(prod, toMutateIndex, toInsert);
+        setName(getName() + "_" + MODEXSTNEWNT_MUTATION);
     }
 
     /**
@@ -1304,7 +1376,7 @@ public class GrammarReader implements Comparable<GrammarReader> {
         return Double.compare(getScore(), other.getScore());
     }
 
-    private String prettyPrintRules(List<Rule> rules) {
+    public String prettyPrintRules(List<Rule> rules) {
         return rules.stream().map(Rule::toString).collect(Collectors.joining("\n"));
     }
 
@@ -1480,9 +1552,35 @@ public class GrammarReader implements Comparable<GrammarReader> {
 
         }
     }
+    public String fullHashString() {
+        return hashString() + '\n' +  prettyPrintRules(terminalRules);
+    }
+    /**
+     * Computes which rules can be reached from the start rule
+     * @return List of rule names that are reachable
+     */
+    public List<String> getReachables() {
+        List<String> out = new ArrayList<>();
+        String startSymbol = getStartSymbol();
+        out.add(startSymbol);
+        HashMap<String, List<String>> reachables = new HashMap<String, List<String>>();
+        getAllRules().forEach(rule -> reachables.put(rule.getName(), rule.getReachables()));
+        List<String> workList = reachables.get(startSymbol);
+        while(!workList.isEmpty()) {
+            workList.removeIf(out::contains);
+            List<String> newWorkers = new ArrayList<String>();
+            workList.stream()
+                .peek(out::add)
+                .map(reachables::get)
+                .flatMap(List::stream)
+                .filter(ruleName -> !(out.contains(ruleName) || workList.contains(ruleName)))
+                .forEach(newWorkers::add);
+            
+            workList.addAll(newWorkers);
+        }
 
-    
-
-
+    return out;
+        
+    }
 
 }

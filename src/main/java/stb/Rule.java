@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -23,6 +25,7 @@ public class Rule {
 
     public static Rule EPSILON() {
         Rule out = new Rule(" ");
+
 
         return out;
     }
@@ -492,6 +495,25 @@ public class Rule {
         this.subRules.add(wrappedToAdd);
     }
 
+    /**
+     * Compute the rule names that can be reached from this rule, recursively calls getReachables on rules that are composite
+     */
+    public List<String> getReachables() {
+        List<String> out = new ArrayList<String>();
+        if(this.equals(EPSILON)) return out;
+        if(getTotalSelectables() == 1) {
+            out.add(getName());
+            return out;
+        }
+        subRules.stream()
+            .flatMap(LinkedList::stream)
+            .distinct()
+            .map(Rule::getReachables)
+            .forEach(out::addAll);
+
+        return out;
+    }
+
     public void getReachables(ArrayList<Rule> parserRules, ArrayList<String> reachables) {
         if (reachables.contains(getName()) || terminal)
             return;
@@ -520,6 +542,8 @@ public class Rule {
             });
         }
     }
+
+
 
     
     public ArrayList<String> getReachables(ArrayList<Rule> parserRules) {

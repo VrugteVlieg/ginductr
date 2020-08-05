@@ -25,7 +25,20 @@ public class GrammarGenerator {
             }
 
             currGrammar.removeDuplicateProductions();
-            currGrammar.removeUnreachable();
+            // StringBuilder curr = new StringBuilder();
+            // curr.append("Before removeUnreach\n");
+            // curr.append(currGrammar.toString());
+            currGrammar.removeUnreachableBoogaloo();
+            // curr.append("\nPost removeUnreach\n");
+            // curr.append(currGrammar.toString());
+            // App.rgoSetText(curr.toString());
+            // try {
+            //     System.out.println("Displaying removeUnreachable\nPress enter to cont");
+            //     System.in.read();
+            // } catch(Exception e) {
+
+            // }
+
             // currGrammar.removeLR();
             // System.out.println("New grammar \n" + currGrammar.toString());
             if(App.generatedGrammars.contains(currGrammar.hashString())) {

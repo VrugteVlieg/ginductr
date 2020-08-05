@@ -32,6 +32,7 @@ public class App {
     private static outputLambda runOut = (String toPrint) -> System.out.println(toPrint);
 
     static GrammarReader bestGrammar;
+    static String bestGrammarString = "";
 
     static List<GrammarReader> myGrammars;
 
@@ -139,7 +140,8 @@ public class App {
             
             int genNum = 0;
             for (genNum = 0; perfectGrammars.size() == 0 && genNum < Constants.NUM_ITERATIONS; genNum++) {
-                rloAppendText("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits + "\n");
+                rloSetText("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits + "\n");
+                rloAppendText(bestGrammarString);
                 
                 totalPop.clear();
                 totalPop.addAll(myGrammars);
@@ -222,28 +224,29 @@ public class App {
 
 
 
+                List<GrammarReader> allGrammars = scoreList.stream().map(evaluatedGrammars::get)
+                        .flatMap(LinkedList::stream).collect(Collectors.toList());
+
+                int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
+                int tourSize = Math.min(totalPop.size(), TOUR_SIZE);
+                myGrammars.clear();
+                for (int i = 0; i < nextGenSize; i++) {
+                    myGrammars.add(tournamentSelect(totalPop, tourSize));
+                }
+                recordMetrics(myGrammars);
+
                 //TODO further optimisation can be done by having the localiser program printing out num pos pass, num pos fail, num neg pass, num neg fail
                 // it is currently being recorded in the localiser but the pass and fail scores are combined, this way there is no need to use chelseas generation
                 //would still require the maven processes though so look into  it
-                totalPop.forEach(grammar -> {
+                myGrammars.forEach(grammar -> {
                     if(grammar.getMutationConsideration().isEmpty()) {
-                        System.err.println("Localizing" + totalPop.indexOf(grammar) + "/" + totalPop.size() + "\n");
+                        System.err.println("Localizing" + myGrammars.indexOf(grammar) + "/" + myGrammars.size() + "\n");
                         runLocaliser(grammar);
                     } 
                 });
 
                 // int grammarsToCarry = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
 
-                List<GrammarReader> allGrammars = scoreList.stream().map(evaluatedGrammars::get)
-                        .flatMap(LinkedList::stream).collect(Collectors.toList());
-
-                int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
-                int tourSize = Math.min(totalPop.size(), TOUR_SIZE);
-
-                for (int i = 0; i < nextGenSize; i++) {
-                    myGrammars.add(tournamentSelect(totalPop, tourSize));
-                }
-                recordMetrics(myGrammars);
 
             }
             if(perfectGrammars.size() > 0) {
@@ -417,8 +420,13 @@ public class App {
         bestGrammar.setName("bestCandidate");
         bestGrammar.setNegScore(newBest.getNegScore());
         bestGrammar.setPosScore(newBest.getPosScore());
+        StringBuilder newBestString = new StringBuilder("Best Score: " + newBest.getScore() + "\n");
+        newBestString.append(newBest.fullHashString());
+        bestGrammarString = newBestString.toString();
         System.out.println("New Best grammar with score  " + getBestScore());
     }
+
+
 
     static double getBestScore() {
         if (bestGrammar == null)

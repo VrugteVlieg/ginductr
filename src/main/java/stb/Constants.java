@@ -40,7 +40,7 @@ public class Constants {
     public static int NUM_CROSSOVER_PER_GEN = 5;
 
     public static double P_G = 0.4;   // P to group/ungroup symbols on the RHS
-    public static double P_GROUP = 0.5;   // P to group symbols
+    public static double P_GROUP = 0.6;   // P to group symbols
 
     
 	public static boolean CHANGE_RULE_COUNT = true;
