@@ -53,8 +53,8 @@ public class Gram implements Comparable<Gram> {
     int falsePositives = 0;
     int falseNegatives = 0;
     private boolean remove = false;
-    public static boolean[] passPosArr;
-    public static boolean[] passNegArr;
+    public boolean[] passPosArr;
+    public boolean[] passNegArr;
 
     /**
      * Constructs a grammar from a given file
@@ -1617,45 +1617,32 @@ public class Gram implements Comparable<Gram> {
 
     }
 
-    private static Comparator<Gram> posScoreDeltaComparator = new Comparator<Gram>()   {
-        @Override
-        public int compare(Gram g0, Gram g1) {
-            return Double.compare(g0.posScoreDelta, g1.posScoreDelta);
-        }
-    };
+    public  int compPosPassSimil(Gram g0, Gram g1) {
+        return Double.compare(posPassSimilarity(g0.passPosArr), posPassSimilarity(g1.passPosArr));
+    }
 
-    private static Comparator<Gram> negScoreDeltaComparator = new Comparator<Gram>() {
-        @Override
-        public int compare(Gram g0, Gram g1) {
-            return Double.compare(g0.negScoreDelta, g1.negScoreDelta);
-        }
-    };
+    public  int compNegPassSimil(Gram g0, Gram g1) {
+        return Double.compare(negPassSimilarity(g0.passPosArr), negPassSimilarity(g1.passPosArr));
+    }
+    
+    public  int compAllPassSimil(Gram g0, Gram g1) {
+        return Double.compare(allPassSimilarity(g0.passPosArr, g0.passNegArr), allPassSimilarity(g1.passPosArr, g1.passNegArr));
+    }
 
-    private static Comparator<Gram> allScoreDeltaComparator = new Comparator<Gram>() {
-        @Override
-        public int compare(Gram g0, Gram g1) {
-            return Double.compare(g0.getScore(), g1.getScore());
-        }
-    };
-
-    private static Comparator<Gram> posPassComparator = new Comparator<Gram>() {
-        @Override
-        public int compare(Gram g0, Gram g1) {
-
-        }
-    };
-
-    public static int pos
+    
 
     public static int CompPosScoreDelta(Gram g0, Gram g1) {
-        return posScoreDeltaComparator.compare(g0, g1);
+        return Double.compare(g0.posScoreDelta, g1.posScoreDelta);
+
     }
     
     public static int CompNegScoreDelta(Gram g0, Gram g1) {
-        return negScoreDeltaComparator.compare(g0, g1);
+        return Double.compare(g0.negScoreDelta, g1.negScoreDelta);
+
     }
+
     public static int CompAllScoreDelta(Gram g0, Gram g1) {
-        return allScoreDeltaComparator.compare(g0, g1);
+        return Double.compare(g0.getScore(), g1.getScore());
     }
 
 	public void setTestSizes(int size, int size2) {

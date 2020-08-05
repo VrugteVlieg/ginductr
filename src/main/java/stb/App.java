@@ -309,16 +309,18 @@ public class App {
         double maxIndex = numScores - 1;
         ArrayList<Gram> toConsider = new ArrayList<Gram>();
 
-        // Switch between 2 selection strategies, Bernd suggested using the middle of
+        // Switch between 2 grammar pool selection strategies, Bernd suggested using the middle of
         // road grammars for crossover
         if (true) {
             for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
                 Gram toAdd1 = tournamentSelect(grammarPool, Constants.TOUR_SIZE);
-                Gram toAdd2 = tournamentSelect(grammarPool, Constants.TOUR_SIZE);
-                toConsider.add(toAdd1);
-                toConsider.add(toAdd2);
-                myGrammars.add(toAdd1);
-                myGrammars.add(toAdd2);
+                grammarPool.stream().
+                            sorted(Comparator.reverseOrder())
+                            .limit(10)
+                            .sorted((g0, g1) -> toAdd1.compPosPassSimil(g0, g1))
+                            .limit(3)
+                            .forEach(toConsider::add);
+
             }
 
         } else {
@@ -458,7 +460,7 @@ public class App {
         grammarOutput.output("clear");
         grammarOutput.output(g1.toString());
         grammarOutput.output(g2.toString());
-        g1.applyCrossover(g2, grammarOutput);
+        Gram.Crossover(g1, g2);
         grammarOutput.output(g1.toString());
         grammarOutput.output(g2.toString());
     }
@@ -563,6 +565,15 @@ public class App {
         }
         Gram out = tour.stream().max(Comparator.comparing(Gram::getScore)).get();
         pop.remove(out);
+        return out;
+    }
+
+    public static List<Gram> tournamentPoolSelect(List<Gram> pop,  int tourSize, int poolSize)  {
+        List<Gram> out = new ArrayList<Gram>();
+        poolSize = Math.min(poolSize, pop.size());
+        for (int i = 0; i < poolSize; i++) {
+            out.add(randGet(pop, false));
+        }
         return out;
     }
 
@@ -676,6 +687,14 @@ public class App {
 
     public static void loClear() {
         runOut.output(Gui.LOToken(Gui.clearToken()));
+    }
+
+    public static <E> E randGet(List<E> input, boolean replace) {
+        if (replace) {
+            return input.get(randInt(input.size()));
+        } else {
+            return input.remove(randInt(input.size()));
+        }
     }
     
     
