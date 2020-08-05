@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -36,7 +37,7 @@ public class Chelsea {
     // Generates, compiles and loads parser,lexer classes from the file
     static Constructor<?> lexerConstructor;
     static Constructor<?> parserConstructor;
-    static GrammarReader myReader;
+    static Gram myReader;
 
     static String currPosDir = null;
     static List<String> posTests = new LinkedList<>();
@@ -107,7 +108,7 @@ public class Chelsea {
      * 
      * @param grammar
      */
-    public static void generateSources(GrammarReader grammar, lamdaArg removeCurr) {
+    public static void generateSources(Gram grammar, lamdaArg removeCurr) {
         myReader = grammar;
         String finName = "default";
         Map<String, Class<?>> hm = null;
@@ -192,6 +193,7 @@ public class Chelsea {
                 
         // output array {numPasses, numTests}
         int[] out = { 0, 0 };
+        myReader.setTestSizes(posTests.size(), negTests.size());
         
 
         List<String> tests ;
@@ -206,12 +208,16 @@ public class Chelsea {
         Stack<String> failingTests = new Stack<String>();
         // System.out.println("Running " + paths.count() + " tests");
         App.rgoSetText("Testing " + myReader.getName() + "\n");
+        int[] testNum = {0};
+        boolean[] passArr = new boolean[tests.size()];
+        Arrays.fill(passArr, false);
         tests.forEach(test -> {
             // System.out.println("Testing " + fileName);
+            
             MyListener myListen = new MyListener();
             out[1]++;
             try {
-                
+                testNum[0]++;
                 Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
                 
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -237,7 +243,7 @@ public class Chelsea {
                 // the rest of this function.
                 passingTests.push(test);
                 out[0]++;
-
+                passArr[testNum[0]-1] = true;
                 // If this code is reached the test case was successfully parsed and numPasses
                 // should be incremented
                 
@@ -248,7 +254,13 @@ public class Chelsea {
                 removeCurr.removeGrammar();
             } catch (Exception e) {
                 failingTests.push(test);
-            } 
+            } finally {
+                if(mode.equals(Constants.POS_MODE)) {
+                    myReader.setPosPass(passArr);
+                } else {
+                    myReader.setNegPass(passArr);
+                }
+            }
         });
 
         if(failingTests.size() == 0) {

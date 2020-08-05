@@ -51,7 +51,7 @@ public class Constants {
 	public static boolean CROSSOVER = false;
     
     public static int INIT_POP_SIZE = 10000;
-    public static int INIT_POP_SIZE_LOCAL = 1;
+    public static int INIT_POP_SIZE_LOCAL = 20;
     public static int POP_SIZE = 100;
     public static int MAX_GRAMMARS = 100000;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
@@ -72,7 +72,7 @@ public class Constants {
     
 
 
-    public static scoringLambda positiveScoring = (int[] testResult, GrammarReader GUT) -> {
+    public static scoringLambda positiveScoring = (int[] testResult, Gram GUT) -> {
         int totalTests = testResult[1];
         
         
@@ -95,7 +95,7 @@ public class Constants {
         GUT.setPosScore(numPass/totalTests);
     };
 
-    public static scoringLambda negativeScoring = (int[] testResult, GrammarReader GUT) -> {
+    public static scoringLambda negativeScoring = (int[] testResult, Gram GUT) -> {
         int totalTests = testResult[1];
         
         double numPass = totalTests - testResult[0];
@@ -110,7 +110,7 @@ public class Constants {
      * Sets the pos and negscores to numPass/totalTests
      * This is done because localisastion does not use pos and neg testing phases
      */
-    public static scoringLambda localiserScoring = (int[] testResult, GrammarReader GUT) -> {
+    public static scoringLambda localiserScoring = (int[] testResult, Gram GUT) -> {
 
         int totalTests = testResult[0] + testResult[1];
         

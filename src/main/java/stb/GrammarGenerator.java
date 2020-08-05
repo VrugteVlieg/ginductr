@@ -9,13 +9,13 @@ import java.util.concurrent.ThreadLocalRandom;
 public class GrammarGenerator {
     
     static int grammarCount = 0;
-    static GrammarReader terminalGrammar = new GrammarReader(new File(Constants.CURR_TERMINALS_PATH));
+    static Gram terminalGrammar = new Gram(new File(Constants.CURR_TERMINALS_PATH));
 
-    public static LinkedList<GrammarReader> generatePopulation(int popSize) {
-        LinkedList<GrammarReader> output = new LinkedList<GrammarReader>();
+    public static LinkedList<Gram> generatePopulation(int popSize) {
+        LinkedList<Gram> output = new LinkedList<Gram>();
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + grammarCount++;
-            GrammarReader currGrammar = new GrammarReader(grammarName,terminalGrammar.getAllRules());
+            Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
             int grammarRuleCount = 1 + randInt(Constants.MAX_RULE_COUNT);
             
             for (int j = 0; j < grammarRuleCount; j++) {
@@ -55,7 +55,7 @@ public class GrammarGenerator {
         return output; 
     }
 
-    public static void fillBlanks(GrammarReader toFill) {
+    public static void fillBlanks(Gram toFill) {
         ArrayList<Rule> mainRules = toFill.getParserRules();
         for (int mainIndex = 0; mainIndex < mainRules.size(); mainIndex++) {
             if(mainRules.get(mainIndex).toString().contains("_new_")) {
@@ -77,11 +77,11 @@ public class GrammarGenerator {
         
     }
 
-    public static LinkedList<GrammarReader> generateLocalisablePop(int popSize, HashSet<String> checkedGrammar) {
-        LinkedList<GrammarReader> out = new LinkedList<GrammarReader>();
+    public static LinkedList<Gram> generateLocalisablePop(int popSize, HashSet<String> checkedGrammar) {
+        LinkedList<Gram> out = new LinkedList<Gram>();
         while(out.size() < popSize) {
             App.rgoSetText("Init size " + out.size() + "/" + popSize);
-            LinkedList<GrammarReader> newPop = generatePopulation(10);
+            LinkedList<Gram> newPop = generatePopulation(10);
             
             newPop.stream()
             .peek(App::runTests)
@@ -89,7 +89,7 @@ public class GrammarGenerator {
             .forEach(out::add);
         }
         
-        out = new LinkedList<GrammarReader>(out.subList(0, popSize));
+        out = new LinkedList<Gram>(out.subList(0, popSize));
         
         return out;
     }
