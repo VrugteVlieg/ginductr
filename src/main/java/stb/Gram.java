@@ -1641,9 +1641,11 @@ public class Gram implements Comparable<Gram> {
     private static Comparator<Gram> posPassComparator = new Comparator<Gram>() {
         @Override
         public int compare(Gram g0, Gram g1) {
-            
+
         }
     };
+
+    public static int pos
 
     public static int CompPosScoreDelta(Gram g0, Gram g1) {
         return posScoreDeltaComparator.compare(g0, g1);
