@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Stack;
 
 import javafx.application.Application;
 import javafx.concurrent.Task;
@@ -36,6 +37,7 @@ public class Gui extends Application {
     public static String LOG_FILE_NAME = "GUI_TOKENS.out";
     FileWriter logger;
     public HashMap<String, TextArea> outputAreas = new HashMap<String, TextArea>();
+    public HashMap<String, Stack<String>> outputStacks = new HashMap<String, Stack<String>>();
 
 
 
@@ -43,8 +45,15 @@ public class Gui extends Application {
 
     // Wrappers for different output token type
     public static String appendToken(String toAppend) {
-
         return outputLambda.APPEND + TOKEN_DELIM + toAppend;
+    }
+
+    public static String pushToken() {
+        return outputLambda.PUSH;
+    }
+
+    public static String popToken() {
+        return outputLambda.POP;
     }
 
     public static String clearToken() {
@@ -83,6 +92,7 @@ public class Gui extends Application {
         stage.setHeight(575);
         stage.initStyle(StageStyle.DECORATED);
         outputAreas = new HashMap<String, TextArea>();
+        outputStacks = new HashMap<String, Stack<String>>();
 
         TabPane cont = new TabPane();
         cont.setStyle("-fx-font-size:  16;");
@@ -125,12 +135,14 @@ public class Gui extends Application {
         mutationInterface.getChildren().add(mutationBtns());
         TextArea logOutput = new TextArea();
         outputAreas.put(LOG_OUT, logOutput);
+        outputStacks.put(LOG_OUT, new Stack<String>());
         outputLambda logOut = (String toLog) -> handleToken(toLog);
         App.setDemoOut(logOut);
         VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
         TextArea grammarOutput = new TextArea();
         outputAreas.put(GRAMMAR_OUT, grammarOutput);
+        outputStacks.put(GRAMMAR_OUT, new Stack<String>());
         outputLambda grammarOut = (String toLog) -> {
             handleToken(toLog);
             // String[] data = toLog.split(TOKEN_DELIM);
@@ -165,12 +177,14 @@ public class Gui extends Application {
         mutationInterface.getChildren().add(btnRun);
         TextArea logOutput = new TextArea();
         outputAreas.put(RUN_LOG_OUT, logOutput);
+        outputStacks.put(RUN_LOG_OUT, new Stack<String>());
 
         VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
 
         TextArea grammarOutput = new TextArea();
         outputAreas.put(RUN_GRAMMAR_OUT, grammarOutput);
+        outputStacks.put(RUN_GRAMMAR_OUT, new Stack<String>());
 
         runOut.messageProperty().addListener((obs, prev, newVal) -> {
             handleToken(newVal);
@@ -340,10 +354,11 @@ public class Gui extends Application {
 
     public void handleToken(String token) {
         logToken(token);
-        System.err.println(token);
+        
         String[] data = token.split(TOKEN_DELIM);
         System.err.println(Arrays.toString(data));
         TextArea target = outputAreas.get(data[0]);
+        Stack<String> targetStack = outputStacks.get(data[0]);
         switch (data[1]) {
             case outputLambda.CLEAR:
                 target.setText("");
@@ -359,6 +374,14 @@ public class Gui extends Application {
                 int lastIndex = curr.lastIndexOf("\n");
                 String out = curr.substring(0, lastIndex + 1) + data[2];
                 target.setText(out);
+                break;
+            case outputLambda.PUSH:
+                targetStack.push(target.getText());
+                System.out.println(targetStack + " " + data[0]);
+                break;
+            case outputLambda.POP:
+                target.setText(targetStack.pop());
+                System.out.println(targetStack + " " + data[0]);
                 break;
         }
 

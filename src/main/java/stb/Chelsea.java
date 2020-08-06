@@ -206,12 +206,12 @@ public class Chelsea {
         Stack<String> passingTests = new Stack<String>();
         Stack<String> failingTests = new Stack<String>();
         // System.out.println("Running " + paths.count() + " tests");
-        App.rgoSetText("Testing " + myReader.getName() + "\n");
+        App.rgoSetText("Testing " + myReader + "\n");
         int[] testNum = {0};
         boolean[] passArr = new boolean[tests.size()];
         Arrays.fill(passArr, false);
         tests.forEach(test -> {
-            // System.out.println("Testing " + fileName);
+            
             
             MyListener myListen = new MyListener();
             out[1]++;
@@ -262,21 +262,22 @@ public class Chelsea {
             }
         });
 
-        if(failingTests.size() == 0) {
-            StringBuilder toPrint = new StringBuilder();
-            toPrint.append("No failing tests\n" + myReader.hashString());
-            toPrint.append("Passing tests: " + passingTests.size() +  "\n");
-            passingTests.forEach(test ->  toPrint.append(test + "\n"));
-            toPrint.append("Failing tests: " + failingTests.size() + "\n");
-            failingTests.forEach(test ->  toPrint.append(test + "\n"));
-            App.rgoAppendText(toPrint.toString());
-            try  {
-                System.out.println("Press enter to continue");
-                System.in.read();
-            } catch(Exception e) {
+        // if(failingTests.size() == 0) {
+        //     StringBuilder toPrint = new StringBuilder();
+        //     toPrint.append("No failing tests\n" + myReader.hashString());
+        //     toPrint.append("Passing tests: " + passingTests.size() +  "\n");
+        //     passingTests.forEach(test ->  toPrint.append(test + "\n"));
+        //     toPrint.append("Failing tests: " + failingTests.size() + "\n");
+        //     failingTests.forEach(test ->  toPrint.append(test + "\n"));
+        //     App.rgoAppendText(toPrint.toString());
+        //     System.err.println(toPrint.toString());
+        //     try  {
+        //         System.err.println("Press enter to continue");
+        //         System.in.read();
+        //     } catch(Exception e) {
                 
-            }
-        }
+        //     }
+        // }
 
         
         return out;

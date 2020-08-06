@@ -28,7 +28,7 @@ public class GrammarGenerator {
             // StringBuilder curr = new StringBuilder();
             // curr.append("Before removeUnreach\n");
             // curr.append(currGrammar.toString());
-            currGrammar.removeUnreachableBoogaloo();
+            currGrammar.removeUnreachable();
             // curr.append("\nPost removeUnreach\n");
             // curr.append(currGrammar.toString());
             // App.rgoSetText(curr.toString());

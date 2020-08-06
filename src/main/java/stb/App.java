@@ -151,13 +151,16 @@ public class App {
                     // myGrammars.stream().map(GrammarReader::getName).collect(Collectors.joining("\n")));
                     // Dont generate mutants on the first gen, we use a lot of initial grammars to
                     // cover search space
-
+                    rloAppendText("Computing mutants");
                     List<Gram> allMutants = myGrammars.stream()
                                     .map(Gram::computeMutants)
                                     .flatMap(LinkedList<Gram>::stream)
                                     .peek(App::runTests)
                                     .filter(gram -> gram.getPosScore() > 0 && !gram.toRemove())
                                     .collect(Collectors.toCollection(ArrayList::new));
+
+
+                    
 
                     allMutants.stream()
                         .filter(gram -> !totalPop.contains(gram))
@@ -190,7 +193,7 @@ public class App {
                 // Add crossover grammars
                 double bestScore = getBestScore();
                 // Only start performing crossover if some decent grammars already exist
-                if (bestScore > 0.2 || true) {
+                if (bestScore > 0.2) {
 
                     ArrayList<Gram> crossoverPop = performCrossover(scoreList, totalPop);
                     crossoverPop.stream()
@@ -249,12 +252,13 @@ public class App {
                 }
                 recordMetrics(myGrammars);
 
-                
                 myGrammars.forEach(grammar -> {
-                    if(grammar.getMutationConsideration().isEmpty()) {
-                        System.err.println("Localizing" + myGrammars.indexOf(grammar) + "/" + myGrammars.size() + "\n");
+                    // rloPush();
+                    if(grammar.getMutationConsideration().isEmpty()){
+                        rloAppendText("Localizing " + grammar.getName() + "  " +  myGrammars.indexOf(grammar) + "/" + myGrammars.size() + "\n");
                         runLocaliser(grammar);
                     } 
+                    // rloPop();
                 });
 
                 // int grammarsToCarry = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
@@ -388,15 +392,15 @@ public class App {
         goAppendText("\nLeads to \n" + demoGrammar);
         // demoOut.output("\n" + demoGrammar.toString());
     }
-
+    
     public static void groupDemo() {
-        demoGrammar.demoGroupMutate(demoOut, demoOut);
-        demoOut.output("\n" + demoGrammar.toString());
+        demoGrammar.demoGroupMutate();
+        goAppendText("\nLeads to \n" + demoGrammar);
     }
 
     public static void demoHeuristic() {
-        demoGrammar.demoHeuristic(demoOut, demoOut);
-        demoOut.output("\n" + demoGrammar.toString());
+        demoGrammar.demoHeuristic();
+        goAppendText("\nLeads to \n" + demoGrammar);
     }
 
     public static void symbMutateDemo() {
@@ -407,12 +411,15 @@ public class App {
     public static void demoCrossover() {
         Gram g1 = GrammarGenerator.generatePopulation(1).getFirst();
         Gram g2 = GrammarGenerator.generatePopulation(1).getFirst();
-        demoOut.output("clear");
-        demoOut.output(g1.toString());
-        demoOut.output(g2.toString());
+        goClear();
+
+        StringBuilder out = new StringBuilder();
+        
+        goSetText(g1.hashString() + "\n\n");
+        goAppendText(g2.hashString() + "\n\n");
         Gram.Crossover(g1, g2);
-        demoOut.output(g1.toString());
-        demoOut.output(g2.toString());
+        goAppendText(g1.hashString() + "\n\n");
+        goAppendText(g2.hashString() + "\n\n");
     }
 
 
@@ -524,7 +531,7 @@ public class App {
                                 .forEach(out::add);
 
 
-            System.err.println("Mutation considerations for " +  currGrammar + "\n " + out);
+            // System.err.println("Mutation considerations for " +  currGrammar + "\n " + out);
             currGrammar.setMutationConsideration(out);
             
         } catch (Exception e) {
@@ -631,6 +638,13 @@ public class App {
         runOut.output(Gui.RGOToken(Gui.updateToken(newText)));
     }
 
+    public static void rgoPush() {
+        runOut.output(Gui.RGOToken(Gui.pushToken()));
+    }
+
+    public static void rgoPop() {
+        runOut.output(Gui.RGOToken(Gui.popToken()));
+    }
 
     //RLO tokens
     public static void rloSetText(String toSet) {
@@ -648,6 +662,16 @@ public class App {
     public static void rloUpdate(String newText) {
         runOut.output(Gui.RLOToken(Gui.updateToken(newText)));
     }
+
+    public static void rloPush() {
+        runOut.output(Gui.RLOToken(Gui.pushToken()));
+    }
+
+    public static void rloPop() {
+        runOut.output(Gui.RLOToken(Gui.popToken()));
+    }
+
+
     
 
     public static void goSetText(String toSet) {
@@ -656,6 +680,14 @@ public class App {
 
     public static void goAppendText(String input) {
         demoOut.output(Gui.GOToken(Gui.appendToken(input)));
+    }
+
+    public static void goPush() {
+        demoOut.output(Gui.GOToken(Gui.pushToken()));
+    }
+
+    public static void goPop() {
+        demoOut.output(Gui.GOToken(Gui.popToken()));
     }
 
     public static void goClear() {
@@ -672,6 +704,14 @@ public class App {
 
     public static void loClear() {
         demoOut.output(Gui.LOToken(Gui.clearToken()));
+    }
+
+    public static void loPush() {
+        runOut.output(Gui.LOToken(Gui.pushToken()));
+    }
+
+    public static void loPop() {
+        runOut.output(Gui.LOToken(Gui.popToken()));
     }
 
     public static <E> E randGet(List<E> input, boolean replace) {

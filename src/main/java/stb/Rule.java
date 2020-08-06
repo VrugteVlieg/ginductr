@@ -475,7 +475,7 @@ public class Rule {
         List<String> out = new ArrayList<String>();
         if(this.equals(EPSILON)) return out;
         if(getTotalSelectables() == 1) {
-            out.add(getName());
+            out.add(name);
             return out;
         }
 
