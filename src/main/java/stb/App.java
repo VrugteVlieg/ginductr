@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -27,8 +28,7 @@ public class App {
     static double codeGenTime = 0;
     static long startTime = 0;
 
-    public static outputLambda logOutput = (String toPrint) -> System.out.println(toPrint);
-    public static outputLambda grammarOutput = (String toPrint) -> System.out.println(toPrint);
+    public static outputLambda demoOut = (String toPrint) -> System.out.println(toPrint);
     private static outputLambda runOut = (String toPrint) -> System.out.println(toPrint);
 
     static Gram bestGrammar;
@@ -190,7 +190,7 @@ public class App {
                 // Add crossover grammars
                 double bestScore = getBestScore();
                 // Only start performing crossover if some decent grammars already exist
-                if (bestScore > 0.2) {
+                if (bestScore > 0.2 || true) {
 
                     ArrayList<Gram> crossoverPop = performCrossover(scoreList, totalPop);
                     crossoverPop.stream()
@@ -249,9 +249,7 @@ public class App {
                 }
                 recordMetrics(myGrammars);
 
-                //TODO further optimisation can be done by having the localiser program printing out num pos pass, num pos fail, num neg pass, num neg fail
-                // it is currently being recorded in the localiser but the pass and fail scores are combined, this way there is no need to use chelseas generation
-                //would still require the maven processes though so look into  it
+                
                 myGrammars.forEach(grammar -> {
                     if(grammar.getMutationConsideration().isEmpty()) {
                         System.err.println("Localizing" + myGrammars.indexOf(grammar) + "/" + myGrammars.size() + "\n");
@@ -304,18 +302,19 @@ public class App {
         // Calculate crossoverPop
         ArrayList<Gram> crossoverPop = new ArrayList<Gram>();
         double numScores = scoreArr.size();
-        if (numScores == 0)
-            return null;
+        // if (numScores == 0)
+        //     return null;
         double maxIndex = numScores - 1;
         ArrayList<Gram> toConsider = new ArrayList<Gram>();
 
         // Switch between 2 grammar pool selection strategies, Bernd suggested using the middle of
         // road grammars for crossover
+        //new selection strategy selectes 
         if (true) {
             for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
                 Gram toAdd1 = tournamentSelect(grammarPool, Constants.TOUR_SIZE);
-                grammarPool.stream().
-                            sorted(Comparator.reverseOrder())
+                grammarPool.stream()
+                            .sorted(Comparator.reverseOrder())
                             .limit(10)
                             .sorted((g0, g1) -> toAdd1.compPosPassSimil(g0, g1))
                             .limit(3)
@@ -361,25 +360,12 @@ public class App {
         return ThreadLocalRandom.current().nextInt(bound);
     }
 
-    public static outputLambda getGrammarOut() {
-        return grammarOutput;
-    }
-
-    public static void setGrammarOut(outputLambda toSet) {
-        grammarOutput = toSet;
-    }
-
-    public static outputLambda getLogOut() {
-        return logOutput;
-    }
-
-    public static void setLogOut(outputLambda toSet) {
-        logOutput = toSet;
+    public static void setDemoOut(outputLambda toSet) {
+        demoOut = toSet;
     }
 
     public static void loadStartGrammar() {
         Gram out = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
-        GrammarGenerator.fillBlanks(out);
         Gram hashedOut = new Gram(out.hashString() + '\n'
                 + out.getTerminalRules().stream().map(Rule::toString).collect(Collectors.joining("\n")));
         demoGrammar = hashedOut;
@@ -388,39 +374,49 @@ public class App {
         demoGrammar.getParserRules().get(0).getReachables(demoGrammar.getParserRules(), reachables);
         // out.getParserRules().forEach(rule -> System.out.println(rule.getName() +
         // rule.isSingular()));
-        grammarOutput.output(hashedOut.toString());
+        goSetText(hashedOut.toString() + "\n");
+        // demoOut.output(hashedOut.toString());
     }
 
-    public static void ruleCountDemo() {
-        demoGrammar.demoChangeRuleCount(logOutput, grammarOutput);
-        grammarOutput.output("\n" + demoGrammar.toString());
+    public static void newNTDemo() {
+        demoGrammar.demoNewNT(Optional.empty());
+        goAppendText("\nLeads to \n" + demoGrammar);
     }
-
+    
     public static void symbolCountDemo() {
-        demoGrammar.demoChangeSymbolCount(logOutput, grammarOutput);
-        grammarOutput.output("\n" + demoGrammar.toString());
+        demoGrammar.demoChangeSymbolCount(Optional.empty());
+        goAppendText("\nLeads to \n" + demoGrammar);
+        // demoOut.output("\n" + demoGrammar.toString());
     }
 
     public static void groupDemo() {
-        demoGrammar.demoGroupMutate(logOutput, grammarOutput);
-        grammarOutput.output("\n" + demoGrammar.toString());
-    }
-
-    public static void symbMutateDemo() {
-        demoGrammar.demoMutate(logOutput, grammarOutput);
-        grammarOutput.output("\n" + demoGrammar.toString());
+        demoGrammar.demoGroupMutate(demoOut, demoOut);
+        demoOut.output("\n" + demoGrammar.toString());
     }
 
     public static void demoHeuristic() {
-        demoGrammar.demoHeuristic(logOutput, grammarOutput);
-        grammarOutput.output("\n" + demoGrammar.toString());
+        demoGrammar.demoHeuristic(demoOut, demoOut);
+        demoOut.output("\n" + demoGrammar.toString());
     }
 
-    static void setRunGrammarOutput(outputLambda newRun) {
-        runOut = newRun;
+    public static void symbMutateDemo() {
+        demoGrammar.demoMutate(demoOut, demoOut);
+        demoOut.output("\n" + demoGrammar.toString());
     }
 
-    static void setRunLogOutput(outputLambda newRun) {
+    public static void demoCrossover() {
+        Gram g1 = GrammarGenerator.generatePopulation(1).getFirst();
+        Gram g2 = GrammarGenerator.generatePopulation(1).getFirst();
+        demoOut.output("clear");
+        demoOut.output(g1.toString());
+        demoOut.output(g2.toString());
+        Gram.Crossover(g1, g2);
+        demoOut.output(g1.toString());
+        demoOut.output(g2.toString());
+    }
+
+
+    static void setRunOut(outputLambda newRun) {
         runOut = newRun;
     }
 
@@ -454,17 +450,6 @@ public class App {
         return numGrammarsChecked;
     }
 
-    public static void demoCrossover() {
-        Gram g1 = GrammarGenerator.generatePopulation(1).getFirst();
-        Gram g2 = GrammarGenerator.generatePopulation(1).getFirst();
-        grammarOutput.output("clear");
-        grammarOutput.output(g1.toString());
-        grammarOutput.output(g2.toString());
-        Gram.Crossover(g1, g2);
-        grammarOutput.output(g1.toString());
-        grammarOutput.output(g2.toString());
-    }
-
     public static List<String> getSusList() {
 
         try (Scanner myScanner = new Scanner(new File(Constants.CSV_PATH))) {
@@ -492,7 +477,7 @@ public class App {
         return new LinkedList<String>();
     }
 
-    //TODO eliminate the use of scoring func duing localization
+    
     /**
      * Runs localiser on current grammar, sets the mutation suggestions of current grammar to a list of strings of the form (ruleName:prodIndex)
      * @param currGrammar  Grammer being tested
@@ -572,7 +557,7 @@ public class App {
         List<Gram> out = new ArrayList<Gram>();
         poolSize = Math.min(poolSize, pop.size());
         for (int i = 0; i < poolSize; i++) {
-            out.add(randGet(pop, false));
+            out.add(randGet(pop, true));
         }
         return out;
     }
@@ -666,27 +651,27 @@ public class App {
     
 
     public static void goSetText(String toSet) {
-        runOut.output(Gui.GOToken(Gui.setToken(toSet)));
+        demoOut.output(Gui.GOToken(Gui.setToken(toSet)));
     }
 
     public static void goAppendText(String input) {
-        runOut.output(Gui.GOToken(Gui.appendToken(input)));
+        demoOut.output(Gui.GOToken(Gui.appendToken(input)));
     }
 
     public static void goClear() {
-        runOut.output(Gui.GOToken(Gui.clearToken()));
+        demoOut.output(Gui.GOToken(Gui.clearToken()));
     }
 
     public static void loSetText(String toSet) {
-        runOut.output(Gui.LOToken(Gui.setToken(toSet)));
+        demoOut.output(Gui.LOToken(Gui.setToken(toSet)));
     }
 
     public static void loAppendText(String input) {
-        runOut.output(Gui.LOToken(Gui.appendToken(input)));
+        demoOut.output(Gui.LOToken(Gui.appendToken(input)));
     }
 
     public static void loClear() {
-        runOut.output(Gui.LOToken(Gui.clearToken()));
+        demoOut.output(Gui.LOToken(Gui.clearToken()));
     }
 
     public static <E> E randGet(List<E> input, boolean replace) {

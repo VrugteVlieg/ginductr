@@ -5,8 +5,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -19,7 +17,6 @@ public class Rule {
     private boolean mainRule;
     private boolean singular;
     private String ruleText;
-    private boolean toRemove = false;
 
     public static final Rule EPSILON = new Rule(" ");
 
@@ -382,30 +379,6 @@ public class Rule {
         }
     }
 
-    public void removeSelectable(int index) {
-        int counter = 0;
-        int subSetIndex = 0;
-        for (LinkedList<Rule> subSet : subRules) {
-            int subRuleIndex = 0;
-            for (Rule subRule : subSet) {
-                int counterPre = counter;
-                if (counterPre == index - 1) {
-                    subRules.get(subSetIndex).remove(subRuleIndex);
-                    // if(!mainRule)resetName();
-                    return;
-                } else {
-                    counter += subRule.getTotalSelectables();
-                    if (counter >= index) { // the rule to change was in the the last subrule
-                        int indexInRule = index - counterPre - 1; // position withing the rule
-                        subRule.removeSelectable(indexInRule);
-                    }
-                }
-                subRuleIndex++;
-            }
-            subSetIndex++;
-        }
-    }
-
     /**
      * Returns the production at a specific index in the rule indices for compound
      * rules defined to include the compound rule as well as its constituent rules
@@ -505,6 +478,7 @@ public class Rule {
             out.add(getName());
             return out;
         }
+
         subRules.stream()
             .flatMap(LinkedList::stream)
             .distinct()
@@ -782,21 +756,6 @@ public class Rule {
         }
     }
 
-
-    public void insertSelectable(int index, Rule toInsert) {
-        if(mainRule) {
-            System.err.println("Insert selectable " + toInsert + " index " + index + " called on main rule " + this);
-            System.exit(1);
-        }
-        List<Rule> myRules = subRules.get(0);
-    }
-
-    // Removes a random rule on the RHS, this includes removing rules inside
-    // brackets
-    public void reduce() {
-        removeSelectable(1 + randInt(getTotalSelectables()-1));
-    }
-
     /**
      * Generates a new ruleName
      * 
@@ -846,8 +805,6 @@ public class Rule {
             prod.forEach(rule -> {
                 if (!rule.isSingular())
                     rule.removeReferences(toRemoveName);
-                if (rule.getSubRules().size() == 0)
-                    rule.toRemove = true;
             });
         }
         subRules.removeIf(prod -> prod.size() == 0);

@@ -9,6 +9,8 @@ import java.util.List;
 
 import javafx.application.Application;
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -34,6 +36,8 @@ public class Gui extends Application {
     public static String LOG_FILE_NAME = "GUI_TOKENS.out";
     FileWriter logger;
     public HashMap<String, TextArea> outputAreas = new HashMap<String, TextArea>();
+
+
 
     // format for output messages is target_type_message?
 
@@ -121,29 +125,29 @@ public class Gui extends Application {
         mutationInterface.getChildren().add(mutationBtns());
         TextArea logOutput = new TextArea();
         outputAreas.put(LOG_OUT, logOutput);
-        outputLambda logOut = (String toLog) -> logOutput.appendText(toLog + "\n");
-        App.setLogOut(logOut);
+        outputLambda logOut = (String toLog) -> handleToken(toLog);
+        App.setDemoOut(logOut);
         VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
         TextArea grammarOutput = new TextArea();
         outputAreas.put(GRAMMAR_OUT, grammarOutput);
         outputLambda grammarOut = (String toLog) -> {
-            String[] data = toLog.split(TOKEN_DELIM);
-            switch (data[0]) {
-                case outputLambda.CLEAR:
-                    grammarOutput.setText("");
-                    break;
+            handleToken(toLog);
+            // String[] data = toLog.split(TOKEN_DELIM);
+            // switch (data[0]) {
+            //     case outputLambda.CLEAR:
+            //         grammarOutput.setText("");
+            //         break;
 
-                case outputLambda.APPEND:
-                    grammarOutput.appendText(data[1]);
-                    break;
+            //     case outputLambda.APPEND:
+            //         grammarOutput.appendText(data[1]);
+            //         break;
 
-                case outputLambda.SET:
-                    grammarOutput.setText(data[1]);
-                    break;
-            }
+            //     case outputLambda.SET:
+            //         grammarOutput.setText(data[1]);
+            //         break;
+            // }
         };
-        App.setGrammarOut(grammarOut);
         grammarOutput.setMinWidth(600);
         greaterContainer.getChildren().add(mutationInterface);
         greaterContainer.getChildren().add(grammarOutput);
@@ -197,22 +201,33 @@ public class Gui extends Application {
     public VBox mutationBtns() {
         Label heading = new Label("Apply mutation");
         heading.setStyle("-fx-font-weight: bold;");
-        Button changeRuleCount = new Button("ruleCount");
-        changeRuleCount.setOnAction(event -> App.ruleCountDemo());
-        Button changeSymbolCount = new Button("symbolCount");
-        changeSymbolCount.setOnAction(event -> App.symbolCountDemo());
-        Button group = new Button("group");
-        group.setOnAction(event -> App.groupDemo());
-        Button symbolMutation = new Button("symbolMutation");
-        symbolMutation.setOnAction(event -> App.symbMutateDemo());
+
+        Button genNewNT = new Button("newNT");
+        genNewNT.setOnAction(event -> App.newNTDemo());
+
+        Button symbCount = new Button("symbolCount");
+        symbCount.setOnAction(event -> App.symbolCountDemo());
+
+        Button grouping = new Button("grouping");
+        grouping.setOnAction(event -> App.groupDemo());
+
         Button heuristic = new Button("heuristic");
         heuristic.setOnAction(event -> App.demoHeuristic());
+
         Button crossover = new Button("crossover");
         crossover.setOnAction(event -> App.demoCrossover());
-        VBox out = new VBox(heading, changeRuleCount, changeSymbolCount, group, symbolMutation, heuristic, crossover);
+
+        VBox out = new VBox(heading, genNewNT, symbCount, grouping, heuristic, crossover);
         out.setStyle("-fx-padding: 16;-fx-border-color: black;");
         out.setSpacing(5);
 
+        return out;
+    }
+
+
+    public Button makeButton(String buttonText, EventHandler<ActionEvent> onClick) {
+        Button out = new Button(buttonText);
+        out.setOnAction(onClick);
         return out;
     }
 
@@ -300,6 +315,7 @@ public class Gui extends Application {
 
     public static void main(String[] args) {
         launch();
+
     }
 
     public Task<Void> backGroundProcess() {
@@ -310,7 +326,7 @@ public class Gui extends Application {
                     updateMessage(toLog);
                 };
 
-                App.setRunGrammarOutput(runOut);
+                App.setRunOut(runOut);
                 // App.setRunLogOutput(logOut);
                 App.demoMainProgram();
                 return null;
@@ -324,7 +340,9 @@ public class Gui extends Application {
 
     public void handleToken(String token) {
         logToken(token);
+        System.err.println(token);
         String[] data = token.split(TOKEN_DELIM);
+        System.err.println(Arrays.toString(data));
         TextArea target = outputAreas.get(data[0]);
         switch (data[1]) {
             case outputLambda.CLEAR:
