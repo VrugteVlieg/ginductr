@@ -112,7 +112,7 @@ public class Chelsea {
         String finName = "default";
         Map<String, Class<?>> hm = null;
         try {
-
+            System.err.println("Generating sources for " + grammar);
             /**
              * TODO, change output directory to localiser and remove mvn stage
              */
@@ -135,16 +135,23 @@ public class Chelsea {
             g.fileName = grammar.getName();
 
             tool.process(g, true);
+            System.err.println("Tool done");
             if (tool.getNumErrors() != 0) {
                 removeCurr.removeGrammar();
             }
 
             // Compile source files
             DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
+            
+            System.err.println("Compiling");
 
             dynamicClassCompiler.compile(new File(Constants.ANTLR_DIR));
 
+            System.err.println("Done compiling");
+
             hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR));
+
+            System.err.println("Done loading");
 
             // Manually creates lexer.java file in outputDir
             Class<?> lexer = hm.get(finName + "Lexer");
@@ -158,7 +165,7 @@ public class Chelsea {
             // Manually creates the parserConstructor for use later
             // Is initialized as Constructor<?> parserConstructor
             parserConstructor = parser.getConstructor(TokenStream.class);
-
+            System.err.println("Done");
         } catch (Exception e) {
             e.printStackTrace(System.err);
             if (hm == null) {
@@ -207,6 +214,7 @@ public class Chelsea {
         Stack<String> failingTests = new Stack<String>();
         // System.out.println("Running " + paths.count() + " tests");
         App.rgoSetText("Testing " + myReader + "\n");
+        System.err.println("Testing " + myReader.getName());
         int[] testNum = {0};
         boolean[] passArr = new boolean[tests.size()];
         Arrays.fill(passArr, false);

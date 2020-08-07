@@ -74,17 +74,19 @@ public class App {
     }
 
     public static void runTests(Gram myReader) {
+        System.err.println("Testing " + myReader);
         if (myReader.getParserRules().size() == 0 || myReader.containsInfLoop()) {
-            System.err.println("Flagging " + myReader + "\n for removal");
+            System.err.println("Flagging " + myReader.getName() + "\n for removal");
             myReader.flagForRemoval();
             return;
         }
+        System.err.println("Injecting eof");
         
         myReader.injectEOF();
         lamdaArg removeCurr = () -> myReader.flagForRemoval();
         long startTime = System.nanoTime();
         Chelsea.generateSources(myReader, removeCurr);
-        
+        System.err.println("Sources generated");
         if (myReader.toRemove()) {
             System.err.println("Code gen failed for \n" + myReader);
             return;
@@ -375,31 +377,49 @@ public class App {
         demoGrammar = hashedOut;
         hashedOut.setName("demoGrammar");
         ArrayList<String> reachables = new ArrayList<String>();
-        demoGrammar.getParserRules().get(0).getReachables(demoGrammar.getParserRules(), reachables);
+        // demoGrammar.getParserRules().get(0).getReachables(demoGrammar.getParserRules(), reachables);
         // out.getParserRules().forEach(rule -> System.out.println(rule.getName() +
         // rule.isSingular()));
-        goSetText(hashedOut.toString() + "\n");
         // demoOut.output(hashedOut.toString());
     }
+    
+    public static void displayStartGrammar() {
+        goSetText(demoGrammar.toString() + "\n");
+    }
 
-    public static void newNTDemo() {
-        demoGrammar.demoNewNT(Optional.empty());
+    public static String[] getDemoTargets() {
+        displayStartGrammar();
+        List<String> allTargets = demoGrammar.getAllSuggestions();
+        allTargets.add(0, "Random");
+        return allTargets.toArray(String[]::new);
+    }
+
+    public static void newNTDemo(String target) {
+        displayStartGrammar();
+        Optional<String> Otarget = target.equals("Random") ? Optional.empty() : Optional.of(target);
+        demoGrammar.demoNewNT(Otarget);
         goAppendText("\nLeads to \n" + demoGrammar);
     }
     
-    public static void symbolCountDemo() {
-        demoGrammar.demoChangeSymbolCount(Optional.empty());
+    public static void symbolCountDemo(String target) {
+        displayStartGrammar();
+        Optional<String> Otarget = target.equals("Random") ? Optional.empty() : Optional.of(target);
+        demoGrammar.demoChangeSymbolCount(Otarget);
         goAppendText("\nLeads to \n" + demoGrammar);
         // demoOut.output("\n" + demoGrammar.toString());
     }
     
-    public static void groupDemo() {
-        demoGrammar.demoGroupMutate();
+    public static void groupDemo(String target) {
+        displayStartGrammar();
+        Optional<String> Otarget = target.equals("Random") ? Optional.empty() : Optional.of(target);
+        demoGrammar.demoGroupMutate(Otarget);
         goAppendText("\nLeads to \n" + demoGrammar);
     }
 
-    public static void demoHeuristic() {
-        demoGrammar.demoHeuristic();
+    public static void demoHeuristic(String target) {
+        displayStartGrammar();
+        Optional<String> Otarget = target.equals("Random") ? Optional.empty() : Optional.of(target);
+        demoGrammar.demoHeuristic(Otarget);
         goAppendText("\nLeads to \n" + demoGrammar);
     }
 
@@ -414,12 +434,15 @@ public class App {
         goClear();
 
         StringBuilder out = new StringBuilder();
+        out.append(String.format("Generated 2 grammars to demonstate crossover\n%s\n%s\nand\n%s\n%s", g1.getName(),g1.prettyPrintRules(g1.getParserRules()),g2.getName(), g2.prettyPrintRules(g2.getParserRules())));
         
-        goSetText(g1.hashString() + "\n\n");
-        goAppendText(g2.hashString() + "\n\n");
-        Gram.Crossover(g1, g2);
-        goAppendText(g1.hashString() + "\n\n");
-        goAppendText(g2.hashString() + "\n\n");
+        // goSetText(g1.hashString() + "\n\n");
+        // goAppendText(g2.hashString() + "\n\n");
+        Gram.loggedCrossover(g1, g2, out);
+        out.append(String.format("\n\nResults in \n%s\n%s\nand\n%s\n%s", g1.getName(),g1.prettyPrintRules(g1.getParserRules()),g2.getName(), g2.prettyPrintRules(g2.getParserRules())));
+        // goAppendText(g1.hashString() + "\n\n");
+        // goAppendText(g2.hashString() + "\n\n");
+        goSetText(out.toString());
     }
 
 
@@ -550,7 +573,7 @@ public class App {
      * @return
      */
     public static Gram tournamentSelect(List<Gram> pop, int tourSize) {
-        System.err.println("Performing tournament selection on a population of " + pop.size());
+        // System.err.println("Performing tournament selection on a population of " + pop.size());
         LinkedList<Gram> tour = new LinkedList<Gram>();
         while (tour.size() < tourSize) {
             tour.add(pop.get(randInt(pop.size())));

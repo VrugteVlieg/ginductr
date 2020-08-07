@@ -2,6 +2,7 @@ package stb;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.security.AllPermission;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,12 +10,14 @@ import java.util.List;
 import java.util.Stack;
 
 import javafx.application.Application;
+import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -97,14 +100,14 @@ public class Gui extends Application {
         TabPane cont = new TabPane();
         cont.setStyle("-fx-font-size:  16;");
         Tab testTab = new Tab("Example", exampleThing());
-        Tab settingsTab = new Tab("Settings", settingsThing(stage));
+        // Tab settingsTab = new Tab("Settings", settingsThing(stage));
         Tab runTab = new Tab("Run", runScreen());
-        Arrays.asList(testTab, runTab, settingsTab).forEach(t -> cont.getTabs().add(t));
+        Arrays.asList(testTab, runTab).forEach(t -> cont.getTabs().add(t));
 
         Scene mainScene = new Scene(cont);
         stage.setScene(mainScene);
         stage.show();
-        App.loadStartGrammar();
+        App.displayStartGrammar();
 
     }
 
@@ -128,7 +131,7 @@ public class Gui extends Application {
     }
 
     public HBox exampleThing() {
-
+        App.loadStartGrammar();
         HBox greaterContainer = new HBox();
         VBox mutationInterface = new VBox();
         mutationInterface.setMinWidth(200);
@@ -213,25 +216,34 @@ public class Gui extends Application {
     }
 
     public VBox mutationBtns() {
+        
+        Label headingLocal = new Label("Mutation target");
+        headingLocal.setStyle("-fx-font-weight: bold;");
+        String[] allOptions = App.getDemoTargets();
+        ComboBox<String> options = new ComboBox<>(FXCollections.observableArrayList(allOptions));
+        options.getSelectionModel().selectFirst();
+
+        
         Label heading = new Label("Apply mutation");
         heading.setStyle("-fx-font-weight: bold;");
+        
 
         Button genNewNT = new Button("newNT");
-        genNewNT.setOnAction(event -> App.newNTDemo());
+        genNewNT.setOnAction(event -> App.newNTDemo(options.getSelectionModel().getSelectedItem()));
 
         Button symbCount = new Button("symbolCount");
-        symbCount.setOnAction(event -> App.symbolCountDemo());
+        symbCount.setOnAction(event -> App.symbolCountDemo(options.getSelectionModel().getSelectedItem()));
 
         Button grouping = new Button("grouping");
-        grouping.setOnAction(event -> App.groupDemo());
+        grouping.setOnAction(event -> App.groupDemo(options.getSelectionModel().getSelectedItem()));
 
         Button heuristic = new Button("heuristic");
-        heuristic.setOnAction(event -> App.demoHeuristic());
+        heuristic.setOnAction(event -> App.demoHeuristic(options.getSelectionModel().getSelectedItem()));
 
         Button crossover = new Button("crossover");
         crossover.setOnAction(event -> App.demoCrossover());
 
-        VBox out = new VBox(heading, genNewNT, symbCount, grouping, heuristic, crossover);
+        VBox out = new VBox(headingLocal, options, heading, genNewNT, symbCount, grouping, heuristic, crossover);
         out.setStyle("-fx-padding: 16;-fx-border-color: black;");
         out.setSpacing(5);
 

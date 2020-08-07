@@ -15,6 +15,7 @@ public class GrammarGenerator {
         LinkedList<Gram> output = new LinkedList<Gram>();
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + grammarCount++;
+            System.err.println("Generating " + grammarName);
             Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
             int grammarRuleCount = 1 + randInt(Constants.MAX_RULE_COUNT);
             
@@ -28,7 +29,10 @@ public class GrammarGenerator {
             // StringBuilder curr = new StringBuilder();
             // curr.append("Before removeUnreach\n");
             // curr.append(currGrammar.toString());
+            System.err.println("Removing unreachables");
             currGrammar.removeUnreachable();
+            System.err.println("Done removing");
+            // currGrammar.removeUnreachableBoogaloo();
             // curr.append("\nPost removeUnreach\n");
             // curr.append(currGrammar.toString());
             // App.rgoSetText(curr.toString());
@@ -82,7 +86,7 @@ public class GrammarGenerator {
         while(out.size() < popSize) {
             App.rgoSetText("Init size " + out.size() + "/" + popSize);
             LinkedList<Gram> newPop = generatePopulation(10);
-            
+            System.err.println("testing grammars");
             newPop.stream()
             .peek(App::runTests)
             .filter(grammar -> grammar.getPosScore() > 0 && !grammar.toRemove())

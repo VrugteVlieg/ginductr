@@ -61,6 +61,8 @@ public class DynamicClassCompiler {
         } else {
             compilationUnit = fileManager.getJavaFileObjectsFromFiles(Collections.singletonList(target));
         }
+
+        System.err.println("Fetched files");
         JavaCompiler.CompilationTask task = compiler.getTask(
                 null,
                 fileManager,
@@ -69,6 +71,7 @@ public class DynamicClassCompiler {
                 null,
                 compilationUnit);
         boolean result = task.call();
+        System.err.println("Result " + result);
         return result;
     }
 }

@@ -331,8 +331,27 @@ public class Gram implements Comparable<Gram> {
         applyCrossover(otherList, myList.getFirst(), toSendNull);
     }
 
+    private void applyLoggedCrossover(Gram toCrossover, StringBuilder out) {
+        LinkedList<Rule> otherList = toCrossover.getCrossoverRuleList();
+        LinkedList<Rule> myList = getCrossoverRuleList();
+        Rule toSend = myList.getFirst();
+        Rule toRecv = otherList.getFirst();
+        out.append("\nSwapping " +
+        myList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + " with "
+        + otherList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + "\n");
+        boolean toInsNull = toCrossover.nullable(toRecv.getName());
+        boolean toSendNull = nullable(toSend.getName());
+        toCrossover.applyCrossover(myList, otherList.getFirst(), toInsNull);
+        applyCrossover(otherList, myList.getFirst(), toSendNull);
+    }
+
+
     public static void Crossover(Gram g0, Gram g1) {
         g0.applyCrossover(g1);
+    }
+
+    public static void loggedCrossover(Gram g0, Gram g1, StringBuilder out) {
+        g0.applyLoggedCrossover(g1, out);
     }
 
     public int randInt(int bound) {
@@ -1083,20 +1102,37 @@ public class Gram implements Comparable<Gram> {
        
     }
 
-    public void demoGroupMutate() {
+    public void demoGroupMutate(Optional<String> suggestion) {
 
-        List<List<Rule>> groupables = parserRules.stream()
-                                    .map(Rule::getSubRules)
-                                    .flatMap(ArrayList::stream)
-                                    .filter(Gram::canGroup)
-                                    .collect(toList());
 
-        List<List<Rule>> ungroupables = parserRules.stream()
-                                        .map(Rule::getSubRules)
-                                        .flatMap(ArrayList::stream)
-                                        .filter(Gram::canUngroup)
-                                        .collect(toList());
-        System.err.println("Groupables: " + groupables);
+
+        List<List<Rule>> groupables = new LinkedList<>();
+        List<List<Rule>> ungroupables = new LinkedList<>();
+
+        if(suggestion.isPresent()) {
+            App.loAppendText("Applying grouping mutation to " + getName() + " suggested location " + suggestion.get() + '\n');
+            String[] data = suggestion.get().split(":");
+            Rule targetRule = getRuleByName(data[0]);
+            int prodIndex = Integer.parseInt(data[1])-1;
+            List<Rule> targetProd = targetRule.getSubRules().get(prodIndex);
+            if(canGroup(targetProd)) groupables.add(targetProd);
+            if(canUngroup(targetProd)) ungroupables.add(targetProd);
+            
+        } else {
+            groupables = parserRules.stream()
+                            .map(Rule::getSubRules)
+                            .flatMap(ArrayList::stream)
+                            .filter(Gram::canGroup)
+                            .collect(toList());
+    
+            ungroupables = parserRules.stream()
+                            .map(Rule::getSubRules)
+                            .flatMap(ArrayList::stream)
+                            .filter(Gram::canUngroup)
+                            .collect(toList());
+        }
+
+        // System.err.println("Groupables: " + groupables);
 
         if(groupables.isEmpty()) {
             if(ungroupables.isEmpty()) {
@@ -1143,12 +1179,36 @@ public class Gram implements Comparable<Gram> {
         
     }
     
-    public void demoHeuristic() {
-        
-        List<List<Rule>> allProds = parserRules.stream()
-                                    .map(Rule::getSubRules)
-                                    .flatMap(ArrayList::stream)
-                                    .collect(toCollection(ArrayList::new));
+    public void demoHeuristic(Optional<String> suggestion) {
+        List<String> nullables = constrNullable();
+        // App.goAppendText("Nullables " + nullables + "\n\n");
+        List<Rule> prod;
+        if(suggestion.isPresent()) {
+            App.loAppendText("Applying heuristic mutation to " + getName() + " suggested location " + suggestion.get() + '\n');
+            String[] data = suggestion.get().split(":");
+            Rule targetRule = getRuleByName(data[0]);
+            int prodIndex = Integer.parseInt(data[1])-1;
+            prod = targetRule.getSubRules().get(prodIndex);
+            if(!canHeur(prod)) {
+                App.goAppendText(suggestion.get() + " does not contain a rule that can be heuristicked");
+                return;
+            }
+
+        } else {
+
+            List<List<Rule>> heurables = parserRules.stream()
+                                        .map(Rule::getSubRules)
+                                        .flatMap(ArrayList::stream)
+                                        .filter(this::canHeur)
+                                        .collect(toCollection(ArrayList::new));
+    
+            if(heurables.isEmpty()) {
+                App.goAppendText(getName() + " has not productions that can be heuristicked");
+                return;
+            }
+            prod = randGet(heurables, true);
+            // App.goAppendText("Heurables " + heurables + "\n\n");
+        }
 
 
         
@@ -1156,23 +1216,15 @@ public class Gram implements Comparable<Gram> {
                                     // System.err.println("heuristic Calling getSelectable " + toSelectIndex + " " +
                                     // stringProd(prod));
                                     
-        for (int i = 0; i < 1; i++) {
-            List<Rule> prod = randGet(allProds, true);
-            
-            int totalSelectables = getTotalSelectables(prod);
+        
+        
+        int totalSelectables = getTotalSelectables(prod);
+        while(true) {
             int toSelectIndex = randInt(totalSelectables);
             
             Rule toSelect = getSelectable(prod, toSelectIndex);
-            int counter = 0;
-            while (nullable(toSelect.getName()) && counter++ < 5) {
-                toSelect = getSelectable(prod, randInt(totalSelectables));
-            }
-
-            if(counter == 5) {
-                i--;
-                continue;
-            }
-    
+            if(nullables.contains(toSelect.getName())) continue;
+            App.goAppendText("\nApplying heuristic to " + toSelect + " in " + prod);
             double choice = Math.random();
             if (choice < 0.33) {
                 toSelect.setIterative(!toSelect.isIterative());
@@ -1182,7 +1234,9 @@ public class Gram implements Comparable<Gram> {
                 toSelect.setIterative(!toSelect.isIterative());
                 toSelect.setOptional(!toSelect.isOptional());
             }
+            break;
         }
+        
         setName(getName() + "_" + HEUR_MUTATION);
        
     }
@@ -1212,9 +1266,9 @@ public class Gram implements Comparable<Gram> {
             Rule toReplace = getSelectable(targetProd, replacementIndex);
             int newRuleIndex = 1 + randInt(parserRules.size() - 1);
 
-            Rule toInsert = parserRules.get(newRuleIndex);
             generateNewRule(genRuleName(), newRuleLen, newRuleIndex);
-            App.goAppendText(String.format("Generated new rule\n%s\nTo replace %s in %s\n", toInsert, toReplace.getDebugName(), targetRule));
+            Rule toInsert = parserRules.get(newRuleIndex);
+            App.goAppendText(String.format("\nGenerated new rule\n%s\nTo replace %s in %s\n", toInsert, toReplace.getDebugName(), targetRule));
             
 
             StringBuilder compare = new StringBuilder("\n" + targetRule.toString() + "\n||\nV\n");
@@ -1261,7 +1315,11 @@ public class Gram implements Comparable<Gram> {
                     // newNT mutation, this favors expanding the grammar, should be balanced with
                     // contracting rule
                     if (Constants.CHANGE_RULE_COUNT && Math.random() < Constants.P_CHANGE_RULE_COUNT) {
-                        toAdd.genNewNT(targetProd);
+                        // if(Math.random() < Constants.P_ADD_RULE) {
+                            toAdd.genNewNT(targetProd);
+                        // } else {
+                            // toAdd.removeRule(targetProd);
+                        // }
                     }
 
                     if (Constants.CHANGE_SYMBOL_COUNT && Math.random() < Constants.P_CHANGE_SYMBOL_COUNT) {
@@ -1692,6 +1750,33 @@ public class Gram implements Comparable<Gram> {
     }
 
     /**
+     * Determines if the heuristic mutation can be applied to prod
+     * true if there is a rule in prod that is not nullable
+     * @param prod
+     * @return
+     */
+    public boolean canHeur(List<Rule> prod) {
+        List<String> nullables = constrNullable();
+        return !prod.stream()
+                    .allMatch(rule -> (nullables.contains(rule.getName()) || rule.equals(Rule.EPSILON)));
+        
+    }
+
+
+    /**
+     * Determines if a grammar contains a production that can be grouped
+     * first the nullable symbols are calculated and all productions are checked to see if they contain a rule not in the nullable list
+     */
+    public static boolean canHeur(Gram myGram) {
+        List<String> nullables = myGram.constrNullable();
+        return !myGram.parserRules.stream()
+                .map(Rule::getSubRules)
+                .flatMap(ArrayList::stream)
+                .allMatch(myGram::canHeur);
+                
+    }
+
+    /**
      * Determines if the ungrouping mutation can be applied to some list of rules
      * only return false if all of the rules are singular
      * 
@@ -1755,7 +1840,18 @@ public class Gram implements Comparable<Gram> {
         }
 
         return out;
+    }
 
+    public List<String> getRulesReferenced(List<Rule> prod) {
+        List<String> out = new LinkedList<>();
+        prod.forEach(rule -> {
+            if(rule.isSingular() && !out.contains(rule.getName())) {
+                out.add(rule.getName());
+            } else {
+                out.addAll(getRulesReferenced(rule.getSubRules().get(0)));
+            }
+        });
+        return out;
     }
 
     public  int compPosPassSimil(Gram g0, Gram g1) {
@@ -1830,6 +1926,20 @@ public class Gram implements Comparable<Gram> {
         } catch(Exception e) {
 
         }
+    }
+
+    public List<String> getAllSuggestions() {
+        List<String> all = new ArrayList<>();
+        parserRules.forEach(rule -> {
+            String currRule = rule.getName();
+            int numProds = rule.getSubRules().size();
+            for (int i = 1; i < numProds+1; i++) {
+                all.add(currRule+":"+i);
+            }
+        });
+
+        return all;
+
     }
 
 

@@ -85,12 +85,12 @@ public class Constants {
             System.err.println(Arrays.toString(testResult));
             System.err.println("Positive grammar\n" + GUT);
             System.err.println("Press enter to continue");
-            try {
-                int result = System.in.read();
-                if(result == 0) GUT.logGrammar();
-            } catch (Exception e) {
+            // try {
+            //     int result = System.in.read();
+            //     if(result == 0) GUT.logGrammar();
+            // } catch (Exception e) {
 
-            }
+            // }
         }
         GUT.setPosScore(numPass/totalTests);
     };
