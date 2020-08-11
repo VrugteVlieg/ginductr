@@ -30,6 +30,7 @@ import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.ast.GrammarRootAST;
 
+import stb.localiser.dynamic.Spectra;
 
 public class Chelsea {
     // Collection of Methods gotten from Chelsea Barraball 19768125@sun.ac.za
@@ -120,13 +121,18 @@ public class Chelsea {
             finName = grammar.getName();
             // Setting up the arguments for th e ANTLR Tool. outputDir is in this case
             // generated-sources/
-            String[] args = { "-o", Constants.ANTLR_DIR };
+
+            // args arrays for writing for normal testing and for writing to localiser
+            String[] args = { "-o", Constants.ANTLR_DIR, "-DcontextSuperClass=RuleContextWithAltNum" };
+            String[] argsLocal = { "-o", Constants.ANTLR_DIR, "-DcontextSuperClass=RuleContextWithAltNum", "-package",
+                    "za.ac.sun.cs.localizer.dynamic" };
 
             // -DcontextSuperClass=RuleContextWithAltNum
 
             // Creating a new Tool object with org.antlr.v4.Tool
 
             Tool tool = new Tool(args);
+            Tool toolLocal = new Tool(args);
             GrammarRootAST grast = tool.parseGrammarFromString(grammar.toString());
 
             // Create a new Grammar object from the tool
@@ -142,7 +148,7 @@ public class Chelsea {
 
             // Compile source files
             DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
-            
+
             System.err.println("Compiling");
 
             dynamicClassCompiler.compile(new File(Constants.ANTLR_DIR));
@@ -182,6 +188,86 @@ public class Chelsea {
         }
     }
 
+    public static void generateLocaliserSources(Gram grammar) {
+        Map<String, Class<?>> hm = null;
+        try {
+            System.err.println("Generating sources for " + grammar);
+            /**
+             * TODO, change output directory to localiser and remove mvn stage
+             */
+            // Name of the file, for example ampl.g4
+            String finName = "UUT";
+            // Setting up the arguments for th e ANTLR Tool. outputDir is in this case
+            // generated-sources/
+            String toWrite = grammar.toString().replaceFirst(grammar.getName(), "UUT");
+            // args arrays for writing for normal testing and for writing to localiser
+            String[] args = { "-o", Constants.localizerCompilPath, "-DcontextSuperClass=RuleContextWithAltNum", "-package",
+                    "za.ac.sun.cs.localizer.dynamic" };
+
+            // -DcontextSuperClass=RuleContextWithAltNum
+
+            // Creating a new Tool object with org.antlr.v4.Tool
+
+            Tool tool = new Tool(args);
+            GrammarRootAST grast = tool.parseGrammarFromString(toWrite);
+
+            // Create a new Grammar object from the tool
+            Grammar g = tool.createGrammar(grast);
+
+            g.fileName = "UUT";
+
+            tool.process(g, true);
+
+            // Compile source files
+            DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
+
+            System.err.println("Compiling");
+
+            dynamicClassCompiler.compile(new File(Constants.localizerCompilPath));
+
+            System.err.println("Done compiling");
+            hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR));
+
+            System.err.println("Done loading");
+
+            // Manually creates lexer.java file in outputDir
+            Class<?> lexer = hm.get(finName + "Lexer");
+            // Manually creates the lexerConstructor for use later
+            // Is initialized as Constructor<?> lexerConstructor
+            lexerConstructor = lexer.getConstructor(CharStream.class);
+            String.class.getConstructor(String.class);
+
+            Class<?> parser = hm.get(finName + "Parser");
+
+            // Manually creates the parserConstructor for use later
+            // Is initialized as Constructor<?> parserConstructor
+            parserConstructor = parser.getConstructor(TokenStream.class);
+            System.err.println("Done");
+            
+
+
+
+            posTests.forEach(rawContent -> {
+                try {
+                    Lexer uutLexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(rawContent));
+    
+                    CommonTokenStream tokens = new CommonTokenStream(uutLexer);
+    
+                    // Creating a new parser constructor instance using the lexer tokens
+                    Parser uutParser = (Parser) parserConstructor.newInstance(tokens);
+                    uutParser.removeErrorListeners();
+                    uutParser.addErrorListener(Spectra.getErrorListener());
+                    Method parseEntrypoint = parser.getClass().getMethod(grammar.getStartSymbol());
+
+                } catch(Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+        }
+    }
+
     /**
      * Runs the parser on all the files inside the TEST_DIR and returns a hashmap
      * which maps filenames to a linkedList of errors found while parsing that file
@@ -196,13 +282,12 @@ public class Chelsea {
      */
     public static int[] runTestcases(lamdaArg removeCurr, String mode) throws IOException, IllegalAccessException,
             InvocationTargetException, InstantiationException, NoSuchMethodException {
-                
+
         // output array {numPasses, numTests}
         int[] out = { 0, 0 };
         myReader.setTestSizes(posTests.size(), negTests.size());
-        
 
-        List<String> tests ;
+        List<String> tests;
         if (mode.equals(Constants.POS_MODE)) {
             tests = posTests;
         } else if (mode.equals(Constants.NEG_MODE)) {
@@ -215,24 +300,22 @@ public class Chelsea {
         // System.out.println("Running " + paths.count() + " tests");
         App.rgoSetText("Testing " + myReader + "\n");
         System.err.println("Testing " + myReader.getName());
-        int[] testNum = {0};
+        int[] testNum = { 0 };
         boolean[] passArr = new boolean[tests.size()];
         Arrays.fill(passArr, false);
         tests.forEach(test -> {
-            
-            
+
             MyListener myListen = new MyListener();
             out[1]++;
             try {
                 testNum[0]++;
                 Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
-                
+
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
-                
+
                 // Creating a new parser constructor instance using the lexer tokens
                 Parser parser = (Parser) parserConstructor.newInstance(tokens);
-                
-                
+
                 parser.addErrorListener(myListen);
                 myListen.setGrammarName(parser.getGrammarFileName());
                 parser.setErrorHandler(new BailErrorStrategy());
@@ -243,17 +326,18 @@ public class Chelsea {
                 // figure out how to tell your parser what the entry point is.
                 // System.err.println("Testing " + myReader.getName() + " on " + fileName + "
                 // entrypoint " + myReader.getStartSymbol());
+                
                 Method parseEntrypoint = parser.getClass().getMethod(myReader.getStartSymbol());
+                parser.get
                 parseEntrypoint.invoke(parser);
 
                 // Finally, this will run the parser with the provided test case. Yay! Ignore
                 // the rest of this function.
                 passingTests.push(test);
                 out[0]++;
-                passArr[testNum[0]-1] = true;
+                passArr[testNum[0] - 1] = true;
                 // If this code is reached the test case was successfully parsed and numPasses
                 // should be incremented
-                
 
             } catch (NoSuchMethodException e) {
                 // System.err.println("No such method exception " + e.getCause());
@@ -262,7 +346,7 @@ public class Chelsea {
             } catch (Exception e) {
                 failingTests.push(test);
             } finally {
-                if(mode.equals(Constants.POS_MODE)) {
+                if (mode.equals(Constants.POS_MODE)) {
                     myReader.setPosPass(passArr);
                 } else {
                     myReader.setNegPass(passArr);
@@ -271,23 +355,22 @@ public class Chelsea {
         });
 
         // if(failingTests.size() == 0) {
-        //     StringBuilder toPrint = new StringBuilder();
-        //     toPrint.append("No failing tests\n" + myReader.hashString());
-        //     toPrint.append("Passing tests: " + passingTests.size() +  "\n");
-        //     passingTests.forEach(test ->  toPrint.append(test + "\n"));
-        //     toPrint.append("Failing tests: " + failingTests.size() + "\n");
-        //     failingTests.forEach(test ->  toPrint.append(test + "\n"));
-        //     App.rgoAppendText(toPrint.toString());
-        //     System.err.println(toPrint.toString());
-        //     try  {
-        //         System.err.println("Press enter to continue");
-        //         System.in.read();
-        //     } catch(Exception e) {
-                
-        //     }
+        // StringBuilder toPrint = new StringBuilder();
+        // toPrint.append("No failing tests\n" + myReader.hashString());
+        // toPrint.append("Passing tests: " + passingTests.size() + "\n");
+        // passingTests.forEach(test -> toPrint.append(test + "\n"));
+        // toPrint.append("Failing tests: " + failingTests.size() + "\n");
+        // failingTests.forEach(test -> toPrint.append(test + "\n"));
+        // App.rgoAppendText(toPrint.toString());
+        // System.err.println(toPrint.toString());
+        // try {
+        // System.err.println("Press enter to continue");
+        // System.in.read();
+        // } catch(Exception e) {
+
+        // }
         // }
 
-        
         return out;
 
     }
@@ -298,7 +381,7 @@ public class Chelsea {
             if (!out.contains(element)) {
                 out.add(element);
             } else {
-                System.err.println("Filtering " + element + " from " +  input.toString());
+                System.err.println("Filtering " + element + " from " + input.toString());
             }
         });
         input.clear();
@@ -335,11 +418,14 @@ public class Chelsea {
             files.get(i).delete();
         }
     }
+
     /**
      * Removes the generated files used for current test
      */
     public static void clearGenerated() {
         cleanDirectory(new File(Constants.ANTLR_DIR));
     }
+
+
 
 }

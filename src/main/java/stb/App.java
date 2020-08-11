@@ -59,18 +59,37 @@ public class App {
 
     public static void main(String[] args) {
         Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR);
-        if (Constants.USE_GUI) {
+        if (Constants.USE_GUI && false) {
             Application.launch(Gui.class, new String[] {});
-
             System.exit(0);
+        } else {
+            Chelsea.cleanDirectory(new File(Constants.localizerCompilPath));
+            Chelsea.cleanDirectory(new File(Constants.ANTLR_DIR));
+            List<Gram> testGrams = GrammarGenerator.generateLocalisablePop(1, generatedGrammars);
+            Gram currGram = testGrams.get(0);
+            currGram.injectEOF();
+            try {
+                Chelsea.generateLocaliserSources(currGram);
+                Process testProc = Runtime.getRuntime().exec("sh -c " + Constants.localizerSPath);
+                BufferedReader inputReader = new BufferedReader(new InputStreamReader(testProc.getInputStream()));
+                inputReader.lines().forEach(System.err::println);
+                // System.out.println("Localising " + currGrammar.getScore() + "\n" + currGrammar);
+                Chelsea.generateSources(currGram, currGram::flagForRemoval);
+            } catch(Exception e) {
+                e.printStackTrace();
+            } finally {
+                System.err.println("Target gram is " + currGram);
+            }
+
+
         }
 
         // GrammarReader goldenGrammar = new GrammarReader(new
         // File(Constants.CURR_GRAMMAR_PATH));
         // goldenGrammar.injectEOF();
-        Gram seededGrammar = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
-        seededGrammar.injectEOF();
-        runLocaliser(seededGrammar);
+        // Gram seededGrammar = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
+        // seededGrammar.injectEOF();
+        // runLocaliser(seededGrammar);
     }
 
     public static void runTests(Gram myReader) {

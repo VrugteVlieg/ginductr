@@ -66,6 +66,7 @@ public class Constants {
 
 
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
+    public static String localizerCompilPath = "./antlr-localizer/default/target/generated-sources/antlr4";
     public static String localizerSPath = "./antlr-localizer/default/test.sh";
     public static String CSV_PATH = "./antlr-localizer/default/scores.csv";
 
