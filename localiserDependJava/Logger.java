@@ -1,21 +1,26 @@
-package stb.localiser.dynamic;
+// package stb.localiser.depend;
+
+// package stb.localiser.dynamic;
 
 import java.io.*;
 import java.util.*;
 
 public class Logger {
     
-    static int noOfRules;
+    public static int noOfRules;
 
     static Map<String, ArrayList<String>> failMap = new HashMap<String, ArrayList<String>>();
     static Map<String, ArrayList<String>> passMap = new HashMap<String, ArrayList<String>>();
 
-    static Map<String, Integer> ruleIndices = new HashMap<String, Integer>(); 
+    public static Map<String, Integer> ruleIndices = new HashMap<String, Integer>(); 
+
+    public static Logger currLog;
 
     /* constructor */
     public Logger(int nodes, Map<String, Integer> rules) {
         noOfRules = nodes;
         ruleIndices = rules;
+        currLog = this;
     }
     /* Failed tests */
     public static void  trackFailed(String testcase, ArrayList<String> trace) {

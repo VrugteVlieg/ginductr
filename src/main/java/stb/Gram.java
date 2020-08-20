@@ -27,14 +27,14 @@ import java.util.stream.Stream;
 
 public class Gram implements Comparable<Gram> {
 
-    public static final String RANDOM_MUTATION = "RANDOM";
-    public static final String HEUR_MUTATION = "HEUR";
-    public static final String GROUP_MUTATION = "GROUP";
-    public static final String UNGROUP_MUTATION = "UNGROUP";
-    public static final String NEWNT_MUTATION = "NEWNT";
-    public static final String MODEXSTPROD_MUTATION = "MOD";
-    public static final String NEWPROD_MUTATION = "NEWPROD";
-    public static final String SYMCOUNT_MUTATION = "SYMCOUNT";
+    public static final String RANDOM_MUTATION = "R";
+    public static final String HEUR_MUTATION = "H";
+    public static final String GROUP_MUTATION = "G";
+    public static final String UNGROUP_MUTATION = "U";
+    public static final String NEWNT_MUTATION = "NT";
+    public static final String MODEXSTPROD_MUTATION = "M";
+    public static final String NEWPROD_MUTATION = "NP";
+    public static final String SYMCOUNT_MUTATION = "S";
     public static int NUM_SUGGESTED_MUTANTS = 5;
 
     public int genNum = 0;
@@ -745,7 +745,7 @@ public class Gram implements Comparable<Gram> {
      * Generates a name for mutant grammar based on this grammar
      */
     public String genMutantName() {
-        StringBuilder mutantNameBuilder = new StringBuilder(grammarName + "_");
+        StringBuilder mutantNameBuilder = new StringBuilder("grammar" + "_");
         // Generates rule name by randomly concatting letters
         for (int nameIndex = 0; nameIndex < Constants.RULENAME_LEN; nameIndex++) {
             mutantNameBuilder.append((char) ('a' + randInt(26)));
@@ -1940,6 +1940,25 @@ public class Gram implements Comparable<Gram> {
 
         return all;
 
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Gram)) {
+            return false;
+        }
+
+        Gram c = (Gram) o;
+        return hashString().equals(c.hashString());
+    }
+
+    @Override
+    public int hashCode() {
+        return hashString().hashCode();
     }
 
 

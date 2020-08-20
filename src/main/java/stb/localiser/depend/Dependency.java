@@ -12,7 +12,6 @@ import java.util.regex.Pattern;
 import java.util.*;
 import java.io.*;
 
-import stb.localiser.dynamic.Logger;
 
 public class Dependency extends ANTLRv4ParserBaseListener {
 

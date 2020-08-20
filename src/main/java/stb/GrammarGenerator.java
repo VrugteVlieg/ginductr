@@ -89,7 +89,7 @@ public class GrammarGenerator {
             System.err.println("testing grammars");
             newPop.stream()
             .peek(App::runTests)
-            .filter(grammar -> grammar.getPosScore() > 0 && !grammar.toRemove())
+            .filter(grammar -> grammar.getScore() > 0 && !grammar.toRemove())
             .forEach(out::add);
         }
         

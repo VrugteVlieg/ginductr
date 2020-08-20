@@ -9,6 +9,8 @@ public class Constants {
     public static  String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
     public static  String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
     public static  String ANTLR_DIR = "./antlrOut";
+    public static  String LOCALISER_JAVA_DIR = "./localiserDependJava";
+    public static  String LOCALISER_CLASS_DIR = "./localiserDependClass";
     public static final String GRAMMARS_PATH = "./grammars/";
     public static final String CURR_GRAMMAR_NAME = "slearith";
     public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
@@ -60,7 +62,7 @@ public class Constants {
 
     public static int NUM_ITERATIONS = 1000;
     public static int NUM_NEGATIVE_ITERATIONS = 10;
-	public static int RULENAME_LEN = 7;
+	public static int RULENAME_LEN = 10;
     public static int MAX_RULE_COUNT = 5;
     public static int MAX_RHS_SIZE = 6;
 
@@ -68,6 +70,7 @@ public class Constants {
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
     public static String localizerCompilPath = "./antlr-localizer/default/target/generated-sources/antlr4";
     public static String localizerSPath = "./antlr-localizer/default/test.sh";
+    public static String localScript = "./localise.sh";
     public static String CSV_PATH = "./antlr-localizer/default/scores.csv";
 
     

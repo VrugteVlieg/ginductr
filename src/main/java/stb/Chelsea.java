@@ -27,10 +27,14 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.antlr.v4.tool.Grammar;
 import org.antlr.v4.tool.ast.GrammarRootAST;
 
-import stb.localiser.dynamic.Spectra;
+import stb.localiser.depend.Pipeline;
+import stb.localiser.depend.Logger;
+
 
 public class Chelsea {
     // Collection of Methods gotten from Chelsea Barraball 19768125@sun.ac.za
@@ -77,7 +81,7 @@ public class Chelsea {
         }
 
         // Neg tests
-        try (Stream<Path> paths = Files.walk(Paths.get(posDir)).filter(Files::isRegularFile)) {
+        try (Stream<Path> paths = Files.walk(Paths.get(negDir)).filter(Files::isRegularFile)) {
 
             currNegDir = negDir;
 
@@ -172,6 +176,9 @@ public class Chelsea {
             // Is initialized as Constructor<?> parserConstructor
             parserConstructor = parser.getConstructor(TokenStream.class);
             System.err.println("Done");
+            System.err.println("Done");
+            System.err.println("Done");
+            System.err.println("Done");
         } catch (Exception e) {
             e.printStackTrace(System.err);
             if (hm == null) {
@@ -188,10 +195,16 @@ public class Chelsea {
         }
     }
 
-    public static void generateLocaliserSources(Gram grammar) {
+    /**
+     * Notes on localiser process
+     * only spectra and testrunner reference UUT so they need to be compiled after the UUT antlr files have been produced
+     * @param grammar
+     */
+    public static void Localise(Gram grammar) {
         Map<String, Class<?>> hm = null;
         try {
-            System.err.println("Generating sources for " + grammar);
+            System.err.println("LOCALISING" + grammar);
+            
             /**
              * TODO, change output directory to localiser and remove mvn stage
              */
@@ -200,9 +213,9 @@ public class Chelsea {
             // Setting up the arguments for th e ANTLR Tool. outputDir is in this case
             // generated-sources/
             String toWrite = grammar.toString().replaceFirst(grammar.getName(), "UUT");
+            Pipeline.pipeline(toWrite);
             // args arrays for writing for normal testing and for writing to localiser
-            String[] args = { "-o", Constants.localizerCompilPath, "-DcontextSuperClass=RuleContextWithAltNum", "-package",
-                    "za.ac.sun.cs.localizer.dynamic" };
+            String[] args = { "-o", Constants.LOCALISER_JAVA_DIR, "-DcontextSuperClass=RuleContextWithAltNum"};
 
             // -DcontextSuperClass=RuleContextWithAltNum
 
@@ -219,52 +232,67 @@ public class Chelsea {
             tool.process(g, true);
 
             // Compile source files
-            DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
+            DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler(List.of("-d",Constants.LOCALISER_CLASS_DIR));
 
             System.err.println("Compiling");
 
-            dynamicClassCompiler.compile(new File(Constants.localizerCompilPath));
+            dynamicClassCompiler.compile(new File(Constants.LOCALISER_JAVA_DIR));
 
             System.err.println("Done compiling");
-            hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR));
+            hm = new DynamicClassLoader().load(new File(Constants.LOCALISER_CLASS_DIR));
 
             System.err.println("Done loading");
 
             // Manually creates lexer.java file in outputDir
-            Class<?> lexer = hm.get(finName + "Lexer");
+            Class<?> TR = hm.get("TestRunner");
             // Manually creates the lexerConstructor for use later
             // Is initialized as Constructor<?> lexerConstructor
-            lexerConstructor = lexer.getConstructor(CharStream.class);
-            String.class.getConstructor(String.class);
+            Class<?>[] cArg = new Class[3];
+            cArg[0] = List.class;
+            cArg[1] = Integer.class;
+            cArg[2] = Map.class;
 
-            Class<?> parser = hm.get(finName + "Parser");
-
-            // Manually creates the parserConstructor for use later
-            // Is initialized as Constructor<?> parserConstructor
-            parserConstructor = parser.getConstructor(TokenStream.class);
-            System.err.println("Done");
+            List<String> allTests = new LinkedList<String>();
+            posTests.forEach(test -> {
+                allTests.add("pos" + test);
+            });
             
 
-
-
-            posTests.forEach(rawContent -> {
-                try {
-                    Lexer uutLexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(rawContent));
-    
-                    CommonTokenStream tokens = new CommonTokenStream(uutLexer);
-    
-                    // Creating a new parser constructor instance using the lexer tokens
-                    Parser uutParser = (Parser) parserConstructor.newInstance(tokens);
-                    uutParser.removeErrorListeners();
-                    uutParser.addErrorListener(Spectra.getErrorListener());
-                    Method parseEntrypoint = parser.getClass().getMethod(grammar.getStartSymbol());
-
-                } catch(Exception e) {
-                    e.printStackTrace();
-                }
+            System.err.println("\\POSTESTS");
+            
+            negTests.forEach(test -> {
+                allTests.add("neg" + test);
             });
+            
+
+            
+            System.err.println("Parsing");
+            Method parseMethod = TR.getMethod("parse", cArg);
+            Object[] argsToPass = {allTests, Logger.noOfRules, Logger.ruleIndices};
+            System.err.println("INVOKING");
+            parseMethod.invoke(null, argsToPass);
+            
+            
+            //     posTests.forEach(rawContent -> {
+            //     try {
+            //         Lexer uutLexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(rawContent));
+    
+            //         CommonTokenStream tokens = new CommonTokenStream(uutLexer);
+    
+            //         // Creating a new parser constructor instance using the lexer tokens
+            //         Parser uutParser = (Parser) parserConstructor.newInstance(tokens);
+            //         uutParser.removeErrorListeners();
+            //         uutParser.addErrorListener(Spectra.getErrorListener());
+            //         Method parseEntrypoint = parser.getClass().getMethod(grammar.getStartSymbol());
+
+            //     } catch(Exception e) {
+            //         e.printStackTrace();
+            //     }
+            // });
         } catch (Exception e) {
             e.printStackTrace(System.err);
+        } finally {
+            cleanDirectory(new File(Constants.LOCALISER_CLASS_DIR));
         }
     }
 
@@ -319,6 +347,8 @@ public class Chelsea {
                 parser.addErrorListener(myListen);
                 myListen.setGrammarName(parser.getGrammarFileName());
                 parser.setErrorHandler(new BailErrorStrategy());
+                // parser.removeErrorListeners();
+                // parser.addErrorListener(Spectra.getErrorListener())
                 // parser.setErrorHandler(new myErrorStrategy());
 
                 // Begin parsing at the first rule of the grammar. In this case it was *program*
@@ -328,8 +358,12 @@ public class Chelsea {
                 // entrypoint " + myReader.getStartSymbol());
                 
                 Method parseEntrypoint = parser.getClass().getMethod(myReader.getStartSymbol());
-                parser.get
+                
+
+                //equiv of UUTParser.program()
                 parseEntrypoint.invoke(parser);
+                // ArrayList<String> spec = Spectra.produceSpectra(parser, tree, walker);
+                
 
                 // Finally, this will run the parser with the provided test case. Yay! Ignore
                 // the rest of this function.

@@ -27,6 +27,18 @@ public class DynamicClassCompiler {
         // optionList.add();
     }
 
+
+    public DynamicClassCompiler(List<String> args) {
+        optionList.add("-cp");
+        // optionList.add(System.getProperty("java.class.path") + ";dist/InlineCompiler.jar");
+        optionList.add("./antlr-4.8-complete.jar");
+        args.forEach(optionList::add);
+        // optionList.add("-d");
+        // optionList.add();
+    }
+
+
+
     /**
      * Recurses output instrumented directory and returns list of java files.
      *

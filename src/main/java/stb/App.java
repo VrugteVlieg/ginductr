@@ -59,7 +59,7 @@ public class App {
 
     public static void main(String[] args) {
         Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR);
-        if (Constants.USE_GUI && false) {
+        if (Constants.USE_GUI) {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
         } else {
@@ -67,14 +67,8 @@ public class App {
             Chelsea.cleanDirectory(new File(Constants.ANTLR_DIR));
             List<Gram> testGrams = GrammarGenerator.generateLocalisablePop(1, generatedGrammars);
             Gram currGram = testGrams.get(0);
-            currGram.injectEOF();
             try {
-                Chelsea.generateLocaliserSources(currGram);
-                Process testProc = Runtime.getRuntime().exec("sh -c " + Constants.localizerSPath);
-                BufferedReader inputReader = new BufferedReader(new InputStreamReader(testProc.getInputStream()));
-                inputReader.lines().forEach(System.err::println);
-                // System.out.println("Localising " + currGrammar.getScore() + "\n" + currGrammar);
-                Chelsea.generateSources(currGram, currGram::flagForRemoval);
+                runLocaliserBoogaloo(currGram);
             } catch(Exception e) {
                 e.printStackTrace();
             } finally {
@@ -127,7 +121,8 @@ public class App {
             numTests++;
 
             //Only do negative testing if all pos tests pass
-            if(myReader.getPosScore() == 1.0) {
+            //this || true is to get parity with how localiser hanndles testing
+            if(myReader.getPosScore() == 1.0 || true) {
                 testResult = Chelsea.runTestcases(removeCurr, Constants.NEG_MODE);
                 Constants.negativeScoring.eval(testResult, myReader);
             }
@@ -177,7 +172,7 @@ public class App {
                                     .map(Gram::computeMutants)
                                     .flatMap(LinkedList<Gram>::stream)
                                     .peek(App::runTests)
-                                    .filter(gram -> gram.getPosScore() > 0 && !gram.toRemove())
+                                    .filter(gram -> gram.getScore() > 0 && !gram.toRemove())
                                     .collect(Collectors.toCollection(ArrayList::new));
 
 
@@ -219,7 +214,7 @@ public class App {
                     ArrayList<Gram> crossoverPop = performCrossover(scoreList, totalPop);
                     crossoverPop.stream()
                                 .peek(App::runTests)
-                                .filter(gram -> gram.getPosScore() > 0 && !gram.toRemove())
+                                .filter(gram -> gram.getScore() > 0 && !gram.toRemove())
                                 .forEach(totalPop::add);
                                 
                 }
@@ -277,7 +272,8 @@ public class App {
                     // rloPush();
                     if(grammar.getMutationConsideration().isEmpty()){
                         rloAppendText("Localizing " + grammar.getName() + "  " +  myGrammars.indexOf(grammar) + "/" + myGrammars.size() + "\n");
-                        runLocaliser(grammar);
+                        
+                        runLocaliserBoogaloo(grammar);
                     } 
                     // rloPop();
                 });
@@ -584,6 +580,56 @@ public class App {
     }
 
     /**
+     * Runs localiser on current grammar, sets the mutation suggestions of current grammar to a list of strings of the form (ruleName:prodIndex)
+     * @param currGrammar  Grammer being tested
+     */
+    public static void runLocaliserBoogaloo(Gram currGrammar) {
+        List<String> out = new LinkedList<String>();
+        try {
+            currGrammar.injectEOF();
+            Chelsea.Localise(currGrammar);
+            // System.out.println("Localising " + currGrammar.getScore() + "\n" + currGrammar);
+            Process testProc = Runtime.getRuntime().exec("sh -c " + Constants.localScript);
+
+            BufferedReader inputReader = new BufferedReader(new InputStreamReader(testProc.getInputStream()));
+            HashMap<Double, LinkedList<String>> susScore = new HashMap<Double, LinkedList<String>>();
+
+            //The first line is always going to be program:1 so we throw it out
+            inputReader.readLine();
+
+            inputReader.lines()
+                        .map(line -> line.split(","))
+                        .forEach(data -> {
+                            Double tarantula = Double.valueOf(data[5]);
+                            if (susScore.containsKey(tarantula)) {
+                                susScore.get(tarantula).add(data[0]);
+                            } else {
+                                LinkedList<String> toAdd = new LinkedList<String>();
+                                toAdd.add(data[0]);
+                                susScore.put(tarantula, toAdd);
+                            }
+                        });
+            
+
+            susScore.keySet().stream()
+                                .sorted(Comparator.reverseOrder())
+                                .map(susScore::get)
+                                .flatMap(LinkedList::stream)
+                                .forEach(out::add);
+
+
+            System.err.println("Mutation considerations for " +  currGrammar + "\n " + out);
+            currGrammar.setMutationConsideration(out);
+           
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            currGrammar.stripEOF();
+        }
+    }
+
+    /**
      * Performs a round of tournament selection on pop using tourSize tournament
      * size
      * 
@@ -754,6 +800,32 @@ public class App {
 
     public static void loPop() {
         runOut.output(Gui.LOToken(Gui.popToken()));
+    }
+
+
+     //RGO tokens
+    public static void rgoSetText(String toSet) {
+        runOut.output(Gui.RGOToken(Gui.setToken(toSet)));
+    }
+    
+    public static void rgoAppendText(String input) {
+        runOut.output(Gui.RGOToken(Gui.appendToken(input)));
+    }
+
+    public static void rgoClear() {
+        runOut.output(Gui.RGOToken(Gui.clearToken()));
+    }
+
+    public static void rgoUpdate(String newText) {
+        runOut.output(Gui.RGOToken(Gui.updateToken(newText)));
+    }
+
+    public static void rgoPush() {
+        runOut.output(Gui.RGOToken(Gui.pushToken()));
+    }
+
+    public static void rgoPop() {
+        runOut.output(Gui.RGOToken(Gui.popToken()));
     }
 
     public static <E> E randGet(List<E> input, boolean replace) {

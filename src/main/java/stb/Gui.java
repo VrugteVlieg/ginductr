@@ -33,6 +33,7 @@ import javafx.stage.StageStyle;
 public class Gui extends Application {
 
     public static String RUN_GRAMMAR_OUT = "RGO";
+    public static String RUN_CURRBEST_OUT = "RCO";
     public static String RUN_LOG_OUT = "RLO";
     public static String GRAMMAR_OUT = "go";
     public static String LOG_OUT = "lo";
@@ -86,6 +87,10 @@ public class Gui extends Application {
 
     public static String LOToken(String output) {
         return LOG_OUT + TOKEN_DELIM + output;
+    }
+
+    public static String RCOTOKEN(String output) {
+        return RUN_CURRBEST_OUT + TOKEN_DELIM + output;
     }
 
     @Override
@@ -148,20 +153,6 @@ public class Gui extends Application {
         outputStacks.put(GRAMMAR_OUT, new Stack<String>());
         outputLambda grammarOut = (String toLog) -> {
             handleToken(toLog);
-            // String[] data = toLog.split(TOKEN_DELIM);
-            // switch (data[0]) {
-            //     case outputLambda.CLEAR:
-            //         grammarOutput.setText("");
-            //         break;
-
-            //     case outputLambda.APPEND:
-            //         grammarOutput.appendText(data[1]);
-            //         break;
-
-            //     case outputLambda.SET:
-            //         grammarOutput.setText(data[1]);
-            //         break;
-            // }
         };
         grammarOutput.setMinWidth(600);
         greaterContainer.getChildren().add(mutationInterface);
@@ -181,6 +172,8 @@ public class Gui extends Application {
         TextArea logOutput = new TextArea();
         outputAreas.put(RUN_LOG_OUT, logOutput);
         outputStacks.put(RUN_LOG_OUT, new Stack<String>());
+
+        TextArea currBestOutput = new TextArea();
 
         VBox consoleArea = new VBox(new Label("Output"), logOutput);
         mutationInterface.getChildren().add(consoleArea);
