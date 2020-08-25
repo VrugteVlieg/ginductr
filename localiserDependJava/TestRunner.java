@@ -32,6 +32,7 @@ public class TestRunner {
         // Spectra.getErrorListener
         // Then records num passes and fails and adds to logger
         for (String test : tests) {
+            // System.err.println("Running tests on " + tests.indexOf(test) + "/" + tests.size());
             String content = test.substring(3);
             boolean pos = test.substring(0, 3).equalsIgnoreCase("pos");
             input = CharStreams.fromString(content);

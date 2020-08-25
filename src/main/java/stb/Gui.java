@@ -1,11 +1,8 @@
 package stb;
 
-import java.io.File;
 import java.io.FileWriter;
-import java.security.AllPermission;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Stack;
 
@@ -25,7 +22,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -89,7 +85,7 @@ public class Gui extends Application {
         return LOG_OUT + TOKEN_DELIM + output;
     }
 
-    public static String RCOTOKEN(String output) {
+    public static String RCOToken(String output) {
         return RUN_CURRBEST_OUT + TOKEN_DELIM + output;
     }
 
@@ -172,10 +168,12 @@ public class Gui extends Application {
         TextArea logOutput = new TextArea();
         outputAreas.put(RUN_LOG_OUT, logOutput);
         outputStacks.put(RUN_LOG_OUT, new Stack<String>());
-
+        
         TextArea currBestOutput = new TextArea();
+        outputAreas.put(RUN_CURRBEST_OUT, currBestOutput);
+        outputStacks.put(RUN_CURRBEST_OUT, new Stack<String>());
 
-        VBox consoleArea = new VBox(new Label("Output"), logOutput);
+        VBox consoleArea = new VBox(new Label("Output"), logOutput, new Label("CurrBest"), currBestOutput);
         mutationInterface.getChildren().add(consoleArea);
 
         TextArea grammarOutput = new TextArea();

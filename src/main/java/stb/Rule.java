@@ -552,8 +552,15 @@ public class Rule {
 
     public boolean containsEpsilon() {
         // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
-        return subRules.stream().map(LinkedList::getFirst).map(EPSILON::equals).reduce(false,
-                (prev, next) -> prev || next);
+        // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
+        try{
+            return subRules.stream().map(LinkedList::getFirst).map(EPSILON::equals).reduce(false,
+                    (prev, next) -> prev || next);
+        } catch (Exception e) {
+            System.err.println("Error while searching for EPSILON in " + stringSelectables());
+            System.exit(1);
+            return false;
+        }   
     }
 
     public void setSubRules(ArrayList<LinkedList<Rule>> toSet) {

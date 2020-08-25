@@ -45,11 +45,10 @@ public class GrammarGenerator {
 
             // currGrammar.removeLR();
             // System.out.println("New grammar \n" + currGrammar.toString());
-            if(App.generatedGrammars.contains(currGrammar.hashString())) {
+            if(App.gramAlreadyChecked(currGrammar)) {
                 i--;
                 continue;
             } else {
-                App.generatedGrammars.add(currGrammar.hashString());
                 output.add(currGrammar);
             }
         }
@@ -81,15 +80,15 @@ public class GrammarGenerator {
         
     }
 
-    public static LinkedList<Gram> generateLocalisablePop(int popSize, HashSet<String> checkedGrammar) {
+    public static LinkedList<Gram> generateLocalisablePop(int popSize) {
         LinkedList<Gram> out = new LinkedList<Gram>();
         while(out.size() < popSize) {
             App.rgoSetText("Init size " + out.size() + "/" + popSize);
             LinkedList<Gram> newPop = generatePopulation(10);
-            System.err.println("testing grammars");
+
             newPop.stream()
             .peek(App::runTests)
-            .filter(grammar -> grammar.getScore() > 0 && !grammar.toRemove())
+            .filter(Gram.passesPosTest)
             .forEach(out::add);
         }
         

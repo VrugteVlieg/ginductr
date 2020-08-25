@@ -6,20 +6,14 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collector;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toCollection;
@@ -36,6 +30,9 @@ public class Gram implements Comparable<Gram> {
     public static final String NEWPROD_MUTATION = "NP";
     public static final String SYMCOUNT_MUTATION = "S";
     public static int NUM_SUGGESTED_MUTANTS = 5;
+
+    public static Predicate<Gram> passesAnyTest = gram -> gram.getScore() > 0 && !gram.toRemove();
+    public static Predicate<Gram> passesPosTest = gram -> gram.getPosScore() > 0 && !gram.toRemove();
 
     public int genNum = 0;
 
@@ -54,8 +51,8 @@ public class Gram implements Comparable<Gram> {
     int falsePositives = 0;
     int falseNegatives = 0;
     private boolean remove = false;
-    public boolean[] passPosArr;
-    public boolean[] passNegArr;
+    public Boolean[] passPosArr;
+    public Boolean[] passNegArr;
 
     /**
      * Constructs a grammar from a given file
@@ -872,104 +869,6 @@ public class Gram implements Comparable<Gram> {
 
     }
 
-    public LinkedList<Gram> computeMutants() {
-        HashSet<String> checkedGrammars = App.generatedGrammars;
-        // System.err.println(getName() + "   "
-        //         + mutationConsiderations.stream().map(Arrays::toString).collect(Collectors.joining(",")));
-        if (!mutationConsiderations.isEmpty()) {
-            return computeSuggestedMutants(checkedGrammars);
-        }  else {
-            List<String> toPass = new LinkedList<String>();
-            for (int i = 0; i < NUM_SUGGESTED_MUTANTS; i++) {
-                System.err.println("Computing mutant " + i + "/" + NUM_SUGGESTED_MUTANTS);
-                Rule targetRule = randGet(parserRules, true);
-                String toAdd = targetRule.getName() + ":" + (1+randInt(targetRule.getSubRules().size()));
-                // while(toPass.contains(toAdd))toAdd = targetRule.getName() + ":" + (1+randInt(targetRule.getSubRules().size()));
-                toPass.add(toAdd);
-            }
-            setMutationConsideration(toPass);
-            LinkedList<Gram> out = computeSuggestedMutants(checkedGrammars);
-            mutationConsiderations.clear();
-            return out;
-        }
-
-        // int numMutants = Constants.MUTANTS_PER_BASE;
-        // LinkedList<Gram> out = new LinkedList<Gram>();
-        // for (int i = 0; i < numMutants; i++) {
-
-        //     try {
-
-        //         Gram toAdd = new Gram(this);
-        //         toAdd.grammarName = genMutantName();
-        //         // System.out.println(toAdd.grammarName + " : ");
-
-        //         // System.out.println("Operating on \n" + toAdd);
-
-        //         if (Constants.CHANGE_RULE_COUNT && Math.random() < Constants.P_CHANGE_RULE_COUNT) {
-        //             // System.out.println("Changing rule count of " + toAdd.getName());
-        //             // toAdd.changeRuleCount();
-
-        //         }
-
-        //         if (Constants.CHANGE_SYMBOL_COUNT && Math.random() < Constants.P_CHANGE_SYMBOL_COUNT) {
-        //             // System.out.println("Changing symbol count of " + toAdd.getName());
-        //             // toAdd.changeSymbolCount();
-        //         }
-
-        //         if (Constants.GROUP && Math.random() < Constants.P_G) {
-        //             // System.out.println("Grouping in " + toAdd);
-        //             // toAdd.groupBMutate();
-        //             if (toAdd.toRemove()) {
-        //                 i--;
-        //                 continue;
-        //             }
-        //             // System.out.println("Post grouping " + toAdd);
-        //         }
-
-        //         if (Constants.MUTATE && Math.random() < Constants.calculatePM(posScore, negScore)) {
-        //             // System.out.println("Mutating " + toAdd);
-        //             if (toAdd.parserRules.size() > 0) {
-        //                 toAdd.mutate();
-        //             }
-        //             if (toAdd.toRemove()) {
-        //                 i--;
-        //                 continue;
-        //             }
-        //             // System.out.println("Post mutation \n" + toAdd);
-        //         }
-
-        //         if (Constants.HEURISTIC && Math.random() < Constants.P_H) {
-        //             // System.out.println("Heuristic on " + toAdd.getName());
-        //             toAdd.heuristic();
-        //             if (toAdd.toRemove()) {
-        //                 i--;
-        //                 continue;
-        //             }
-        //             // System.out.println(toAdd);
-        //         }
-
-        //         if (checkedGrammars.contains(toAdd.hashString())) {
-        //             App.hashtableHits++;
-        //             // System.out.println(toAdd + " already generated");
-        //             i--;
-        //         } else {
-        //             checkedGrammars.add(toAdd.hashString());
-        //             out.add(toAdd);
-        //         }
-        //         // System.out.println(toAdd);
-        //     } catch (Exception e) {
-        //         System.out.println("Exceptio during mutant calc\n" + this);
-        //         e.printStackTrace(System.out);
-        //         try {
-        //             System.in.read();
-        //         } catch (Exception f) {
-
-        //         }
-        //     }
-        // }
-        // return out;
-    }
-
     public ArrayList<Rule> getTerminalRules() {
         return terminalRules;
     }
@@ -1297,7 +1196,7 @@ public class Gram implements Comparable<Gram> {
         return getAllRules().stream().filter(rule -> rule.getName().equals(name)).findFirst().get();
     }
 
-    public LinkedList<Gram> computeSuggestedMutants(HashSet<String> checkedGrammars) {
+    public LinkedList<Gram> computeMutants() {
         LinkedList<Gram> out = new LinkedList<Gram>();
 
         App.rgoSetText("Computing  mutants for " + this);
@@ -1360,12 +1259,10 @@ public class Gram implements Comparable<Gram> {
                     toAdd.removeDuplicateProductions();
                     // toAdd.removeUnreachableBoogaloo();
 
-                    if (checkedGrammars.contains(toAdd.hashString())) {
-                        App.hashtableHits++;
-                        // System.out.println(toAdd + " already generated");
+                    if (App.gramAlreadyChecked(toAdd)) {
                         mutantNum--;
+                        continue;
                     } else {
-                        checkedGrammars.add(toAdd.hashString());
                         currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
                         out.add(toAdd);
                     }
@@ -1391,105 +1288,7 @@ public class Gram implements Comparable<Gram> {
         });
         System.out.println(
                 "New mutants \n" + out.stream().map(Gram::toString).collect(Collectors.joining("]n")));
-
-        return out;
-
-    }
-
-    public LinkedList<Gram>  computeRandomMutants(HashSet<String> checkedGrammars) {
-        LinkedList<Gram> out = new LinkedList<Gram>();
-
-        App.rgoSetText("Computing random mutants for " + this);
-
         
-
-        mutationConsiderations.stream().forEach(strArr -> {
-            StringBuilder currMutants = new StringBuilder("\nUsing key " + Arrays.toString(strArr));
-            String targetRuleName = strArr[0];
-            int prodIndex = Integer.parseInt(strArr[1]) - 1;
-
-            for (int mutantNum = 0; mutantNum < NUM_SUGGESTED_MUTANTS; mutantNum++) {
-                try {
-                    Gram toAdd = new Gram(this);
-                    Rule targetRule = toAdd.getRuleByName(targetRuleName);
-                    List<Rule> targetProd = targetRule.getSubRules().get(prodIndex);
-
-                    // newNT mutation, this favors expanding the grammar, should be balanced with
-                    // contracting rule
-                    if (Constants.CHANGE_RULE_COUNT && Math.random() < Constants.P_CHANGE_RULE_COUNT) {
-                        toAdd.genNewNT(targetProd);
-                    }
-
-                    if (Constants.CHANGE_SYMBOL_COUNT && Math.random() < Constants.P_CHANGE_SYMBOL_COUNT) {
-                        // System.out.println("Changing symbol count of " + toAdd.getName());
-                        toAdd.changeSymbolCount(targetProd);
-                    }
-
-                    if (Constants.GROUP && Math.random() < Constants.P_G) {
-                        // System.out.println("Grouping in " + toAdd);
-                        if (Math.random() < Constants.P_GROUP && canGroup(targetProd)) {
-                            // System.err.println(stringProd(targetProd) + " is considered groupable");
-                            toAdd.groupMutate(targetProd);
-                        } else if (canUngroup(targetProd)) {
-                            toAdd.ungroupMutate(targetProd);
-                        }
-                    }
-
-                    if (Constants.MUTATE && Math.random() < Constants.calculatePM(posScore, negScore)) {
-                        // System.out.println("Mutating " + toAdd);
-                        if (Math.random() < 0.3) {
-                            
-                            targetRule.getSubRules().set(prodIndex, generateNewProd());
-                            toAdd.setName(toAdd.getName() + "_" + NEWPROD_MUTATION);
-
-                        } else {
-                            toAdd.symbolMutation(targetProd);
-                        }
-                        // System.out.println("Post mutation \n" + toAdd);
-                    }
-
-                    if (Constants.HEURISTIC && Math.random() < Constants.P_H) {
-                        // System.out.println("Heuristic on " + toAdd.getName());
-                        toAdd.applyHeuristic(targetProd);
-                        // System.out.println(toAdd);
-                    }
-
-                    toAdd.setName(toAdd.genMutantName());
-                    toAdd.removeDuplicateProductions();
-                    // toAdd.removeUnreachableBoogaloo();
-
-                    if (checkedGrammars.contains(toAdd.hashString())) {
-                        App.hashtableHits++;
-                        // System.out.println(toAdd + " already generated");
-                        mutantNum--;
-                    } else {
-                        checkedGrammars.add(toAdd.hashString());
-                        currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
-                        out.add(toAdd);
-                    }
-                    // System.out.println(toAdd);
-                } catch (Exception e) {
-                    System.out.println("Exception during mutant calc\n" + this);
-                    e.printStackTrace(System.out);
-                    // try {
-                    // System.out.println("Press enter to continue");
-                    // System.in.read();
-                    // } catch(Exception f) {
-
-                    // }
-                }
-            }
-            App.rgoAppendText(currMutants.toString());
-            // try {
-            // System.out.println("Press enter to continue");
-            // System.in.read();
-            // } catch(Exception f) {
-
-            // }
-        });
-        System.out.println(
-                "New mutants \n" + out.stream().map(Gram::toString).collect(Collectors.joining("]n")));
-
         return out;
 
     }
@@ -1883,20 +1682,20 @@ public class Gram implements Comparable<Gram> {
     }
 
 	public void setTestSizes(int size, int size2) {
-        passPosArr = new boolean[size];
-        passNegArr = new boolean[size2];
+        passPosArr = new Boolean[size];
+        passNegArr = new Boolean[size2];
     }
     
-    public void setNegPass(boolean[] vals) {
+    public void setNegPass(Boolean[] vals) {
         passNegArr = vals;
     }
 
-    public void setPosPass(boolean[] vals) {
+    public void setPosPass(Boolean[] vals) {
         passPosArr = vals;
     }
 
 
-    public double posPassSimilarity(boolean[] otherPos) {
+    public double posPassSimilarity(Boolean[] otherPos) {
         double out = 0.0;
         for (int i = 0; i < otherPos.length; i++) {
             if(otherPos[i] == passPosArr[i]) out++;
@@ -1905,7 +1704,7 @@ public class Gram implements Comparable<Gram> {
         return out;
     }
 
-    public double negPassSimilarity(boolean[] otherNeg) {
+    public double negPassSimilarity(Boolean[] otherNeg) {
         double out = 0.0;
         for (int i = 0; i < otherNeg.length; i++) {
             if(otherNeg[i] == passNegArr[i]) out++;
@@ -1914,7 +1713,7 @@ public class Gram implements Comparable<Gram> {
         return out;
     }
 
-    public double allPassSimilarity(boolean[] otherPos, boolean[] otherNeg) {
+    public double allPassSimilarity(Boolean[] otherPos, Boolean[] otherNeg) {
         return (posPassSimilarity(otherPos) + negPassSimilarity(otherNeg)) / 2.0;
     }
 
@@ -1961,5 +1760,34 @@ public class Gram implements Comparable<Gram> {
         return hashString().hashCode();
     }
 
+    public static Predicate<Gram> postTestFilter() {
+        if(Constants.ANY_PASS_POS) {
+            return passesAnyTest;
+        } else {
+            return passesPosTest;
+        }
+    }
 
+    public long numPassPos() {
+        return Arrays.stream(passPosArr).filter(a -> a).count();
+    }
+
+    public long numPassNeg() {
+        return Arrays.stream(passNegArr).filter(a -> !a).count();
+    }
+
+
+    public void genFakeSuggestions() {
+        List<String> toPass = new LinkedList<String>();
+        for (int i = 0; i < NUM_SUGGESTED_MUTANTS; i++) {
+            System.err.println("Computing mutant " + i + "/" + NUM_SUGGESTED_MUTANTS);
+            Rule targetRule = randGet(parserRules, true);
+            String toAdd = targetRule.getName() + ":" + (1+randInt(targetRule.getSubRules().size()));
+            // while(toPass.contains(toAdd))toAdd = targetRule.getName() + ":" + (1+randInt(targetRule.getSubRules().size()));
+            toPass.add(toAdd);
+        }
+        setMutationConsideration(toPass);
+
+    }
+    
 }
