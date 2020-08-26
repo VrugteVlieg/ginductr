@@ -247,7 +247,10 @@ public class Rule {
         }
 
         Rule c = (Rule) o;
-        return this.name.equals(c.name);
+        boolean nameMatch = name.equals(c.name);
+        boolean optionalMatch = optional == c.optional;
+        boolean iterativeMatch = iterative== c.iterative;
+        return nameMatch && optionalMatch && iterativeMatch;
 
     }
 
@@ -516,9 +519,6 @@ public class Rule {
             });
         }
     }
-
-
-
     
     public ArrayList<String> getReachables(ArrayList<Rule> parserRules) {
         ArrayList<String> reachables = new ArrayList<String>();
@@ -527,11 +527,16 @@ public class Rule {
     }
 
     public boolean nullable(LinkedList<String> nullableNames) {
+        //If this rule is optional it can produce ""
+        if(optional)
+            return true;
+            
         if (terminal)
             return false;
 
         if (nullableNames.contains(getName()))
             return true;
+
 
         if (isSingular() && !nullableNames.contains(getName()))
             return false;
@@ -558,7 +563,6 @@ public class Rule {
                     (prev, next) -> prev || next);
         } catch (Exception e) {
             System.err.println("Error while searching for EPSILON in " + stringSelectables());
-            System.exit(1);
             return false;
         }   
     }

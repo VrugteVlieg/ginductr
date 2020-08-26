@@ -21,8 +21,8 @@ public class Constants {
     public static final String CURR_TERMINALS_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
     public static final String LOG_GRAMMAR_PATH = GRAMMARS_PATH + "/loggedGrammars/";
     public static final boolean DEBUG = false;
-    public static final boolean USE_GUI = true;
-    public static final boolean USE_LOCALIZATION = false;
+    public static final boolean USE_GUI = false;
+    public static  boolean USE_LOCALIZATION = true;
 	public static final boolean ANY_PASS_POS = true; //Does passing any test count as passing a positve test
 	public static final String POS_MODE = "pos";
 	public static final String NEG_MODE = "neg";
@@ -55,14 +55,14 @@ public class Constants {
 	public static boolean CROSSOVER = false;
     
     public static int INIT_POP_SIZE = 10000;
-    public static int INIT_POP_SIZE_LOCAL = 10;
-    public static int POP_SIZE = 50;
+    public static int INIT_POP_SIZE_LOCAL = 20;
+    public static int POP_SIZE = 100;
     public static int MAX_GRAMMARS = 2000;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
     //How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
-    public static int NUM_ITERATIONS = 5;
+    public static int NUM_ITERATIONS = 20;
     public static int NUM_NEGATIVE_ITERATIONS = 10;
 	public static int RULENAME_LEN = 10;
     public static int MAX_RULE_COUNT = 5;

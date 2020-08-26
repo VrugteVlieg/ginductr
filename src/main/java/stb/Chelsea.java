@@ -115,7 +115,7 @@ public class Chelsea {
         String finName = "default";
         Map<String, Class<?>> hm = null;
         try {
-            System.err.println("Generating sources for " + grammar);
+            // System.err.println("Generating sources for " + grammar);
             
             // Name of the file, for example ampl.g4
             finName = grammar.getName();
@@ -136,7 +136,7 @@ public class Chelsea {
             g.fileName = grammar.getName();
 
             tool.process(g, true);
-            System.err.println("Tool done");
+            // System.err.println("Tool done");
             if (tool.getNumErrors() != 0) {
                 removeCurr.removeGrammar();
             }
@@ -170,8 +170,8 @@ public class Chelsea {
                 System.out.println(files.stream().map(File::getName).collect(Collectors.joining("\n")));
 
             } else {
-                System.out.println(grammar);
-                System.out.println(hm.keySet());
+                System.err.println(grammar.hashString());
+                // System.out.println(hm.keySet());
             }
 
             removeCurr.removeGrammar();
@@ -186,7 +186,7 @@ public class Chelsea {
     public static void Localise(Gram grammar) {
         Map<String, Class<?>> hm = null;
         try {
-            System.err.println("LOCALISING" + grammar);
+            // System.err.println("LOCALISING" + grammar);
             
             
             String toWrite = grammar.toString().replaceFirst(grammar.getName(), "UUT");
@@ -274,8 +274,8 @@ public class Chelsea {
         Stack<String> passingTests = new Stack<String>();
         Stack<String> failingTests = new Stack<String>();
         // System.out.println("Running " + paths.count() + " tests");
-        App.rgoSetText("Testing " + myReader + "\n");
-        System.err.println("Testing " + myReader.getName());
+        // App.rgoSetText("Testing " + myReader + "\n");
+        // System.err.println("Testing " + myReader.getName());
         int[] testNum = { 0 };
         Boolean[] passArr = new Boolean[tests.size()];
         Arrays.fill(passArr, false);
@@ -292,7 +292,8 @@ public class Chelsea {
                 // Creating a new parser constructor instance using the lexer tokens
                 Parser parser = (Parser) parserConstructor.newInstance(tokens);
 
-                parser.addErrorListener(myListen);
+                // parser.addErrorListener(myListen);
+                parser.removeErrorListeners();
                 myListen.setGrammarName(parser.getGrammarFileName());
                 parser.setErrorHandler(new BailErrorStrategy());
                 // parser.removeErrorListeners();

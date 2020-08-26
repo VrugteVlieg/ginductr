@@ -33,11 +33,15 @@ public class Gui extends Application {
     public static String RUN_LOG_OUT = "RLO";
     public static String GRAMMAR_OUT = "go";
     public static String LOG_OUT = "lo";
+    public static String LBL_LOCALISATION = "are we localising";
+    public static String LBL_GEN_NUM = "genNum";
     public static String TOKEN_DELIM = "=";
     public static String LOG_FILE_NAME = "GUI_TOKENS.out";
     FileWriter logger;
     public HashMap<String, TextArea> outputAreas = new HashMap<String, TextArea>();
     public HashMap<String, Stack<String>> outputStacks = new HashMap<String, Stack<String>>();
+
+
 
 
 
@@ -88,6 +92,15 @@ public class Gui extends Application {
     public static String RCOToken(String output) {
         return RUN_CURRBEST_OUT + TOKEN_DELIM + output;
     }
+
+    public static String LOCALToken(String output) {
+        return LBL_LOCALISATION + TOKEN_DELIM + output;
+    }
+
+    public static String GENNUMToken(String output) {
+        return LBL_GEN_NUM + TOKEN_DELIM + output;
+    }
+
 
     @Override
     public void start(Stage stage) {
@@ -160,6 +173,15 @@ public class Gui extends Application {
     public HBox runScreen() {
         Task<Void> runOut = backGroundProcess();
 
+        HBox infoCont = new HBox(new Label("Output"));
+
+        Label lblAvgTimePerGen = new Label("Avg time per gen:" );
+        // outputAreas.put(LBL_LOCALISATION, lblLocalisation);
+        Label lblGenCount= new Label();
+
+        // infoCont.getChildren().add(lblLocalisation);
+        infoCont.getChildren().add(lblGenCount);
+
         HBox greaterContainer = new HBox();
         VBox mutationInterface = new VBox();
         mutationInterface.setMinWidth(200);
@@ -173,7 +195,7 @@ public class Gui extends Application {
         outputAreas.put(RUN_CURRBEST_OUT, currBestOutput);
         outputStacks.put(RUN_CURRBEST_OUT, new Stack<String>());
 
-        VBox consoleArea = new VBox(new Label("Output"), logOutput, new Label("CurrBest"), currBestOutput);
+        VBox consoleArea = new VBox(infoCont, logOutput, new Label("CurrBest"), currBestOutput);
         mutationInterface.getChildren().add(consoleArea);
 
         TextArea grammarOutput = new TextArea();

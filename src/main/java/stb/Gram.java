@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toCollection;
@@ -29,7 +30,7 @@ public class Gram implements Comparable<Gram> {
     public static final String MODEXSTPROD_MUTATION = "M";
     public static final String NEWPROD_MUTATION = "NP";
     public static final String SYMCOUNT_MUTATION = "S";
-    public static int NUM_SUGGESTED_MUTANTS = 5;
+    public static int NUM_SUGGESTED_MUTANTS = 10;
 
     public static Predicate<Gram> passesAnyTest = gram -> gram.getScore() > 0 && !gram.toRemove();
     public static Predicate<Gram> passesPosTest = gram -> gram.getPosScore() > 0 && !gram.toRemove();
@@ -526,11 +527,12 @@ public class Gram implements Comparable<Gram> {
      */
     public LinkedList<String> constrNullable() {
         LinkedList<String> nullableNames = new LinkedList<String>();
-        for (int i = 0; i < parserRules.size(); i++) {
-            if (parserRules.get(i).containsEpsilon()) {
-                nullableNames.add(parserRules.get(i).getName());
-            }
-        }
+
+        parserRules.stream()
+        .filter(Rule::containsEpsilon)
+        .map(Rule::getName)
+        .forEach(nullableNames::add);
+        
         int startSize = nullableNames.size();
         do {
             startSize = nullableNames.size();
@@ -794,7 +796,10 @@ public class Gram implements Comparable<Gram> {
          * this first check makes us favor grouping at higher levels in general this
          * should be a better solution than equally weighting all levels
          */
+        StringBuilder debug = new StringBuilder();
+        try {
 
+        
         boolean prodSize = prod.size() > 1;
         if (prodSize) {
             int startIndex = randInt(prod.size() - 1);
@@ -803,10 +808,10 @@ public class Gram implements Comparable<Gram> {
             List<Rule> toGroup = new LinkedList<>();
             prod.subList(startIndex, endIndex+1).forEach(toGroup::add);
             Rule toInsert = new Rule(toGroup);
-            prod.removeAll(toGroup);
-            System.err.println(
-                    "Removing indices " + startIndex + " - " + endIndex + " " + toInsert + " from " + origProd);
-            System.err.println("Inserting  " + toInsert + " at " + startIndex + " in " + stringProd(prod));
+
+            IntStream.rangeClosed(startIndex, endIndex).forEach(val -> prod.remove(startIndex));
+            debug.append("Removing indices " + startIndex + " - " + endIndex + " " + toInsert + " from " + origProd + "\n");
+            debug.append("Inserting  " + toInsert + " at " + startIndex + " in " + stringProd(prod) + "\n");
             // If we grouped untill the end of the prod, e.g | ruleA (ruleB ruleC) | then
             // start index would be 2, after removing ruleB and ruleC however, the prod is
             // only len1 so we cannot insert at index2 we need to append
@@ -822,6 +827,10 @@ public class Gram implements Comparable<Gram> {
             groupMutate(innerRules);
         }
         setName(getName() + "_" + GROUP_MUTATION);
+    } catch(Exception e) {
+        e.printStackTrace();
+        App.blockRead(debug.toString());
+    }
     }
 
     /**
@@ -841,11 +850,11 @@ public class Gram implements Comparable<Gram> {
         int toUngroupIndex = randGet(ungroupableIndices, true);
         List<Rule> targetSubRules = getSelectable(prod, toUngroupIndex).getSubRules().get(0);
         Collections.reverse(targetSubRules);
-        System.err.println("Pre ungroup" + prod);
+        // System.err.println("Pre ungroup" + prod);
         targetSubRules.forEach(rule -> insertSelectable(prod, toUngroupIndex, rule));
-        System.err.println("Post ungroup " + prod);
+        // System.err.println("Post ungroup " + prod);
         removeSelectable(prod, toUngroupIndex+targetSubRules.size());
-        System.err.println("Post removal " + prod);
+        // System.err.println("Post removal " + prod);
         setName(getName() + "_" + UNGROUP_MUTATION);
     }
 
@@ -921,13 +930,17 @@ public class Gram implements Comparable<Gram> {
         }
         Rule start = parserRules.get(0);
         String touchedRules = "";
-        if (!start.containsInfLoop(parserRules, touchedRules)) {
-            // System.out.println(this + " contains no infLoops");
-            return false;
-        } else {
-            // System.out.println(this + " contains an infLoop");
+        try {
+            if (!start.containsInfLoop(parserRules, touchedRules)) {
+                // System.out.println(this + " contains no infLoops");
+                return false;
+            } else {
+                // System.out.println(this + " contains an infLoop");
+                return true;
+    
+            }
+        } catch(Exception e) {
             return true;
-
         }
     }
 
@@ -1199,9 +1212,9 @@ public class Gram implements Comparable<Gram> {
     public LinkedList<Gram> computeMutants() {
         LinkedList<Gram> out = new LinkedList<Gram>();
 
-        App.rgoSetText("Computing  mutants for " + this);
+        // App.rgoSetText("Computing  mutants for " + this);
         mutationConsiderations.stream().forEach(strArr -> {
-            StringBuilder currMutants = new StringBuilder("\nUsing key " + Arrays.toString(strArr));
+            // StringBuilder currMutants = new StringBuilder("\nUsing key " + Arrays.toString(strArr));
             String targetRuleName = strArr[0];
             int prodIndex = Integer.parseInt(strArr[1]) - 1;
 
@@ -1251,6 +1264,7 @@ public class Gram implements Comparable<Gram> {
 
                     if (Constants.HEURISTIC && Math.random() < Constants.P_H) {
                         // System.out.println("Heuristic on " + toAdd.getName());
+                        
                         toAdd.applyHeuristic(targetProd);
                         // System.out.println(toAdd);
                     }
@@ -1263,12 +1277,12 @@ public class Gram implements Comparable<Gram> {
                         mutantNum--;
                         continue;
                     } else {
-                        currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
+                        // currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
                         out.add(toAdd);
                     }
                     // System.out.println(toAdd);
                 } catch (Exception e) {
-                    System.out.println("Exception during mutant calc\n" + this);
+                    System.err.println("Exception during mutant calc\n" + this);
                     e.printStackTrace(System.out);
                     // try {
                     // System.out.println("Press enter to continue");
@@ -1278,16 +1292,7 @@ public class Gram implements Comparable<Gram> {
                     // }
                 }
             }
-            App.rgoAppendText(currMutants.toString());
-            // try {
-            // System.out.println("Press enter to continue");
-            // System.in.read();
-            // } catch(Exception f) {
-
-            // }
         });
-        System.out.println(
-                "New mutants \n" + out.stream().map(Gram::toString).collect(Collectors.joining("]n")));
         
         return out;
 

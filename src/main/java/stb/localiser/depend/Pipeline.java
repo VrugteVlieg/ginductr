@@ -25,9 +25,7 @@ public class Pipeline {
             /* build tree from start rule */
             ParseTree tree = parser.grammarSpec();
             /* custom tree walker */
-            System.err.println("Pre dep");
             Dependency graph = new Dependency();
-            System.err.println("Post dep");
             /* built-in tree walker */
             ParseTreeWalker walker = new ParseTreeWalker();
             /* walk the parse tree*/
