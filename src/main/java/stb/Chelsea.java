@@ -1,6 +1,7 @@
 package stb;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -40,12 +41,12 @@ public class Chelsea {
     static Constructor<?> lexerConstructor;
     static Constructor<?> parserConstructor;
     static Gram myReader;
-
     static String currPosDir = null;
     static List<String> posTests = new LinkedList<>();
 
     static String currNegDir = null;
     static List<String> negTests = new LinkedList<>();
+    static int numLogs = 0;
 
     static List<String> getAllTests() {
         return Stream.of(posTests, negTests).flatMap(List::stream).collect(Collectors.toList());
@@ -164,6 +165,8 @@ public class Chelsea {
             
         } catch (Exception e) {
             e.printStackTrace(System.err);
+            myReader.mutHist.add(e.toString());
+            System.err.println(myReader.mutHist.stream().collect(Collectors.joining("\n")));
             if (hm == null) {
                 System.out.println("Looking for " + myReader + "\n found");
                 List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
@@ -234,7 +237,7 @@ public class Chelsea {
 
             Method parseMethod = TR.getMethod("parse", cArg);
             Object[] argsToPass = {allTests, Logger.noOfRules, Logger.ruleIndices};
-            System.err.println("Calling testrunner for \n" + grammar.hashString());
+            // System.err.println("Calling testrunner for \n" + grammar.hashString());
             parseMethod.invoke(null, argsToPass);
             
         } catch (Exception e) {
@@ -364,7 +367,7 @@ public class Chelsea {
             if (!out.contains(element)) {
                 out.add(element);
             } else {
-                System.err.println("Filtering " + element + " from " + input.toString());
+                // System.err.println("Filtering " + element + " from " + input.toString());
             }
         });
         input.clear();

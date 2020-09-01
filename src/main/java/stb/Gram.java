@@ -18,10 +18,11 @@ import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toCollection;
+import static java.lang.String.format;
 import java.util.stream.Stream;
 
 public class Gram implements Comparable<Gram> {
-
+    
     public static final String RANDOM_MUTATION = "R";
     public static final String HEUR_MUTATION = "H";
     public static final String GROUP_MUTATION = "G";
@@ -30,7 +31,7 @@ public class Gram implements Comparable<Gram> {
     public static final String MODEXSTPROD_MUTATION = "M";
     public static final String NEWPROD_MUTATION = "NP";
     public static final String SYMCOUNT_MUTATION = "S";
-    public static int NUM_SUGGESTED_MUTANTS = 10;
+    public static int NUM_SUGGESTED_MUTANTS = 5;
 
     public static Predicate<Gram> passesAnyTest = gram -> gram.getScore() > 0 && !gram.toRemove();
     public static Predicate<Gram> passesPosTest = gram -> gram.getPosScore() > 0 && !gram.toRemove();
@@ -54,6 +55,8 @@ public class Gram implements Comparable<Gram> {
     private boolean remove = false;
     public Boolean[] passPosArr;
     public Boolean[] passNegArr;
+    List<String> mutHist = new LinkedList<>();
+    StringBuilder currMut = new StringBuilder();
 
     /**
      * Constructs a grammar from a given file
@@ -61,6 +64,7 @@ public class Gram implements Comparable<Gram> {
      * @param filePath
      */
     public Gram(File sourceFile) {
+        
         grammarFile = sourceFile;
         grammarName = grammarFile.getName().split("\\.")[0];
         try (BufferedReader in = new BufferedReader(new FileReader(grammarFile));) {
@@ -206,11 +210,13 @@ public class Gram implements Comparable<Gram> {
      * @param targetProd
      */
     public void genNewNT(List<Rule> targetProd) {
+        currMut = new StringBuilder("Applying genNewNT to" + stringProd(targetProd)+ "\n");
         int newRuleLen = 1 + randInt(Constants.MAX_RHS_SIZE - 1);
         int numSelectables = getTotalSelectables(targetProd);
         int replacementIndex = randInt(numSelectables);
         Rule toReplace = getSelectable(targetProd, replacementIndex);
         Rule toInsert;
+        currMut.append(String.format("New rule has len %d\nReplacing %s in %s\n", newRuleLen, toReplace, stringProd(targetProd)));
 
         if (newRuleLen == 1) {
             // if the new rule would have had len 1 it would be of the form newRule: ruleA;
@@ -221,15 +227,19 @@ public class Gram implements Comparable<Gram> {
             while (toInsert.equals(toReplace)) {
                 toInsert = randGet(allRules, true);
             }
-
+            currMut.append("New rule would have had len so inserting " + toInsert + "\n");
         } else {
             int newRuleIndex = 1 + randInt(parserRules.size() - 1);
             generateNewRule(genRuleName(), newRuleLen, newRuleIndex);
             toInsert = parserRules.get(newRuleIndex);
+            currMut.append("Generated new rule " + toInsert + "\n");
         }
 
         setSelectable(targetProd, replacementIndex, toInsert);
         setName(getName() + "_" + NEWNT_MUTATION);
+        currMut.append("\n\nResults in " + this + "\n\n");
+        mutHist.add(currMut.toString());
+        
     }
 
     // Generates and returns a rule to be used when filling in blanks in a grammar
@@ -352,7 +362,7 @@ public class Gram implements Comparable<Gram> {
         g0.applyLoggedCrossover(g1, out);
     }
 
-    public int randInt(int bound) {
+    public  static int randInt(int bound) {
         if (bound == 0)
             return 0;
         return ThreadLocalRandom.current().nextInt(bound);
@@ -527,16 +537,16 @@ public class Gram implements Comparable<Gram> {
      */
     public LinkedList<String> constrNullable() {
         LinkedList<String> nullableNames = new LinkedList<String>();
-
         parserRules.stream()
         .filter(Rule::containsEpsilon)
         .map(Rule::getName)
         .forEach(nullableNames::add);
+
         
         int startSize = nullableNames.size();
         do {
             startSize = nullableNames.size();
-            parserRules.stream().filter(rule -> !nullableNames.contains(rule.getName())).forEach(rule -> {
+            parserRules.stream().forEach(rule -> {
                 rule.nullable(nullableNames);
             });
 
@@ -565,6 +575,11 @@ public class Gram implements Comparable<Gram> {
                 rule.cleanReferences(toClean);
             }
         });
+    }
+
+    
+    public void cleanReferences(int index) {
+        cleanReferences(parserRules.get(index));
     }
 
     public void flagForRemoval() {
@@ -615,98 +630,118 @@ public class Gram implements Comparable<Gram> {
      * Removes left recursion by rewriting as an equivalent grammar TODO add
      * removing of recursive derivations
      */
-    public void removeLR() {
-        if (containsLeftRecursive()) {
-            // Replaces repeating left recursive symbols with a single instance and removes
-            // it
-            // term: term factor | term term; -> term: term factor;
-            parserRules.forEach(rule -> {
-                rule.simplifyRepeatingLR();
-                rule.removeSimpleLeftRecursives();
-            });
-            while (parserRules.stream().anyMatch(rule -> rule.getTotalSelectables() == 1)) {
-                LinkedList<String> toCleanList = new LinkedList<String>();
-                for (Rule rule : parserRules) {
+    // public void removeLR() {
+    //     if (containsLeftRecursive()) {
+    //         // Replaces repeating left recursive symbols with a single instance and removes
+    //         // it
+    //         // term: term factor | term term; -> term: term factor;
+    //         parserRules.forEach(rule -> {
+    //             rule.simplifyRepeatingLR();
+    //             rule.removeSimpleLeftRecursives();
+    //         });
+    //         while (parserRules.stream().anyMatch(rule -> rule.getTotalSelectables() == 1)) {
+    //             LinkedList<String> toCleanList = new LinkedList<String>();
+    //             for (Rule rule : parserRules) {
 
-                    if (rule.getTotalSelectables() == 1) {
-                        toCleanList.add(rule.getName());
-                    }
-                }
-                parserRules.removeIf(rule -> toCleanList.contains(rule.getName()));
-                toCleanList.forEach(name -> parserRules.forEach(rule -> rule.removeReferences(name)));
-            }
+    //                 if (rule.getTotalSelectables() == 1) {
+    //                     toCleanList.add(rule.getName());
+    //                 }
+    //             }
+    //             parserRules.removeIf(rule -> toCleanList.contains(rule.getName()));
+    //             toCleanList.forEach(name -> parserRules.forEach(rule -> rule.removeReferences(name)));
+    //         }
 
-            removeDirectLeftRecursion();
-        }
+    //         removeDirectLeftRecursion();
+    //     }
 
-    }
+    // }
 
     /**
      * Rewrites left recursive rules as equivalent rules by introducing new rules
      */
-    private void removeDirectLeftRecursion() {
-        ArrayList<Rule> rulesToAdd = new ArrayList<Rule>();
-        parserRules.forEach(rule -> {
-            if (rule.containLeftRecursiveProd()) {
-                String ruleName = rule.getName();
-                String newRuleName = Rule.genName();
-                ArrayList<LinkedList<Rule>> cleanProductions = new ArrayList<LinkedList<Rule>>();
-                ArrayList<LinkedList<Rule>> dirtyProductions = new ArrayList<LinkedList<Rule>>();
-                rule.getSubRules().forEach(subRule -> {
+    // private void removeDirectLeftRecursion() {
+    //     ArrayList<Rule> rulesToAdd = new ArrayList<Rule>();
+    //     parserRules.forEach(rule -> {
+    //         if (rule.containLeftRecursiveProd()) {
+    //             String ruleName = rule.getName();
+    //             String newRuleName = Rule.genName();
+    //             ArrayList<LinkedList<Rule>> cleanProductions = new ArrayList<LinkedList<Rule>>();
+    //             ArrayList<LinkedList<Rule>> dirtyProductions = new ArrayList<LinkedList<Rule>>();
+    //             rule.getSubRules().forEach(subRule -> {
 
-                    if (subRule.getFirst().equals(Rule.EPSILON()))
-                        return;
+    //                 if (subRule.getFirst().equals(Rule.EPSILON()))
+    //                     return;
 
-                    if (!subRule.getFirst().getName().split(" ")[0].equals(ruleName)) {
-                        cleanProductions.add(subRule);
-                    } else {
-                        LinkedList<Rule> toAdd = new LinkedList<Rule>(subRule.subList(1, subRule.size()));
-                        Rule ruleToAdd = new Rule(newRuleName);
-                        toAdd.add(ruleToAdd);
-                        dirtyProductions.add(toAdd);
-                    }
-                });
-                if (cleanProductions.size() == 0) {
-                    flagForRemoval();
-                    return;
-                }
+    //                 if (!subRule.getFirst().getName().split(" ")[0].equals(ruleName)) {
+    //                     cleanProductions.add(subRule);
+    //                 } else {
+    //                     LinkedList<Rule> toAdd = new LinkedList<Rule>(subRule.subList(1, subRule.size()));
+    //                     Rule ruleToAdd = new Rule(newRuleName);
+    //                     toAdd.add(ruleToAdd);
+    //                     dirtyProductions.add(toAdd);
+    //                 }
+    //             });
+    //             if (cleanProductions.size() == 0) {
+    //                 flagForRemoval();
+    //                 return;
+    //             }
 
-                StringBuilder newRuleText = new StringBuilder();
-                dirtyProductions.forEach(subProduction -> {
-                    subProduction.forEach(subRule -> {
-                        newRuleText.append(subRule + " ");
-                    });
-                    newRuleText.append("| ");
-                });
-                newRuleText.append(";");
+    //             StringBuilder newRuleText = new StringBuilder();
+    //             dirtyProductions.forEach(subProduction -> {
+    //                 subProduction.forEach(subRule -> {
+    //                     newRuleText.append(subRule + " ");
+    //                 });
+    //                 newRuleText.append("| ");
+    //             });
+    //             newRuleText.append(";");
 
-                // Create the rule, if all the productions were dirty, reuse the same rule name
-                // so replace all occurences of newRuleName with original name
-                // The productions of the dirtyRule is later copied into the original rule
-                Rule dirtyRule = new Rule(newRuleName, newRuleText.toString());
+    //             // Create the rule, if all the productions were dirty, reuse the same rule name
+    //             // so replace all occurences of newRuleName with original name
+    //             // The productions of the dirtyRule is later copied into the original rule
+    //             Rule dirtyRule = new Rule(newRuleName, newRuleText.toString());
 
-                // If all of the orignal rules were dirty reuse the ruleName for the modified
-                // rule other wise introduce a new rule
-                rule.getSubRules().clear();
+    //             // If all of the orignal rules were dirty reuse the ruleName for the modified
+    //             // rule other wise introduce a new rule
+    //             rule.getSubRules().clear();
 
-                rule.setSubRules(cleanProductions);
-                rulesToAdd.add(dirtyRule);
-            }
-        });
-        parserRules.addAll(rulesToAdd);
-    }
+    //             rule.setSubRules(cleanProductions);
+    //             rulesToAdd.add(dirtyRule);
+    //         }
+    //     });
+    //     parserRules.addAll(rulesToAdd);
+    // }
 
     /**
      * Returns true if this contains a parserRule that is directly left recursive
      * term: term factor;
      */
-    public boolean containsLeftRecursive() {
-        for (int i = 0; i < parserRules.size(); i++) {
-            if (parserRules.get(i).containLeftRecursiveProd())
-                return true;
-        }
-        return false;
+    // public boolean containsLeftRecursive() {
+    //     for (int i = 0; i < parserRules.size(); i++) {
+    //         if (parserRules.get(i).containLeftRecursiveProd())
+    //             return true;
+    //     }
+    //     return false;
+    // }
+
+    public boolean containsImmediateLR() {
+        return parserRules.stream().anyMatch(Rule::containsImmediateLR);
     }
+
+    public boolean containsImmediateLRDeriv() {
+       return parserRules.stream().anyMatch(rule -> containsImmediateLRDeriv(rule, new ArrayList<Rule>()));
+    }
+
+    private boolean containsImmediateLRDeriv(Rule startRule, List<Rule> visitedRules) {
+        //If we have already visited this rule then we are in a loop
+        if(startRule.isTerminal()) return false;
+        if(visitedRules.contains(startRule)) return true;
+        visitedRules.add(startRule);
+        return getRuleByName(startRule.name).getSubRules().stream()
+            .anyMatch(prod -> containsImmediateLRDeriv(Rule.getFirstSingularRule(prod), visitedRules));
+            
+    }
+
+
 
     /**
      * Remove duplicate productions in the rule, rule: prodA | prodA; -> rule:
@@ -714,7 +749,6 @@ public class Gram implements Comparable<Gram> {
      * remove left
      */
     public void removeDuplicateProductions() {
-
         parserRules.forEach(rule -> Chelsea.removeDuplicates(rule.getSubRules()));
     }
 
@@ -731,16 +765,6 @@ public class Gram implements Comparable<Gram> {
     }
 
     /**
-     * Adds a random symbol to the RHS of a parser rule
-     */
-    public void incRuleSize() {
-        ArrayList<Rule> allRules = getAllRules();
-        Rule toInc = randGet(parserRules, true);
-        Rule toAdd = new Rule(randGet(allRules, true));
-        toInc.extend(toAdd);
-    }
-
-    /**
      * Generates a name for mutant grammar based on this grammar
      */
     public String genMutantName() {
@@ -753,41 +777,31 @@ public class Gram implements Comparable<Gram> {
     }
 
     /**
-     * Checks which rules can have their symbols counts incremented and which can
-     * have their symbols counts decremented first LinkedList is incrementable,
-     * second is decrementable incrementable means the current symbol count is <
-     * MAX_RHS_SIZE
-     */
-    private LinkedList<List<Rule>> canChangeSymbolCount() {
-        LinkedList<List<Rule>> out = new LinkedList<List<Rule>>();
-
-        // Can increment
-        out.add(parserRules.stream().filter(rule -> rule.getSymbolCount() < Constants.MAX_RHS_SIZE).collect(toList()));
-
-        // Can Decrement
-        out.add(parserRules.stream().filter(rule -> rule.getSymbolCount() > 1).collect(toList()));
-
-        return out;
-    }
-
-    /**
      * Computes which rules can have their RHS incremented and which can be
      * decremented a rule is then randomly selected and either decremented or
      * incremented
      */
     public void changeSymbolCount(List<Rule> targetProd) {
+        currMut = new StringBuilder("Applying changeSymbolCount to " + stringProd(targetProd) + "\n\n");
         int numSelectables = getTotalSelectables(targetProd);
         int index = randInt(numSelectables);
         if (Math.random() < Constants.P_ADD_SYMBOL) {
+            Rule toInsert = randGet(parserRules, true);
+            currMut.append("Inserting " + toInsert.getName() + " at index " + index + "\n");
             insertSelectable(targetProd, index, randGet(parserRules, true));
+
             setName(getName() + "_" + SYMCOUNT_MUTATION);
         } else if (targetProd.size() > 1 || index > 0) {
             // If there is only 1 rule in the prod removing it would break the grammar
             // if the index is not 0 however then the rule must be a composite rule and we
             // proceed
+            currMut.append("Removing " + getSelectable(targetProd, index) + " at index " + index);
             removeSelectable(targetProd, index);
+
             setName(getName() + "_" + SYMCOUNT_MUTATION);
         }
+        currMut.append("\n\n" + "Results in " + this + "\n\n");
+        mutHist.add(currMut.toString());
     }
 
     public void groupMutate(List<Rule> prod) {
@@ -796,7 +810,7 @@ public class Gram implements Comparable<Gram> {
          * this first check makes us favor grouping at higher levels in general this
          * should be a better solution than equally weighting all levels
          */
-        StringBuilder debug = new StringBuilder();
+        currMut = new StringBuilder(format("Applying grouping to %s\n\n", stringProd(prod)));
         try {
 
         
@@ -810,8 +824,8 @@ public class Gram implements Comparable<Gram> {
             Rule toInsert = new Rule(toGroup);
 
             IntStream.rangeClosed(startIndex, endIndex).forEach(val -> prod.remove(startIndex));
-            debug.append("Removing indices " + startIndex + " - " + endIndex + " " + toInsert + " from " + origProd + "\n");
-            debug.append("Inserting  " + toInsert + " at " + startIndex + " in " + stringProd(prod) + "\n");
+            currMut.append("Removing indices " + startIndex + " - " + endIndex + " " + toInsert + " from " + origProd + "\n");
+            currMut.append("Inserting  " + toInsert + " at " + startIndex + " in " + stringProd(prod) + "\n");
             // If we grouped untill the end of the prod, e.g | ruleA (ruleB ruleC) | then
             // start index would be 2, after removing ruleB and ruleC however, the prod is
             // only len1 so we cannot insert at index2 we need to append
@@ -821,16 +835,18 @@ public class Gram implements Comparable<Gram> {
                 prod.add(startIndex, toInsert);
             }
         } else {
-            System.err.println("Getting the sole rule in " + stringProd(prod) + " in " + this);
+            currMut.append("Getting the sole rule in " + stringProd(prod) + " in " + this);
             Rule soleRule = prod.get(0);
             List<Rule> innerRules = soleRule.getSubRules().get(0);
             groupMutate(innerRules);
         }
-        setName(getName() + "_" + GROUP_MUTATION);
     } catch(Exception e) {
         e.printStackTrace();
-        App.blockRead(debug.toString());
-    }
+        currMut.append(e.toString());
+    } finally {
+        currMut.append("\n\n" + "Results in " + this + "\n\n");
+        mutHist.add(currMut.toString());
+    } 
     }
 
     /**
@@ -840,6 +856,7 @@ public class Gram implements Comparable<Gram> {
      * @param prod
      */
     public void ungroupMutate(List<Rule> prod) {
+        StringBuilder currMut = new StringBuilder(format("Applying ungroup to %s\n", stringProd(prod)));
         int totalSelectables = getTotalSelectables(prod);
         List<Integer> ungroupableIndices = new LinkedList<Integer>();
         for (Integer i = 0; i < totalSelectables; i++) {
@@ -847,16 +864,29 @@ public class Gram implements Comparable<Gram> {
                 ungroupableIndices.add(i);
             }
         }
+
+        currMut.append(format("Ungroupable indices: %s\n", ungroupableIndices.toString()));
+
         int toUngroupIndex = randGet(ungroupableIndices, true);
         List<Rule> targetSubRules = getSelectable(prod, toUngroupIndex).getSubRules().get(0);
+        currMut.append(format("Expanding %s at index %d", stringProd(targetSubRules), toUngroupIndex));
         Collections.reverse(targetSubRules);
         // System.err.println("Pre ungroup" + prod);
         targetSubRules.forEach(rule -> insertSelectable(prod, toUngroupIndex, rule));
         // System.err.println("Post ungroup " + prod);
         removeSelectable(prod, toUngroupIndex+targetSubRules.size());
         // System.err.println("Post removal " + prod);
-        setName(getName() + "_" + UNGROUP_MUTATION);
+        currMut.append("\n\n" + "Results in " + this + "\n\n");
+        mutHist.add(currMut.toString());
+        
     }
+
+
+    public boolean nullable(List<Rule> prod) {
+        List<String> nullables = constrNullable();
+        return prod.stream().allMatch(rule -> rule.nullable(nullables));
+    }
+
 
     /**
      * Generates new NT and inserts into targetProd replacing another rule or
@@ -1209,18 +1239,21 @@ public class Gram implements Comparable<Gram> {
         return getAllRules().stream().filter(rule -> rule.getName().equals(name)).findFirst().get();
     }
 
-    public LinkedList<Gram> computeMutants() {
+    public static LinkedList<Gram> computeMutants(Gram currBase) {
         LinkedList<Gram> out = new LinkedList<Gram>();
 
         // App.rgoSetText("Computing  mutants for " + this);
-        mutationConsiderations.stream().forEach(strArr -> {
+        currBase.mutationConsiderations.stream().forEach(strArr -> {
             // StringBuilder currMutants = new StringBuilder("\nUsing key " + Arrays.toString(strArr));
             String targetRuleName = strArr[0];
             int prodIndex = Integer.parseInt(strArr[1]) - 1;
 
             for (int mutantNum = 0; mutantNum < NUM_SUGGESTED_MUTANTS; mutantNum++) {
                 try {
-                    Gram toAdd = new Gram(this);
+                    Gram toAdd = new Gram(currBase);
+                    toAdd.setName(toAdd.genMutantName());
+                    toAdd.initMutHist(strArr);
+
                     Rule targetRule = toAdd.getRuleByName(targetRuleName);
                     List<Rule> targetProd = targetRule.getSubRules().get(prodIndex);
 
@@ -1249,13 +1282,16 @@ public class Gram implements Comparable<Gram> {
                         }
                     }
 
-                    if (Constants.MUTATE && Math.random() < Constants.calculatePM(posScore, negScore)) {
+                    if (Constants.MUTATE && Math.random() < Constants.P_M) {
                         // System.out.println("Mutating " + toAdd);
-                        if (Math.random() < 0.3) {
-                            
-                            targetRule.getSubRules().set(prodIndex, generateNewProd());
+                        int numSelectables =  getTotalSelectables(targetProd) + 1;
+                        int toMutIndex = randInt(numSelectables);
+                        if (toMutIndex == 0) {
+                            toAdd.currMut = new StringBuilder("Generating a new prod\n");
+                            targetRule.getSubRules().set(prodIndex, toAdd.generateNewProd());
                             toAdd.setName(toAdd.getName() + "_" + NEWPROD_MUTATION);
-
+                            toAdd.currMut.append(format("Results in %s\n", toAdd.toString()));
+                            toAdd.mutHist.add(toAdd.currMut.toString());
                         } else {
                             toAdd.symbolMutation(targetProd);
                         }
@@ -1264,17 +1300,27 @@ public class Gram implements Comparable<Gram> {
 
                     if (Constants.HEURISTIC && Math.random() < Constants.P_H) {
                         // System.out.println("Heuristic on " + toAdd.getName());
-                        
+                        // boolean nullGoingIn = 
                         toAdd.applyHeuristic(targetProd);
+                        if(toAdd.nullable(targetRuleName)) {
+                            toAdd.currMut.append(targetRuleName + " is now nullable cleaning references");
+                            toAdd.cleanReferences(targetRule);
+                            toAdd.currMut.append("Results in " + toAdd.toString());
+                        }
+                        toAdd.cleanEmptyClosure(targetProd);
+                        toAdd.mutHist.add(toAdd.currMut.toString());
+                        
                         // System.out.println(toAdd);
                     }
 
-                    toAdd.setName(toAdd.genMutantName());
+                    
                     toAdd.removeDuplicateProductions();
+                    toAdd.mutHist.add("Final Gram " + toAdd.toString());
                     // toAdd.removeUnreachableBoogaloo();
 
-                    if (App.gramAlreadyChecked(toAdd)) {
+                    if (App.gramAlreadyChecked(toAdd) || toAdd.containsImmediateLRDeriv()) {
                         mutantNum--;
+                        System.err.println("Reseting mutatnt comp " + (toAdd.containsImmediateLRDeriv() ? toAdd : ""));
                         continue;
                     } else {
                         // currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
@@ -1282,8 +1328,8 @@ public class Gram implements Comparable<Gram> {
                     }
                     // System.out.println(toAdd);
                 } catch (Exception e) {
-                    System.err.println("Exception during mutant calc\n" + this);
-                    e.printStackTrace(System.out);
+                    System.err.println("Exception during mutant calc\n" + currBase);
+                    e.printStackTrace();
                     // try {
                     // System.out.println("Press enter to continue");
                     // System.in.read();
@@ -1347,11 +1393,13 @@ public class Gram implements Comparable<Gram> {
         // stringProd(prod));
 
         Rule toSelect = getSelectable(prod, toSelectIndex);
-        while (nullable(toSelect.getName())) {
+        int counter = 0;
+        while (nullable(toSelect.getName()) && counter++ < 5) {
             toSelect = getSelectable(prod, randInt(totalSelectables));
         }
 
         double choice = Math.random();
+        currMut = new StringBuilder(format("Applying heuristic choice %f to %s in %s", choice, toSelect.toString(), stringProd(prod)));
         if (choice < 0.33) {
             toSelect.setIterative(!toSelect.isIterative());
         } else if (choice < 0.66) {
@@ -1360,7 +1408,8 @@ public class Gram implements Comparable<Gram> {
             toSelect.setIterative(!toSelect.isIterative());
             toSelect.setOptional(!toSelect.isOptional());
         }
-        setName(getName() + "_" + HEUR_MUTATION);
+        currMut.append(format("\n\nResults in %s\n\n", this.toString()));
+        mutHist.add(currMut.toString());
     }
 
     /**
@@ -1370,16 +1419,21 @@ public class Gram implements Comparable<Gram> {
      * @param prod
      */
     public void symbolMutation(List<Rule> prod) {
+        currMut = new StringBuilder(format("Applying symbol mutation to %s\n", stringProd(prod)));
         int toMutateIndex = randInt(getTotalSelectables(prod));
         Rule toReplace = getSelectable(prod, toMutateIndex);
         Rule toInsert = randGet(getAllRules(), true);
-
+        
         int earlyExit = 0;
         while (toInsert.equals(toReplace) && earlyExit++ < 5)
             toInsert = randGet(getAllRules(), true);
+        
+        currMut.append(format("Replacing %s by %s", toReplace.getName(), toInsert.getName()));
 
         setSelectable(prod, toMutateIndex, toInsert);
         setName(getName() + "_" + MODEXSTPROD_MUTATION);
+        currMut.append(format("\n\nResults in %s\n\n", this));
+        mutHist.add(currMut.toString());
     }
 
     /**
@@ -1500,6 +1554,7 @@ public class Gram implements Comparable<Gram> {
                 if (index < currRuleProds) {
                     List<Rule> currProd = rule.getSubRules().get(0);
                     removeSelectable(currProd, index - 1);
+                    if(rule.getTotalSelectables() == 2) rule.setSingular(true);
                     return;
                 } else {
                     index -= currRuleProds;
@@ -1544,13 +1599,14 @@ public class Gram implements Comparable<Gram> {
         boolean out = prod.size() > 1;
 
         if (out) {
-            System.err.println(stringProd(prod) + " has more than 1 element and can be grouped");
+            // System.err.println(stringProd(prod) + " has more than 1 element and can be grouped");
             return out;
         }
-        boolean fallback = !prod.get(0).isSingular();
-        System.err.println("Fallback for " + stringProd(prod) + " is " + fallback);
-
-        return !prod.get(0).isSingular();
+        boolean fallback = prod.get(0).getTotalSelectables() == 2;
+        if(fallback) prod.get(0).setSingular(true);
+        // System.err.println("Fallback for " + stringProd(prod) + " is " + fallback);
+        // System.err.println("Returning " + !prod.get(0).isSingular());
+        return fallback;
     }
 
     /**
@@ -1794,5 +1850,31 @@ public class Gram implements Comparable<Gram> {
         setMutationConsideration(toPass);
 
     }
+
+    public void initMutHist(String[] mutSuggestion) {
+        mutHist.clear();
+        mutHist.add("Start of mutations for \n" + this + "\nScore going in:" + getScore() + "\n" + " Using key " + Arrays.toString(mutSuggestion));
+    }
+
+    //Removes closures from rules that are nullable
+    public void cleanEmptyClosure(List<Rule> targetProd) {
+        List<String> nullables = constrNullable();
+        getAllSelectables(targetProd).stream()
+            .filter(rule -> !rule.isSingular())
+            .forEach(rule -> {
+            if(rule.nullable(nullables) && (rule.isIterative() || rule.isOptional())) {
+                mutHist.add(rule  + " is nullable and a closure\n");
+                rule.setIterative(false);
+                rule.setOptional(false);
+            }
+        });
+    }
     
+
+    public static List<Rule> getAllSelectables(List<Rule> targetProd)  {
+        return targetProd.stream()
+                 .map(Rule::getAllSelectables)
+                 .flatMap(List::stream)
+                 .collect(toCollection(ArrayList::new));
+    }
 }

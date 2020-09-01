@@ -19,32 +19,32 @@ public class Constants {
     public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
     public static final String CURR_GRAMMAR_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".g4";
     public static final String CURR_TERMINALS_PATH = GRAMMARS_PATH+CURR_GRAMMAR_NAME+"/"+CURR_GRAMMAR_NAME+".terminals";
-    public static final String LOG_GRAMMAR_PATH = GRAMMARS_PATH + "/loggedGrammars/";
+    public static final String LOG_GRAMMAR_PATH = GRAMMARS_PATH + "loggedGrammars/";
     public static final boolean DEBUG = false;
-    public static final boolean USE_GUI = false;
+    public static final boolean USE_GUI = true;
     public static  boolean USE_LOCALIZATION = true;
-	public static final boolean ANY_PASS_POS = true; //Does passing any test count as passing a positve test
+	public static final boolean ANY_PASS_POS = false; //Does passing any test count as passing a positve test
 	public static final String POS_MODE = "pos";
 	public static final String NEG_MODE = "neg";
     private static  double P_C_MIN = 0;
     private static  double P_C_MAX = 0;
 
 
-    public static double P_CHANGE_RULE_COUNT = 0.6; //P to add or remove a rule from a grammar
+    public static double P_CHANGE_RULE_COUNT = 0.5; //P to add or remove a rule from a grammar
     public static double P_ADD_RULE = 0.5;    //P to add a rule when adding/removing rules
-    public static double P_CHANGE_SYMBOL_COUNT = 0.6; //P to add or remove a rule from a grammar
-    public static double P_ADD_SYMBOL = 0.6; //P to add a symbol when adding/removing symbols
-	public static double P_M = 0.6;   //P to mutate a symbol in a grammar
-    public static double P_H = 0.55;  //P to make a symbol iterative or optional
-    public static double P_ITER = 0.55;  //P to make a symbol iterative 
-    public static double P_OPTIONAL = 0.55;  //P to make a symbol optional
+    public static double P_CHANGE_SYMBOL_COUNT = 0.5; //P to add or remove a rule from a grammar
+    public static double P_ADD_SYMBOL = 0.5; //P to add a symbol when adding/removing symbols
+	public static double P_M = 0.5;   //P to mutate a symbol in a grammar
+    public static double P_H = 0.5;  //P to make a symbol iterative or optional
+    public static double P_ITER = 0.5;  //P to make a symbol iterative 
+    public static double P_OPTIONAL = 0.5;  //P to make a symbol optional
     public static int TOUR_SIZE = 5; //Size of tournaments when performing tour selection
     
     public static double P_C = 0.65; // P to apply crossover
     public static int NUM_CROSSOVER_PER_GEN = 5;
 
-    public static double P_G = 0.4;   // P to group/ungroup symbols on the RHS
-    public static double P_GROUP = 0.6;   // P to group symbols
+    public static double P_G = 0.5;   // P to group/ungroup symbols on the RHS
+    public static double P_GROUP = 0.5;   // P to group symbols
 
     
 	public static boolean CHANGE_RULE_COUNT = true;
@@ -62,7 +62,7 @@ public class Constants {
     //How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
-    public static int NUM_ITERATIONS = 20;
+    public static int NUM_ITERATIONS = 30;
     public static int NUM_NEGATIVE_ITERATIONS = 10;
 	public static int RULENAME_LEN = 10;
     public static int MAX_RULE_COUNT = 5;

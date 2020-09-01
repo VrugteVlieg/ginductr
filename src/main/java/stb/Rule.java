@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class Rule {
-    private String name;
+    public String name;
     private ArrayList<LinkedList<Rule>> subRules = new ArrayList<LinkedList<Rule>>();
     private boolean terminal;
     private boolean optional;
@@ -73,6 +73,7 @@ public class Rule {
         rules.forEach(rule -> nameBuilder.append(rule.getName() + " "));
         name = nameBuilder.toString().trim();
         ruleText = getName();
+        singular = false;
 
     }
 
@@ -127,14 +128,12 @@ public class Rule {
     public Rule(String name, String ruleText) {
         ruleText = ruleText.trim();
         this.ruleText = ruleText;
-        name = name.trim();
-        this.name = name;
+        this.name = name.trim();
         singular = true;
-        printOut("New major rule " + name + " : " + ruleText);
         mainRule = true;
         terminal = Character.isUpperCase(name.charAt(0));
-        optional = name.charAt(name.length() - 1) == '?' || name.charAt(name.length() - 1) == '*';
-        iterative = name.charAt(name.length() - 1) == '+' || name.charAt(name.length() - 1) == '*';
+        optional = false;
+        iterative = false;
         addRuleLookahead(ruleText);
     }
 
@@ -216,6 +215,7 @@ public class Rule {
             index++;
         }
     }
+    
 
     /**
      * @return The RHS of the rule
@@ -334,6 +334,10 @@ public class Rule {
         return singular;
     }
 
+    public void setSingular(boolean newVal) {
+        singular = newVal;
+    }
+
     public void setOptional(boolean setTo) {
         this.optional = setTo;
     }
@@ -432,7 +436,30 @@ public class Rule {
                 out += subRule.getTotalSelectables();
             }
         }
-        if(out == 2) return 1;
+
+        
+        /* 
+        if out = 2 then we only have 1 subrule which only has 1 selectable 
+        twe are a grouped rule which has had its neighbours removed and should be flagged as singular
+         */
+        if(out == 2) {
+            singular = false;
+            return 1;
+        }
+        return out;
+    }
+
+    public List<Rule> getAllSelectables() {
+        List<Rule> out = new ArrayList<>();
+        out.add(this);
+        if (isSingular() && !mainRule) {
+            return out;
+        } 
+        for (LinkedList<Rule> subSet : subRules) {
+            for (Rule subRule : subSet) {
+                out.addAll(subRule.getAllSelectables());
+            }
+        }
         return out;
     }
 
@@ -453,13 +480,15 @@ public class Rule {
         return out;
     }
 
+    
+
     /**
      * Adds the subRules of another rule to this rule
      * 
      * @param toAdd
      */
     public void addAlternative(ArrayList<LinkedList<Rule>> toAdd) {
-        this.subRules.addAll(toAdd);
+        subRules.addAll(toAdd);
     }
 
     /**
@@ -526,31 +555,47 @@ public class Rule {
         return reachables;
     }
 
-    public boolean nullable(LinkedList<String> nullableNames) {
+    public boolean nullable(List<String> nullableNames) {
         //If this rule is optional it can produce ""
-        if(optional)
+        if(optional) {
+            // System.err.println(this + " is optional return true");
             return true;
+        }
             
-        if (terminal)
+        if (terminal) {
+            // System.err.println(this + " is terminal returning false");
             return false;
+        }
 
-        if (nullableNames.contains(getName()))
+        if (nullableNames.contains(getName())) {
+            // System.err.println(this + " is already contained in " + nullableNames + " returning true");
             return true;
+        }
 
 
-        if (isSingular() && !nullableNames.contains(getName()))
+        if (isSingular() && !nullableNames.contains(getName()) && !mainRule) {
+            // System.err.println(this + " is singuler and is not contained in " + nullableNames + " returning false");
             return false;
+        }
 
         if (mainRule) {
-            if (subRules.stream().anyMatch(prod -> prod.stream().allMatch(rule -> rule.nullable(nullableNames)))) {
+            // System.err.println("Checking if any prods in " + this + " are nullable");
+            if (subRules.stream()
+                .anyMatch(prod -> {
+                    // System.err.println("Checking if all rules in " +  Gram.stringProd(prod) + " are nullable");
+                    return prod.stream().allMatch(rule -> rule.nullable(nullableNames));
+                })
+            ) {
                 nullableNames.add(getName());
                 return true;
             } else {
                 return false;
             }
         } else if (!isSingular()) { // grouped rule
+            // System.err.println(this + "!isSinguler true ");
             return subRules.get(0).stream().allMatch(rule -> rule.nullable(nullableNames));
         } else {
+            // System.err.println("Returning true by  default");
             return true;
         }
     }
@@ -567,14 +612,6 @@ public class Rule {
         }   
     }
 
-    public void setSubRules(ArrayList<LinkedList<Rule>> toSet) {
-        subRules.clear();
-        toSet.forEach(prod -> {
-            LinkedList<Rule> newProd = new LinkedList<Rule>();
-            prod.forEach(rule -> newProd.add(rule));
-            subRules.add(newProd);
-        });
-    }
 
     /**
      * Removes rules that consist entirely of left recursive productions term: term
@@ -601,22 +638,18 @@ public class Rule {
         subRules.removeIf(list -> list.size() == 0);
     }
 
-    public boolean containLeftRecursiveProd() {
-        for (LinkedList<Rule> prod : subRules) {
-            try {
-                if (prod.getFirst().getName().equals(getName())) {
-                    // System.out.println(this.getName() + " contains a left recursive production "
-                    // + prod);
-                    return true;
-                }
-            } catch (NoSuchElementException e) {
-                System.err.println(prod + " in " + this);
-            }
-        }
-        // System.out.println(this.getName() + " does not contains a left recursive
-        // production ");
-        return false;
+
+
+    public boolean containsImmediateLR() {
+        return subRules.stream()
+                .map(Rule::getFirstSingularRule)
+                .anyMatch(this::equals);
     }
+
+    public static Rule getFirstSingularRule(List<Rule> targetProd) {
+        return Gram.getAllSelectables(targetProd).stream().filter(Rule::isSingular).findFirst().get();
+    }
+ 
 
     public void removeEpsilon() {
         subRules.removeIf(prod -> prod.getFirst().equals(EPSILON));
@@ -651,56 +684,7 @@ public class Rule {
         prodToGroup.set(startIndex, newRule);
     }
 
-    /**
-     * Attempts to expand out a bracketd rule into its constituent rules
-     */
-    public void unGroupProductions() {
-        if (this.equals(EPSILON))
-            return;
-        // Compute expandable indices
-        LinkedList<Rule> expandables = new LinkedList<Rule>();
-        LinkedList<int[]> indices = new LinkedList<int[]>();
-        int prodIndex = 0;
-        for (LinkedList<Rule> prods : subRules) {
-            int ruleIndex = 0;
-            for (Rule rule : prods) {
-                if (rule.name.contains(" ") && !rule.equals(EPSILON)) {
-                    expandables.add(rule);
-                    int[] index = { prodIndex, ruleIndex };
-                    indices.add(index);
-                }
-                ruleIndex++;
-            }
-            prodIndex++;
-        }
-        int toExpandIndex = randInt(expandables.size());
-        Rule toExpand = expandables.get(toExpandIndex);
-        int[] index = indices.get(toExpandIndex);
-
-        // 50% of the time we try to expand a subrule, if there are no expandable
-        // subrules ungroup will return false and the not will become true
-        if (!(Math.random() < 0.5 && toExpand.canUngroup())) {
-            List<Rule> toInsert = toExpand.subRules.get(0);
-            LinkedList<Rule> prod = subRules.get(index[0]);
-            prod.remove(index[1]);
-            Collections.reverse(toInsert);
-            toInsert.forEach(rule -> prod.add(index[1], rule));
-            subRules.set(index[0], prod);
-        }
-    }
-
-    public boolean canUngroup() {
-        if (isSingular())
-            return false;
-        for (LinkedList<Rule> prods : subRules) {
-            for (Rule rule : prods) {
-                if (!rule.isSingular())
-                    return true;
-            }
-        }
-        return false;
-    }
-
+   
     public static int randInt(int bound) {
         return ThreadLocalRandom.current().nextInt(bound);
     }
@@ -737,34 +721,6 @@ public class Rule {
         if (this.equals(EPSILON))
             return "EPSILON";
         return getName();
-    }
-
-    /**
-     * Inserts toAdd at a random position on the RHS of this rule Changes toAdd to
-     * be a minor rule if it is not
-     */
-    public void extend(Rule toAdd) {
-        if (toAdd.mainRule) {
-            toAdd.mainRule = false;
-            toAdd.singular = true;
-        }
-
-        LinkedList<Rule> prod = randGet(subRules);
-        // If the selected production was epsilon leave it and add a new production
-        if (prod.getFirst().equals(EPSILON)) {
-            LinkedList<Rule> newProd = new LinkedList<Rule>();
-            newProd.add(toAdd);
-            subRules.add(newProd);
-            return;
-        }
-        int ruleIndex = randInt(prod.size());
-        Rule toShift = prod.get(ruleIndex);
-
-        if (!toShift.isSingular()) {
-            toShift.extend(toAdd);
-        } else {
-            prod.add(ruleIndex, toAdd);
-        }
     }
 
     /**
@@ -821,19 +777,6 @@ public class Rule {
         subRules.removeIf(prod -> prod.size() == 0);
     }
 
-    /***
-     * Computes the number of top level rules on the RHS of this
-     * rule: (A B C) | A B; would count as 3
-     * @return
-     */
-    public int getSymbolCount() {
-        int out = 0;
-        for (LinkedList<Rule> prod : subRules) {
-            out += prod.size();
-        }
-        return out;
-    }
-
     public boolean containsInfLoop(ArrayList<Rule> parserRules, String touchedRules) {
         if (containsEpsilon())
             return false;
@@ -887,7 +830,7 @@ public class Rule {
 
 
     public String stringSelectables() {
-        System.err.println("Calling string selectables on " + this + (singular ? " singular " : "") + (mainRule ? " main " : "") + " selectables: " + getTotalSelectables());
+        // System.err.println("Calling string selectables on " + this + (singular ? " singular " : "") + (mainRule ? " main " : "") + " selectables: " + getTotalSelectables());
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < getTotalSelectables(); i++) {
             Rule currRule = getSelectable(i);
@@ -896,5 +839,7 @@ public class Rule {
         }
         return out.toString();
     }
+
+
 
 }

@@ -368,6 +368,8 @@ public class Gui extends Application {
                 App.setRunOut(runOut);
                 // App.setRunLogOutput(logOut);
                 App.demoMainProgram();
+                // Constants.USE_LOCALIZATION = false;
+                // App.demoMainProgram();
                 return null;
             }
 
