@@ -1,26 +1,22 @@
 package stb;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javafx.application.Application;
 import static java.util.Comparator.reverseOrder;
@@ -52,9 +48,17 @@ public class App {
     static List<Gram> myGrammars;
     
     public static int TOUR_SIZE = 6;
+
+    private interface loggerFunc {
+        public Double getVal(Object in);
+    }
+
+
     
     // Used to record the min, avg, max score for a given generation
     static HashMap<String, LinkedList<Double>> scores = new HashMap<>();
+    static HashMap<String, loggerFunc> logFuncs = new HashMap<>();
+
     static String MIN_SCORE_METRIC = "MIN_SCORE_METRIC";
     static String AVG_SCORE_METRIC = "AVG_SCORE_METRIC";
     static String MAX_SCORE_METRIC = "MAX_SCORE_METRIC";
@@ -69,9 +73,19 @@ public class App {
     static String DEL_SEL = "DEL_SEL";
     static String RAN_SEL = "RAN_SEL";
     static String SOURCE_TIME_SEL = "SOURCE_TIME_METRIC";
-    static String MUTANT_COMP_TIME = "MCT";
+    static String MUTANT_COMP_TIME = "MUTANT_COMPUTATION_TIME";
     static String LOCALIZATION_TIME = "LOCAL_TIME";
     static String TEST_TIME = "TEST_TIME";
+    static String LR_RECURS = "LR_RECURS";
+    static String TOTAL_MUTS = "TOTAL_MUTS";
+    
+
+    
+    static List<String> LOG_EVERY_GEN = List.of(MIN_SCORE_METRIC, AVG_SCORE_METRIC, MAX_SCORE_METRIC, SCORE_DELTA_METRIC, 
+                            NUM_PASS_POS_METRIC, NUM_PASS_NEG_METRIC, NUM_PASS_TOT_METRIC, 
+                            TIME_PER_GEN_METRIC, TOTAL_GRAMMARS_METRIC, HASH_TABLE_HITS_METRIC);
+
+
     
     // Can reduce memory footprint my storing grammarStrings in positiveGrammars and
     // reconstructing when needed
@@ -103,12 +117,7 @@ public class App {
             perfectGrammars.clear();
             startTime = System.currentTimeMillis();
             rloSetText("Inferring " + Constants.CURR_GRAMMAR_NAME + " with localisation\n");
-            scores.put(RAW_SEL, new LinkedList<>());
-            scores.put(DEL_SEL, new LinkedList<>());
-            scores.put(RAN_SEL, new LinkedList<>());
-            scores.put(MUTANT_COMP_TIME, new LinkedList<>());
-            scores.put(LOCALIZATION_TIME, new LinkedList<>());
-            scores.put(TEST_TIME, new LinkedList<>());
+            
             myGrammars = GrammarGenerator.generateLocalisablePop(Constants.INIT_POP_SIZE_LOCAL);
             rloAppendText("Generated " + myGrammars.size() + " base grammars\n");
             
@@ -132,6 +141,8 @@ public class App {
                     rloAppendText("Computing mutants\n");
                     long timeStart = System.nanoTime();
                     
+                    Gram.currGramNum = 0;
+                    Gram.totalBaseGrams = myGrammars.size();
                     List<Gram> allMutants = myGrammars.stream()
                                         .map(Gram::computeMutants)
                                         .flatMap(LinkedList<Gram>::stream)
@@ -142,11 +153,10 @@ public class App {
                     timeStart = System.nanoTime();
                     allMutants.forEach(App::runTests);
                     testingTime.add((System.nanoTime()-timeStart)/Math.pow(10,9));
-                    Collection<Double> myGrams;
-					allMutants.removeIf(Gram.passesPosTest.negate());
-                                            
-                    scores.get(TEST_TIME).add(testingTime.stream().reduce(0.0, ((x1,x2) -> x1+x2)));
-                    scores.get(MUTANT_COMP_TIME).add(mutTime.stream().reduce(0.0, ((x1,x2) -> x1+x2)));
+                    allMutants.removeIf(Gram.passesPosTest.negate());
+
+                    recordMetric(TEST_TIME, testingTime.stream().reduce(0.0, Double::sum));
+                    recordMetric(MUTANT_COMP_TIME, mutTime.stream().reduce(0.0, Double::sum));
                     logMetric(MUTANT_COMP_TIME);
                     logMetric(TEST_TIME);
 
@@ -163,18 +173,16 @@ public class App {
                     allMutants.stream().filter(notYetChecked).sorted(reverseOrder()).limit(15).forEach(totalPop::add);
                     
                     double rawSel = (System.nanoTime()-timeStart)/Math.pow(10,9);
-                    scores.get(RAW_SEL).add(rawSel);
+                    recordMetric(RAW_SEL, rawSel);
                     timeStart = System.nanoTime();
                     
                     allMutants.stream().sorted(reverseOrder()).limit(15).forEach(totalPop::add);
-
-                    scores.get(RAN_SEL).add((System.nanoTime()-timeStart)/Math.pow(10,9));
                     
                     allMutants.stream().filter(notYetChecked).sorted((g0, g1) -> -1 * Gram.CompPosScoreDelta(g0, g1))
                     .limit(15).forEach(totalPop::add);
                     
                     double delSel = (System.nanoTime()-timeStart)/Math.pow(10,9);
-                    scores.get(DEL_SEL).add(delSel);
+                    recordMetric(DEL_SEL, delSel);
                     timeStart = System.nanoTime();
                     // Add random grammars as well
                     totalPop.addAll(randomSelection(allMutants, 15));
@@ -239,7 +247,7 @@ public class App {
                 for (int i = 0; i < nextGenSize; i++) {
                     myGrammars.add(tournamentSelect(totalPop, tourSize));
                 }
-                recordMetrics(myGrammars);
+                recordPopMetrics(myGrammars);
                 logMetric(MAX_SCORE_METRIC);
                 logMetric(NUM_PASS_TOT_METRIC);
                 logMetric(TIME_PER_GEN_METRIC);
@@ -250,6 +258,14 @@ public class App {
                 logMetric(RAW_SEL);
                 logMetric(DEL_SEL);
                 logMetric(RAN_SEL);
+
+                recordMetric(LR_RECURS, Double.valueOf(Gram.NUM_LR));
+                recordMetric(TOTAL_MUTS, Double.valueOf(Gram.NUM_MUTS));
+                logMetric(LR_RECURS);
+                logMetric(TOTAL_MUTS);
+
+                
+                
                 try(FileWriter out = new FileWriter(new File(Constants.LOG_DIR+"/"+ (Constants.USE_LOCALIZATION ? "local_" : "") +System.nanoTime()))) {
                     out.write(bestGrammar.fullHashString());
                 } catch(Exception e) {
@@ -268,7 +284,8 @@ public class App {
                     }
                 });
 
-                scores.get(LOCALIZATION_TIME).add((System.nanoTime()-timeStart)/Math.pow(10, 9));
+                double localizationTime = (System.nanoTime()-timeStart)/Math.pow(10, 9);
+                recordMetric(LOCALIZATION_TIME, localizationTime);
                 logMetric(LOCALIZATION_TIME);
 
                 // int grammarsToCarry = Constants.POP_SIZE - Constants.FRESH_POP_PER_GEN;
@@ -642,62 +659,39 @@ public class App {
         return new LinkedList<>(out);
     }
 
-    public static void recordMetrics(List<Gram> pop) {
-        
-        scores.putIfAbsent(MIN_SCORE_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(AVG_SCORE_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(MAX_SCORE_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(SCORE_DELTA_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(NUM_PASS_POS_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(NUM_PASS_NEG_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(NUM_PASS_TOT_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(TIME_PER_GEN_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(TOTAL_GRAMMARS_METRIC, new LinkedList<Double>());
-        scores.putIfAbsent(HASH_TABLE_HITS_METRIC, new LinkedList<Double>());
+    /**
+     * Records all metrics relating to the entire pop
+     * @param pop
+     */
+    public static void recordPopMetrics(List<Gram> pop) {
         
         double minScore = pop.stream().mapToDouble(Gram::getScore).min().getAsDouble();
         double avgScore = pop.stream().mapToDouble(Gram::getScore).average().getAsDouble();
         double maxScore = pop.stream().mapToDouble(Gram::getScore).max().getAsDouble();
-        double scoreDelta = scores.get(MAX_SCORE_METRIC).size() == 0 ? 0 : maxScore - scores.get(MAX_SCORE_METRIC).getLast();
+        double scoreDelta = scores.getOrDefault(MAX_SCORE_METRIC, new LinkedList<>()).size() == 0 ? 0 : maxScore - scores.get(MAX_SCORE_METRIC).getLast();
         double posTestPass = pop.stream().mapToLong(Gram::numPassPos).max().getAsLong();
         double negTestPass = pop.stream().mapToLong(Gram::numPassNeg).max().getAsLong();
         double allTestPass = negTestPass+posTestPass;
         double timeTaken = (System.nanoTime()-startTime)/(Math.pow(10,9));
         double numGrams = generatedGrammars.size();
 
-        scores.get(MIN_SCORE_METRIC).add(minScore);
-        scores.get(AVG_SCORE_METRIC).add(avgScore);
-        scores.get(MAX_SCORE_METRIC).add(maxScore);
-        scores.get(SCORE_DELTA_METRIC).add(scoreDelta);
-        scores.get(NUM_PASS_POS_METRIC).add(posTestPass);
-        scores.get(NUM_PASS_NEG_METRIC).add(negTestPass);
-        scores.get(NUM_PASS_TOT_METRIC).add(allTestPass);
-        scores.get(TIME_PER_GEN_METRIC).add(timeTaken);
-        scores.get(TOTAL_GRAMMARS_METRIC).add(numGrams);
-        scores.get(HASH_TABLE_HITS_METRIC).add(hashtableHits*1.0);
+        recordMetric(MIN_SCORE_METRIC, minScore);
+        recordMetric(AVG_SCORE_METRIC, avgScore);
+        recordMetric(MAX_SCORE_METRIC, maxScore);
+        recordMetric(SCORE_DELTA_METRIC, scoreDelta);
+        recordMetric(NUM_PASS_POS_METRIC, posTestPass);
+        recordMetric(NUM_PASS_NEG_METRIC, negTestPass);
+        recordMetric(NUM_PASS_TOT_METRIC, allTestPass);
+        recordMetric(TIME_PER_GEN_METRIC, timeTaken);
+        recordMetric(TOTAL_GRAMMARS_METRIC, numGrams);
+        recordMetric(HASH_TABLE_HITS_METRIC, Double.valueOf(hashtableHits));
     }
 
-    void recordSels(double raw, double del, double rand) {
-        if(scores.isEmpty()) {
-            scores.put(MIN_SCORE_METRIC, new LinkedList<Double>());
-            scores.put(AVG_SCORE_METRIC, new LinkedList<Double>());
-            scores.put(MAX_SCORE_METRIC, new LinkedList<Double>());
-            scores.put(SCORE_DELTA_METRIC, new LinkedList<Double>());
-            scores.put(NUM_PASS_POS_METRIC, new LinkedList<Double>());
-            scores.put(NUM_PASS_NEG_METRIC, new LinkedList<Double>());
-            scores.put(NUM_PASS_TOT_METRIC, new LinkedList<Double>());
-            scores.put(TIME_PER_GEN_METRIC, new LinkedList<Double>());
-            scores.put(TOTAL_GRAMMARS_METRIC, new LinkedList<Double>());
-            scores.put(HASH_TABLE_HITS_METRIC, new LinkedList<Double>());
-            scores.put(RAW_SEL, new LinkedList<Double>());
-            scores.put(DEL_SEL, new LinkedList<Double>());
-            scores.put(RAN_SEL, new LinkedList<Double>());
-        }
-
-        scores.get(RAW_SEL).add(raw);
-        scores.get(DEL_SEL).add(del);
-        scores.get(RAN_SEL).add(rand);
+    public static void recordMetric(String key, Double val) {
+        scores.putIfAbsent(key, new LinkedList<Double>());
+        scores.get(key).add(val);
     }
+
 
     public static List<Gram> selectNewPop(List<Gram> currGen, List<Gram> HOF) {
         List<Gram> out = new LinkedList<>();

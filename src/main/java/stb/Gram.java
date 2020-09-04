@@ -15,11 +15,13 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toCollection;
 import static java.lang.String.format;
-import java.util.stream.Stream;
+import static stb.App.logMetric;
+import static stb.App.recordMetric;
 
 public class Gram implements Comparable<Gram> {
     
@@ -31,12 +33,17 @@ public class Gram implements Comparable<Gram> {
     public static final String MODEXSTPROD_MUTATION = "M";
     public static final String NEWPROD_MUTATION = "NP";
     public static final String SYMCOUNT_MUTATION = "S";
+    
     public static int NUM_SUGGESTED_MUTANTS = 5;
-
+    public static int NUM_LOGS = 0;
+    public static int NUM_LR = 0;
+    public static int NUM_MUTS = 0;
     public static Predicate<Gram> passesAnyTest = gram -> gram.getScore() > 0 && !gram.toRemove();
     public static Predicate<Gram> passesPosTest = gram -> gram.getPosScore() > 0 && !gram.toRemove();
 
     public int genNum = 0;
+    public static int currGramNum = 0;
+    public static int totalBaseGrams = 0;
 
     private File grammarFile;
     private List<String> fileLines = new LinkedList<String>();
@@ -1317,10 +1324,17 @@ public class Gram implements Comparable<Gram> {
                     toAdd.removeDuplicateProductions();
                     toAdd.mutHist.add("Final Gram " + toAdd.toString());
                     // toAdd.removeUnreachableBoogaloo();
+                    NUM_MUTS++;
+                    boolean LrDeriv = toAdd.containsImmediateLRDeriv();
+                    if(LrDeriv) NUM_LR++;
 
-                    if (App.gramAlreadyChecked(toAdd) || toAdd.containsImmediateLRDeriv()) {
-                        mutantNum--;
-                        System.err.println("Reseting mutatnt comp " + (toAdd.containsImmediateLRDeriv() ? toAdd : ""));
+                   
+                    boolean alreadyChecked = App.gramAlreadyChecked(toAdd);
+                    if (alreadyChecked || LrDeriv) {
+                        // if(NUM_LOGS++ < 20) {
+                        //     System.err.println("Reseting mutatnt comp " + (LrDeriv ? "LRDeriv" : "") + (alreadyChecked ? "Already Checked" : ""));
+                        //     System.err.println(toAdd.toString());
+                        // }
                         continue;
                     } else {
                         // currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
@@ -1339,7 +1353,7 @@ public class Gram implements Comparable<Gram> {
                 }
             }
         });
-        
+        System.err.println("Done comping for " + currGramNum++ + "/" + totalBaseGrams);
         return out;
 
     }

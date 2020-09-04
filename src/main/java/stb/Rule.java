@@ -601,15 +601,12 @@ public class Rule {
     }
 
     public boolean containsEpsilon() {
+        //TODO this is not found sometimes fix it
         // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
         // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
-        try{
             return subRules.stream().map(LinkedList::getFirst).map(EPSILON::equals).reduce(false,
                     (prev, next) -> prev || next);
-        } catch (Exception e) {
-            System.err.println("Error while searching for EPSILON in " + stringSelectables());
-            return false;
-        }   
+        
     }
 
 
