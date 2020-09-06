@@ -34,7 +34,7 @@ public class Gram implements Comparable<Gram> {
     public static final String NEWPROD_MUTATION = "NP";
     public static final String SYMCOUNT_MUTATION = "S";
     
-    public static int NUM_SUGGESTED_MUTANTS = 5;
+    public static int NUM_SUGGESTED_MUTANTS = 20;
     public static int NUM_LOGS = 0;
     public static int NUM_LR = 0;
     public static int NUM_MUTS = 0;
@@ -234,7 +234,9 @@ public class Gram implements Comparable<Gram> {
             while (toInsert.equals(toReplace)) {
                 toInsert = randGet(allRules, true);
             }
-            currMut.append("New rule would have had len so inserting " + toInsert + "\n");
+            currMut.append("New rule would have had len 1 so inserting " + toInsert + "\n");
+        } else if(parserRules.size() == Constants.MAX_RULE_COUNT) {
+            return;
         } else {
             int newRuleIndex = 1 + randInt(parserRules.size() - 1);
             generateNewRule(genRuleName(), newRuleLen, newRuleIndex);
@@ -512,6 +514,7 @@ public class Gram implements Comparable<Gram> {
         int toChangeIndex = randInt(mainToChange.getTotalSelectables());
 
         if (toChangeIndex == 0) {
+            mainToChange.printParent = (String whatever) -> flagForRemoval();
             if (!mainToChange.containsEpsilon()) {
                 mainToChange.addEpsilon();
                 cleanReferences(mainToChange);
@@ -543,6 +546,7 @@ public class Gram implements Comparable<Gram> {
      * @return
      */
     public LinkedList<String> constrNullable() {
+        for(Rule rule : parserRules) rule.printParent = (String what) -> flagForRemoval();
         LinkedList<String> nullableNames = new LinkedList<String>();
         parserRules.stream()
         .filter(Rule::containsEpsilon)
@@ -735,17 +739,35 @@ public class Gram implements Comparable<Gram> {
     }
 
     public boolean containsImmediateLRDeriv() {
-       return parserRules.stream().anyMatch(rule -> containsImmediateLRDeriv(rule, new ArrayList<Rule>()));
+        List<String> nullables = constrNullable();
+        List<Rule> start = new ArrayList<>();
+        List<Rule> visitedRules = new ArrayList<>();
+        for(Rule rule : parserRules) {
+            start.add(rule);
+            if(containsImmediateLRDeriv(start, visitedRules, nullables)) return true;
+            start.clear();
+            visitedRules.clear();
+        }
+       return false;
     }
 
-    private boolean containsImmediateLRDeriv(Rule startRule, List<Rule> visitedRules) {
+    private boolean containsImmediateLRDeriv(List<Rule> startRules, List<Rule> visitedRules, List<String> nullables) {
         //If we have already visited this rule then we are in a loop
-        if(startRule.isTerminal()) return false;
-        if(visitedRules.contains(startRule)) return true;
-        visitedRules.add(startRule);
-        return getRuleByName(startRule.name).getSubRules().stream()
-            .anyMatch(prod -> containsImmediateLRDeriv(Rule.getFirstSingularRule(prod), visitedRules));
-            
+        startRules.removeIf(Rule::isTerminal);
+        if(startRules.size() == 0) return false;
+        if(visitedRules.stream().anyMatch(startRules::contains)) ;
+        if(visitedRules.stream().anyMatch(startRules::contains)) return true;
+        for(Rule rule : startRules) {
+            visitedRules.add(rule);
+            Rule targetRule = getRuleByName(rule.name);
+            List<Rule> newStarts = targetRule.getFirstSingWOptional(nullables);
+            if(containsImmediateLRDeriv(newStarts, visitedRules, nullables)) {
+                // System.err.println(targetRule.getName() + " triggers LRDeriv visited rules " + visitedRules.stream().map(Rule::getName).collect(Collectors.joining(", ")));
+                return true;
+            } 
+            visitedRules.remove(rule);
+        }
+       return false;     
     }
 
 
@@ -805,7 +827,6 @@ public class Gram implements Comparable<Gram> {
             currMut.append("Removing " + getSelectable(targetProd, index) + " at index " + index);
             removeSelectable(targetProd, index);
 
-            setName(getName() + "_" + SYMCOUNT_MUTATION);
         }
         currMut.append("\n\n" + "Results in " + this + "\n\n");
         mutHist.add(currMut.toString());
@@ -1268,6 +1289,7 @@ public class Gram implements Comparable<Gram> {
                     // contracting rule
                     if (Constants.CHANGE_RULE_COUNT && Math.random() < Constants.P_CHANGE_RULE_COUNT) {
                         // if(Math.random() < Constants.P_ADD_RULE) {
+
                             toAdd.genNewNT(targetProd);
                         // } else {
                             // toAdd.removeRule(targetProd);
@@ -1308,13 +1330,21 @@ public class Gram implements Comparable<Gram> {
                     if (Constants.HEURISTIC && Math.random() < Constants.P_H) {
                         // System.out.println("Heuristic on " + toAdd.getName());
                         // boolean nullGoingIn = 
+                        List<String> initialNullables = toAdd.constrNullable();
                         toAdd.applyHeuristic(targetProd);
                         if(toAdd.nullable(targetRuleName)) {
                             toAdd.currMut.append(targetRuleName + " is now nullable cleaning references");
                             toAdd.cleanReferences(targetRule);
                             toAdd.currMut.append("Results in " + toAdd.toString());
                         }
-                        toAdd.cleanEmptyClosure(targetProd);
+                        
+                        List<String> newNullables = toAdd.constrNullable();
+                        newNullables.removeAll(initialNullables);
+
+                        //If we have more nullable rules after applying heuristic then we should go through all rules and remove closures
+                        newNullables.stream().map(toAdd::getRuleByName).forEach(toAdd::cleanReferences);
+                        if(newNullables.size() > 0) toAdd.cleanAllEmptyClosures();
+                        
                         toAdd.mutHist.add(toAdd.currMut.toString());
                         
                         // System.out.println(toAdd);
@@ -1328,7 +1358,11 @@ public class Gram implements Comparable<Gram> {
                     boolean LrDeriv = toAdd.containsImmediateLRDeriv();
                     if(LrDeriv) NUM_LR++;
 
-                   
+                   if(toAdd.toRemove() || toAdd.toString().contains("++")) {
+                        toAdd.logGrammar(true);
+                        if(toAdd.toString().contains("++")) toAdd.mutHist.add("\nplusses " +  stringProd(targetProd));
+                        // if(NUM_LOGS++ == 10) System.exit(1);
+                   }
                     boolean alreadyChecked = App.gramAlreadyChecked(toAdd);
                     if (alreadyChecked || LrDeriv) {
                         // if(NUM_LOGS++ < 20) {
@@ -1353,7 +1387,7 @@ public class Gram implements Comparable<Gram> {
                 }
             }
         });
-        System.err.println("Done comping for " + currGramNum++ + "/" + totalBaseGrams);
+        System.err.println("Done comping for " + ++currGramNum + "/" + totalBaseGrams);
         return out;
 
     }
@@ -1411,6 +1445,7 @@ public class Gram implements Comparable<Gram> {
         while (nullable(toSelect.getName()) && counter++ < 5) {
             toSelect = getSelectable(prod, randInt(totalSelectables));
         }
+        if(counter == 5) return;
 
         double choice = Math.random();
         currMut = new StringBuilder(format("Applying heuristic choice %f to %s in %s", choice, toSelect.toString(), stringProd(prod)));
@@ -1670,10 +1705,11 @@ public class Gram implements Comparable<Gram> {
         }).collect(Collectors.joining(" ")) + " |";
     }
 
-    public void logGrammar() {
+    public void logGrammar(boolean logMutHist) {
         try (FileWriter out = new FileWriter(new File(Constants.LOG_GRAMMAR_PATH + grammarName + ".g4"))) {
-            out.write(hashString());
+            out.write(hashString() + "\n");
             out.write(prettyPrintRules(terminalRules));
+            out.write("\n"+ mutHist.stream().collect(Collectors.joining("\n")));
         } catch (Exception e) {
 
         }
@@ -1883,6 +1919,23 @@ public class Gram implements Comparable<Gram> {
             }
         });
     }
+
+    public void cleanEmptyClosure(List<Rule> targetProd, List<String> nullables) {
+        getAllSelectables(targetProd).stream()
+            .filter(rule -> !rule.isSingular())
+            .forEach(rule -> {
+            if(rule.nullable(nullables) && (rule.isIterative() || rule.isOptional())) {
+                mutHist.add(rule  + " is nullable and a closure\n");
+                rule.setIterative(false);
+                rule.setOptional(false);
+            }
+        });
+    }
+
+    public void cleanAllEmptyClosures() {
+        List<String>  nullables = constrNullable();
+        parserRules.forEach(rule -> rule.getSubRules().forEach(prod -> cleanEmptyClosure(prod, nullables)));
+    }
     
 
     public static List<Rule> getAllSelectables(List<Rule> targetProd)  {
@@ -1890,5 +1943,9 @@ public class Gram implements Comparable<Gram> {
                  .map(Rule::getAllSelectables)
                  .flatMap(List::stream)
                  .collect(toCollection(ArrayList::new));
+    }
+
+    public static List<Rule> getAllFirstSingWOptional(Rule targetRule, List<String> nullables)  {
+        return targetRule.getFirstSingWOptional(nullables);
     }
 }

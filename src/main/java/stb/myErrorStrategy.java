@@ -15,7 +15,7 @@ public class myErrorStrategy extends DefaultErrorStrategy{
 			context.exception = e;
 		}
         // System.out.println("recover context " + recognizer.getContext());
-        throw new ParseCancellationException("Fuck recover");
+        throw new ParseCancellationException("recover");
     }
 
     /** Make sure we don't attempt to recover inline; if the parser
@@ -30,7 +30,7 @@ public class myErrorStrategy extends DefaultErrorStrategy{
 			context.exception = e;
 		}
 
-        throw new ParseCancellationException("Fuck inLine");
+        throw new ParseCancellationException("inLine");
     }
 
     /** Make sure we don't attempt to recover from problems in subrules. */

@@ -55,14 +55,14 @@ public class Constants {
 	public static boolean CROSSOVER = false;
     
     public static int INIT_POP_SIZE = 10000;
-    public static int INIT_POP_SIZE_LOCAL = 5;
-    public static int POP_SIZE = 100;
+    public static int INIT_POP_SIZE_LOCAL = 200;
+    public static int POP_SIZE = 200;
     public static int MAX_GRAMMARS = 2000;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
     //How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
-    public static int NUM_ITERATIONS = 30;
+    public static int NUM_ITERATIONS = 100;
     public static int NUM_NEGATIVE_ITERATIONS = 10;
 	public static int RULENAME_LEN = 10;
     public static int MAX_RULE_COUNT = 5;

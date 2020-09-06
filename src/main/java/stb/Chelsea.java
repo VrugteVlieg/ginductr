@@ -111,7 +111,7 @@ public class Chelsea {
      * 
      * @param grammar
      */
-    public static void generateSources(Gram grammar, lamdaArg removeCurr) {
+    public static void generateSources(Gram grammar) {
         myReader = grammar;
         String finName = "default";
         Map<String, Class<?>> hm = null;
@@ -139,7 +139,7 @@ public class Chelsea {
             tool.process(g, true);
             // System.err.println("Tool done");
             if (tool.getNumErrors() != 0) {
-                removeCurr.removeGrammar();
+                grammar.flagForRemoval();
             }
 
             // Compile source files
@@ -166,7 +166,8 @@ public class Chelsea {
         } catch (Exception e) {
             e.printStackTrace(System.err);
             myReader.mutHist.add(e.toString());
-            System.err.println(myReader.mutHist.stream().collect(Collectors.joining("\n")));
+            myReader.logGrammar(true);
+            // System.err.println(myReader.mutHist.stream().collect(Collectors.joining("\n")));
             if (hm == null) {
                 System.out.println("Looking for " + myReader + "\n found");
                 List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
@@ -177,7 +178,7 @@ public class Chelsea {
                 // System.out.println(hm.keySet());
             }
 
-            removeCurr.removeGrammar();
+            grammar.flagForRemoval();
         }
     }
 
@@ -260,7 +261,7 @@ public class Chelsea {
      * @throws InstantiationException
      * @throws NoSuchMethodException
      */
-    public static int[] runTestcases(lamdaArg removeCurr, String mode) throws IOException, IllegalAccessException,
+    public static int[] runTestcases( String mode) throws IOException, IllegalAccessException,
             InvocationTargetException, InstantiationException, NoSuchMethodException {
 
         // output array {numPasses, numTests}
@@ -327,8 +328,8 @@ public class Chelsea {
 
             } catch (NoSuchMethodException e) {
                 // System.err.println("No such method exception " + e.getCause());
-                System.out.println("Removing " + myReader.getName() + " from grammar");
-                removeCurr.removeGrammar();
+                System.err.println("Removing " + myReader.getName() + " from grammarList");
+                myReader.flagForRemoval();
             } catch (Exception e) {
                 failingTests.push(test);
             } finally {

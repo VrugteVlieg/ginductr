@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toList;
 
 public class Rule {
     public String name;
@@ -19,6 +20,7 @@ public class Rule {
     private String ruleText;
 
     public static final Rule EPSILON = new Rule(" ");
+    public outputLambda printParent;
 
     public static Rule EPSILON() {
         Rule out = new Rule(" ");
@@ -279,6 +281,7 @@ public class Rule {
         if (isSingular() || mainRule) {
             out.append(name);
         } else {
+            out.append("(");
             for (LinkedList<Rule> prod : subRules) {
                 for (int i = 0; i < prod.size(); i++) {
                     if (i != prod.size() - 1) {
@@ -287,11 +290,8 @@ public class Rule {
                         out.append(prod.get(i).toString());
                     }
                 }
-            }
-            if (out.toString().contains(" ")) {
-                out.insert(0, "(");
-                out.append(")");
-            }
+            }            
+            out.append(")");
         }
 
         if (optional && iterative) {
@@ -463,6 +463,41 @@ public class Rule {
         return out;
     }
 
+
+    /**
+     * Returns all of the possible rules that can start this rule
+     * 
+     * @return
+     */
+    public LinkedList<Rule> getFirstSingWOptional(List<String> nullables) {
+        LinkedList<Rule> out = new LinkedList<>();
+        
+        if (isSingular() && !mainRule) {
+            out.add(new Rule(this));
+            return out;
+        } 
+        //This only happens when a rule is main or composite, main rules can never be optional
+        for (LinkedList<Rule> subSet : subRules) {
+            for (Rule subRule : subSet) {
+                LinkedList<Rule> currRules = subRule.getFirstSingWOptional(nullables);
+                out.addAll(currRules);
+                if(!currRules.getLast().isOptional() && !currRules.getLast().nullable(nullables)) break;
+            }
+        }
+        if(isOptional()) out.forEach(rule -> rule.setOptional(true));
+        return out;
+    }
+
+    // public static LinkedList<Rule> getFirstSingWOptional(List<Rule> targetProd) {
+    //     LinkedList<Rule> out  = new LinkedList<Rule>();
+    //     for (Rule subRule : targetProd) {
+    //         LinkedList<Rule> currRules = subRule.getFirstSingWOptional();
+    //         out.addAll(currRules);
+    //         if(!currRules.getLast().isOptional()) break;
+    //     }
+    //     return out;
+    // }
+
     /**
      * 
      */
@@ -567,7 +602,7 @@ public class Rule {
             return false;
         }
 
-        if (nullableNames.contains(getName())) {
+        if (nullableNames.contains(name)) {
             // System.err.println(this + " is already contained in " + nullableNames + " returning true");
             return true;
         }
@@ -604,8 +639,13 @@ public class Rule {
         //TODO this is not found sometimes fix it
         // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
         // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
+        try  {
             return subRules.stream().map(LinkedList::getFirst).map(EPSILON::equals).reduce(false,
                     (prev, next) -> prev || next);
+        } catch (Exception e) {
+            printParent.output("toOutput");
+            return false;
+        }
         
     }
 
@@ -644,8 +684,20 @@ public class Rule {
     }
 
     public static Rule getFirstSingularRule(List<Rule> targetProd) {
-        return Gram.getAllSelectables(targetProd).stream().filter(Rule::isSingular).findFirst().get();
+        List<Rule> singulars = Gram.getAllSelectables(targetProd).stream().filter(Rule::isSingular).collect(toList());
+        List<Rule>  out = new LinkedList<Rule>();
+        for(Rule rule : singulars) {
+            out.add(rule);
+            if(!rule.optional) break;
+        }
+        System.err.println("First possibilities  " + out.stream().map(Rule::toString).collect(Collectors.joining(", ")));
+        return singulars.get(0);
     }
+
+    // public Rule getFirstSingularRule() {
+    //     if(isSingular()) return this;
+
+    // }
  
 
     public void removeEpsilon() {

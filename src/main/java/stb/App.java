@@ -32,8 +32,12 @@ public class App {
     static int numTests = 0;
     static List<Double> testingTime = new LinkedList<Double>();
     static List<Double> mutTime = new LinkedList<Double>();
-    static double codeGenTime = 0;
     static long startTime = 0;
+    static int numToTest = 0;
+    static int currTestNum = 0;
+    static long codeGenTime = 0;
+    static long posTestTime = 0;
+    static long negTestTime = 0;
     
     static LinkedList<Gram> totalPop = new LinkedList<Gram>();
     
@@ -78,6 +82,9 @@ public class App {
     static String TEST_TIME = "TEST_TIME";
     static String LR_RECURS = "LR_RECURS";
     static String TOTAL_MUTS = "TOTAL_MUTS";
+    static String CODE_GEN_TIME = "CODE_GEN_TIME";
+    static String POS_TEST_TIME = "POS_TEST_TIME";
+    static String NEG_TEST_TIME = "NEG_TEST_TIME";
     
 
     
@@ -103,8 +110,10 @@ public class App {
         } else {
             Gram myGram = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
             // myGram.setMutationConsideration(List.of("akfyqsjjzp:2"));
-            List<Rule>  targetProd = myGram.getAllRules().get(0).getSubRules().get(0);
-            myGram.cleanEmptyClosure(targetProd);
+            List<Rule> targetProd = myGram.getAllRules().get(1).getSubRules().get(0);
+            // List<Rule> options = myGram.getAllRules().get(1).getFirstSingWOptional();
+            // System.err.println(options.stream().map(Rule::toString).collect(Collectors.joining(", ")));
+            // myGram.cleanEmptyClosure(targetProd);
             System.err.println(myGram.containsImmediateLRDeriv() ? " contains LR" : "NO LR :((((");
             // myGram.computeMutants();
         }
@@ -126,6 +135,9 @@ public class App {
                 startTime = System.nanoTime();
                 testingTime.clear();
                 mutTime.clear();
+                codeGenTime = 0;
+                posTestTime = 0;
+                negTestTime = 0;
                 rloSetText("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits + "\n");
                 System.err.println("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits);
                 // GNSetText(genNum);
@@ -151,6 +163,8 @@ public class App {
                     mutTime.add((System.nanoTime()-timeStart)/Math.pow(10,9));
                     
                     timeStart = System.nanoTime();
+                    numToTest = allMutants.size();
+                    System.err.println("Testing " + numToTest + " grams");
                     allMutants.forEach(App::runTests);
                     testingTime.add((System.nanoTime()-timeStart)/Math.pow(10,9));
                     allMutants.removeIf(Gram.passesPosTest.negate());
@@ -160,6 +174,15 @@ public class App {
                     logMetric(MUTANT_COMP_TIME);
                     logMetric(TEST_TIME);
 
+                    recordMetric(CODE_GEN_TIME, codeGenTime*1.0);
+                    logMetric(CODE_GEN_TIME);
+
+                    recordMetric(POS_TEST_TIME, posTestTime*1.0);
+                    logMetric(POS_TEST_TIME);
+
+                    recordMetric(NEG_TEST_TIME, negTestTime*1.0);
+                    logMetric(NEG_TEST_TIME);
+                    
                     rloAppendText(allMutants.size() + " total mutants\n");
 
                     // Ensure that grammars that have passed posTests are present in this generation
@@ -195,10 +218,11 @@ public class App {
                 // Add crossover grammars
                 double bestScore = getBestScore();
                 // Only start performing crossover if some decent grammars already exist
-                if (bestScore > 0.6) {
+                if (bestScore > 0.55) {
 
                     ArrayList<Gram> crossoverPop = performCrossover(scoreList, totalPop);
-                    crossoverPop.stream().peek(App::runTests).filter(Gram.passesPosTest).forEach(totalPop::add);
+                    crossoverPop.forEach(App::runTests);
+                    crossoverPop.stream().filter(Gram.passesPosTest).sorted(reverseOrder()).limit(10).forEach(totalPop::add);
 
                 }
 
@@ -301,10 +325,6 @@ public class App {
         } finally {
             System.err.println("Best Grammar " + getBestScore() + "\n" + bestGrammar);
             System.err.println("Floating EOF " + floatingEOF + "genNum " + scores.get(MIN_SCORE_METRIC).size());
-            logMetric(MAX_SCORE_METRIC);
-            logMetric(NUM_PASS_TOT_METRIC);
-            logMetric(TIME_PER_GEN_METRIC);
-            logMetric(TOTAL_GRAMMARS_METRIC);
             try(FileWriter out = new FileWriter(new File(Constants.LOG_DIR+"/"+ (Constants.USE_LOCALIZATION ? "local_" : "") +System.nanoTime()))) {
                 out.write(bestGrammar.fullHashString());
             } catch(Exception e) {
@@ -324,34 +344,36 @@ public class App {
         // System.err.println("Injecting eof");
 
         myReader.injectEOF();
-        lamdaArg removeCurr = () -> myReader.flagForRemoval();
         long startTime = System.nanoTime();
-        Chelsea.generateSources(myReader, removeCurr);
+        Chelsea.generateSources(myReader);
+        codeGenTime += (System.nanoTime()-startTime)/Math.pow(10,9);
         // System.err.println("Sources generated");
         if (myReader.toRemove()) {
             System.err.println("Code gen failed for \n" + myReader);
             return;
         }
 
-        codeGenTime += System.nanoTime() - startTime;
 
         try {
 
-
-            int[] testResult = Chelsea.runTestcases(removeCurr, Constants.POS_MODE);
+            startTime = System.nanoTime();
+            int[] testResult = Chelsea.runTestcases(Constants.POS_MODE);
+            posTestTime += (System.nanoTime()-startTime)/Math.pow(10,9);
             if (myReader.toRemove()) {
                 return;
             }
 
             Constants.positiveScoring.eval(testResult, myReader);
             myReader.stripEOF();
-
+            
             numTests++;
-
+            
             // Only do negative testing if all pos tests pass
             // this || true is to get parity with how localiser hanndles testing
             //you dont have to neg score here, only do pos scoring thats what we care about, can check neg scoring when doing localisation
-            testResult = Chelsea.runTestcases(removeCurr, Constants.NEG_MODE);
+            startTime = System.nanoTime();
+            testResult = Chelsea.runTestcases(Constants.NEG_MODE);
+            negTestTime +=  (System.nanoTime()-startTime)/Math.pow(10,9);
             Constants.negativeScoring.eval(testResult, myReader);
 
         } catch (Exception e) {
@@ -614,7 +636,7 @@ public class App {
             susScore.keySet().stream().sorted(reverseOrder()).map(susScore::get).flatMap(LinkedList::stream)
                     .forEach(out::add);
 
-            System.err.println("Mutation considerations for " + currGrammar + "\n " + out);
+            // System.err.println("Mutation considerations for " + currGrammar + "\n " + out);
             currGrammar.setMutationConsideration(out);
 
         } catch (Exception e) {
