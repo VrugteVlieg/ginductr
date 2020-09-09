@@ -31,13 +31,15 @@ public class App {
     static int floatingEOF = 0;
     static int numTests = 0;
     static List<Double> testingTime = new LinkedList<Double>();
+    static List<Double> codeGenTime = new LinkedList<Double>();
     static List<Double> mutTime = new LinkedList<Double>();
+    static List<Double> posTestTime = new LinkedList<Double>();
+    static List<Double> negTestTime = new LinkedList<Double>();
+    public static int numBrokenGrammars = 0;
     static long startTime = 0;
     static int numToTest = 0;
     static int currTestNum = 0;
-    static long codeGenTime = 0;
-    static long posTestTime = 0;
-    static long negTestTime = 0;
+    
     
     static LinkedList<Gram> totalPop = new LinkedList<Gram>();
     
@@ -85,6 +87,7 @@ public class App {
     static String CODE_GEN_TIME = "CODE_GEN_TIME";
     static String POS_TEST_TIME = "POS_TEST_TIME";
     static String NEG_TEST_TIME = "NEG_TEST_TIME";
+    static String NUM_BROKEN_GRAMMARS = "NUM_BROKEN_GRAMMARS";
     
 
     
@@ -135,9 +138,10 @@ public class App {
                 startTime = System.nanoTime();
                 testingTime.clear();
                 mutTime.clear();
-                codeGenTime = 0;
-                posTestTime = 0;
-                negTestTime = 0;
+                codeGenTime.clear();
+                posTestTime.clear();
+                negTestTime.clear();
+                numBrokenGrammars = 0;
                 rloSetText("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits + "\n");
                 System.err.println("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits);
                 // GNSetText(genNum);
@@ -165,23 +169,14 @@ public class App {
                     timeStart = System.nanoTime();
                     numToTest = allMutants.size();
                     System.err.println("Testing " + numToTest + " grams");
-                    allMutants.forEach(App::runTests);
+                    for(Gram gram : allMutants){
+                        runTests(gram);
+                    }
+                    // allMutants.forEach(App::runTests);
                     testingTime.add((System.nanoTime()-timeStart)/Math.pow(10,9));
                     allMutants.removeIf(Gram.passesPosTest.negate());
 
-                    recordMetric(TEST_TIME, testingTime.stream().reduce(0.0, Double::sum));
-                    recordMetric(MUTANT_COMP_TIME, mutTime.stream().reduce(0.0, Double::sum));
-                    logMetric(MUTANT_COMP_TIME);
-                    logMetric(TEST_TIME);
-
-                    recordMetric(CODE_GEN_TIME, codeGenTime*1.0);
-                    logMetric(CODE_GEN_TIME);
-
-                    recordMetric(POS_TEST_TIME, posTestTime*1.0);
-                    logMetric(POS_TEST_TIME);
-
-                    recordMetric(NEG_TEST_TIME, negTestTime*1.0);
-                    logMetric(NEG_TEST_TIME);
+                    
                     
                     rloAppendText(allMutants.size() + " total mutants\n");
 
@@ -271,6 +266,26 @@ public class App {
                 for (int i = 0; i < nextGenSize; i++) {
                     myGrammars.add(tournamentSelect(totalPop, tourSize));
                 }
+
+
+                recordMetric(MUTANT_COMP_TIME, mutTime.stream().reduce(0.0, Double::sum));
+                logMetric(MUTANT_COMP_TIME);
+
+                recordMetric(TEST_TIME, testingTime.stream().reduce(0.0, Double::sum));
+                logMetric(TEST_TIME);
+
+                recordMetric(CODE_GEN_TIME, codeGenTime.stream().reduce(0.0, Double::sum));
+                logMetric(CODE_GEN_TIME);
+                // blockRead("Code gen took " + codeGenTime.stream().reduce(0.0, Double::sum));
+                recordMetric(POS_TEST_TIME, posTestTime.stream().reduce(0.0, Double::sum));
+                logMetric(POS_TEST_TIME);
+
+                recordMetric(NEG_TEST_TIME, negTestTime.stream().reduce(0.0, Double::sum));
+                logMetric(NEG_TEST_TIME);
+
+                recordMetric(NUM_BROKEN_GRAMMARS, numBrokenGrammars*1.0);
+                logMetric(NUM_BROKEN_GRAMMARS);
+
                 recordPopMetrics(myGrammars);
                 logMetric(MAX_SCORE_METRIC);
                 logMetric(NUM_PASS_TOT_METRIC);
@@ -346,8 +361,9 @@ public class App {
         myReader.injectEOF();
         long startTime = System.nanoTime();
         Chelsea.generateSources(myReader);
-        codeGenTime += (System.nanoTime()-startTime)/Math.pow(10,9);
-        // System.err.println("Sources generated");
+        double thisTime = (System.nanoTime()-startTime)/Math.pow(10,9);
+        System.err.println("Sources generated in " + thisTime);
+        codeGenTime.add(thisTime);
         if (myReader.toRemove()) {
             System.err.println("Code gen failed for \n" + myReader);
             return;
@@ -358,7 +374,8 @@ public class App {
 
             startTime = System.nanoTime();
             int[] testResult = Chelsea.runTestcases(Constants.POS_MODE);
-            posTestTime += (System.nanoTime()-startTime)/Math.pow(10,9);
+            thisTime = (System.nanoTime()-startTime)/Math.pow(10,9);
+            posTestTime.add(thisTime);
             if (myReader.toRemove()) {
                 return;
             }
@@ -373,11 +390,13 @@ public class App {
             //you dont have to neg score here, only do pos scoring thats what we care about, can check neg scoring when doing localisation
             startTime = System.nanoTime();
             testResult = Chelsea.runTestcases(Constants.NEG_MODE);
-            negTestTime +=  (System.nanoTime()-startTime)/Math.pow(10,9);
+            thisTime = (System.nanoTime()-startTime)/Math.pow(10,9);
+            negTestTime.add(thisTime);
             Constants.negativeScoring.eval(testResult, myReader);
 
         } catch (Exception e) {
             System.err.println("Exception in runTests " + e.getCause());
+            
         } finally {
             // Clears out the generated files
             Chelsea.clearGenerated();
