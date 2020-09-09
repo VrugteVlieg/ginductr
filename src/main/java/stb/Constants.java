@@ -55,8 +55,8 @@ public class Constants {
 	public static boolean CROSSOVER = false;
     
     public static int INIT_POP_SIZE = 10000;
-    public static int INIT_POP_SIZE_LOCAL = 200;
-    public static int POP_SIZE = 200;
+    public static int INIT_POP_SIZE_LOCAL = 10;
+    public static int POP_SIZE = 100;
     public static int MAX_GRAMMARS = 2000;
     public static int MUTANTS_PER_BASE  = (int)MAX_GRAMMARS/POP_SIZE;
     //How many grammars from the hall of fame are selected for the next generation

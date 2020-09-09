@@ -139,7 +139,9 @@ public class Chelsea {
             tool.process(g, true);
             // System.err.println("Tool done");
             if (tool.getNumErrors() != 0) {
+                App.numBrokenGrammars++;
                 grammar.flagForRemoval();
+                return;
             }
 
             // Compile source files
@@ -167,6 +169,7 @@ public class Chelsea {
             e.printStackTrace(System.err);
             myReader.mutHist.add(e.toString());
             myReader.logGrammar(true);
+
             // System.err.println(myReader.mutHist.stream().collect(Collectors.joining("\n")));
             if (hm == null) {
                 System.out.println("Looking for " + myReader + "\n found");
