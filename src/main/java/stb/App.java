@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -23,6 +24,9 @@ import static java.util.Comparator.reverseOrder;
 import static java.util.Comparator.naturalOrder;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toCollection;
+import static java.lang.String.format;
+import static java.util.Optional.empty;
+
 
 public class App {
     static Gram demoGrammar;
@@ -36,31 +40,27 @@ public class App {
     static List<Double> posTestTime = new LinkedList<Double>();
     static List<Double> negTestTime = new LinkedList<Double>();
     public static int numBrokenGrammars = 0;
-    static long startTime = 0;
     static int numToTest = 0;
     static int currTestNum = 0;
     
-    
     static LinkedList<Gram> totalPop = new LinkedList<Gram>();
-    
+
     static Predicate<Gram> notYetChecked = gram -> !totalPop.contains(gram);
-    
+
     public static outputLambda demoOut = (String toPrint) -> System.out.println(toPrint);
     private static outputLambda runOut = (String toPrint) -> System.out.println(toPrint);
-    
+
     static Gram bestGrammar;
     static String bestGrammarString = "";
-    
+
     static List<Gram> myGrammars;
-    
+
     public static int TOUR_SIZE = 6;
 
     private interface loggerFunc {
         public Double getVal(Object in);
     }
 
-
-    
     // Used to record the min, avg, max score for a given generation
     static HashMap<String, LinkedList<Double>> scores = new HashMap<>();
     static HashMap<String, loggerFunc> logFuncs = new HashMap<>();
@@ -88,36 +88,43 @@ public class App {
     static String POS_TEST_TIME = "POS_TEST_TIME";
     static String NEG_TEST_TIME = "NEG_TEST_TIME";
     static String NUM_BROKEN_GRAMMARS = "NUM_BROKEN_GRAMMARS";
-    
 
-    
-    static List<String> LOG_EVERY_GEN = List.of(MIN_SCORE_METRIC, AVG_SCORE_METRIC, MAX_SCORE_METRIC, SCORE_DELTA_METRIC, 
-                            NUM_PASS_POS_METRIC, NUM_PASS_NEG_METRIC, NUM_PASS_TOT_METRIC, 
-                            TIME_PER_GEN_METRIC, TOTAL_GRAMMARS_METRIC, HASH_TABLE_HITS_METRIC);
+    static List<String> LOG_EVERY_GEN = List.of(MIN_SCORE_METRIC, AVG_SCORE_METRIC, MAX_SCORE_METRIC,
+            SCORE_DELTA_METRIC, NUM_PASS_POS_METRIC, NUM_PASS_NEG_METRIC, NUM_PASS_TOT_METRIC, TIME_PER_GEN_METRIC,
+            TOTAL_GRAMMARS_METRIC, HASH_TABLE_HITS_METRIC);
+
+    static Optional<File> currLogFile = empty();
+    static StringBuilder outText = new StringBuilder();
 
 
-    
-    // Can reduce memory footprint my storing grammarStrings in positiveGrammars and
-    // reconstructing when needed
+
     static LinkedList<Gram> perfectGrammars = new LinkedList<Gram>();
-    // static List<Gram> loggedGrammars = loadLoggedGrammars(Constants.LOG_GRAMMAR_PATH);
+
+    //Grammars that have been evaluated during the current generation
     static HashMap<Double, LinkedList<Gram>> evaluatedGrammars = new HashMap<Double, LinkedList<Gram>>();
+
+    //Hashstrings of all the grammars that have been produced
     private static HashSet<String> generatedGrammars = new HashSet<String>();
 
+    static Timer stopwatch = new Timer();
+
     public static void main(String[] args) {
-        
+
         Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR);
         if (Constants.USE_GUI) {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
         } else {
-            Gram myGram = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
-            // myGram.setMutationConsideration(List.of("akfyqsjjzp:2"));
-            List<Rule> targetProd = myGram.getAllRules().get(1).getSubRules().get(0);
+            Gram seededGram = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
+            Gram gram = GrammarGenerator.generatePopulation(1).getFirst();
+            gram.removeUnreachableBoogaloo();
+            System.err.println(gram);
             // List<Rule> options = myGram.getAllRules().get(1).getFirstSingWOptional();
-            // System.err.println(options.stream().map(Rule::toString).collect(Collectors.joining(", ")));
+            // System.err.println(options.stream().map(Rule::toString).collect(Collectors.joining(",
+            // ")));
             // myGram.cleanEmptyClosure(targetProd);
-            System.err.println(myGram.containsImmediateLRDeriv() ? " contains LR" : "NO LR :((((");
+            // System.err.println(myGram.containsImmediateLRDeriv() ? " contains LR" : "NO
+            // LR :((((");
             // myGram.computeMutants();
         }
     }
@@ -127,25 +134,24 @@ public class App {
             generatedGrammars.clear();
             evaluatedGrammars.clear();
             perfectGrammars.clear();
-            startTime = System.currentTimeMillis();
-            rloSetText("Inferring " + Constants.CURR_GRAMMAR_NAME + " with localisation\n");
-            
+            rloSetText("Inferring " + Constants.CURR_GRAMMAR_NAME
+                    + (Constants.USE_LOCALIZATION ? " with  localisation\n" : "\n"));
+            stopwatch.startClock();
             myGrammars = GrammarGenerator.generateLocalisablePop(Constants.INIT_POP_SIZE_LOCAL);
-            rloAppendText("Generated " + myGrammars.size() + " base grammars\n");
-            
+            rloAppendText(format("Generated %d base grammars in %f\n", myGrammars.size(), stopwatch.elapsedTime()));
+
             int genNum = 0;
             for (genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
-                startTime = System.nanoTime();
                 testingTime.clear();
                 mutTime.clear();
                 codeGenTime.clear();
                 posTestTime.clear();
                 negTestTime.clear();
                 numBrokenGrammars = 0;
-                rloSetText("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits + "\n");
-                System.err.println("Gen:" + genNum + "\n" + "Hashtable hits : " + hashtableHits);
-                // GNSetText(genNum);
-
+                stopwatch.startClock("GEN_START");
+                
+                rloSetText(format("Gen: %d\nHashtable hits : %d\n", genNum, hashtableHits));
+                
                 totalPop.clear();
                 totalPop.addAll(myGrammars);
 
@@ -155,57 +161,55 @@ public class App {
                     // Dont generate mutants on the first gen, we use a lot of initial grammars to
                     // cover search space
                     rloAppendText("Computing mutants\n");
-                    long timeStart = System.nanoTime();
+                    stopwatch.startClock();
                     
+
                     Gram.currGramNum = 0;
                     Gram.totalBaseGrams = myGrammars.size();
-                    List<Gram> allMutants = myGrammars.stream()
-                                        .map(Gram::computeMutants)
-                                        .flatMap(LinkedList<Gram>::stream)
-                                        .collect(toCollection(ArrayList::new));
+                    List<Gram> allMutants = myGrammars.stream().map(Gram::computeMutants)
+                            .flatMap(LinkedList<Gram>::stream).collect(toCollection(ArrayList::new));
 
-                    mutTime.add((System.nanoTime()-timeStart)/Math.pow(10,9));
-                    
-                    timeStart = System.nanoTime();
+                    mutTime.add(stopwatch.split());
+
                     numToTest = allMutants.size();
-                    System.err.println("Testing " + numToTest + " grams");
-                    for(Gram gram : allMutants){
+                    System.err.println(format("Testing %d grams", numToTest));
+                    for (Gram gram : allMutants) {
                         runTests(gram);
                     }
                     // allMutants.forEach(App::runTests);
-                    testingTime.add((System.nanoTime()-timeStart)/Math.pow(10,9));
+                    testingTime.add(stopwatch.split());
                     allMutants.removeIf(Gram.passesPosTest.negate());
 
-                    
-                    
                     rloAppendText(allMutants.size() + " total mutants\n");
 
                     // Ensure that grammars that have passed posTests are present in this generation
                     // allMutants.stream().filter(notYetChecked.and(Gram.passesPosTest)).sorted(reverseOrder()).limit(20)
-                    //         .forEach(totalPop::add);
+                    // .forEach(totalPop::add);
 
-                    // System.err.println("Added top 15 grammars that also pass postests, time taken: " + ((System.nanoTime()-timeStart)/Math.pow(10,9)));
+                    // System.err.println("Added top 15 grammars that also pass postests, time
+                    // taken: " + ((System.nanoTime()-timeStart)/Math.pow(10,9)));
 
-                    timeStart = System.nanoTime();
+                    
 
                     allMutants.stream().filter(notYetChecked).sorted(reverseOrder()).limit(15).forEach(totalPop::add);
-                    
-                    double rawSel = (System.nanoTime()-timeStart)/Math.pow(10,9);
+
+                    double rawSel = (stopwatch.split());
                     recordMetric(RAW_SEL, rawSel);
-                    timeStart = System.nanoTime();
                     
+
                     allMutants.stream().sorted(reverseOrder()).limit(15).forEach(totalPop::add);
-                    
+
                     allMutants.stream().filter(notYetChecked).sorted((g0, g1) -> -1 * Gram.CompPosScoreDelta(g0, g1))
-                    .limit(15).forEach(totalPop::add);
-                    
-                    double delSel = (System.nanoTime()-timeStart)/Math.pow(10,9);
+                            .limit(15).forEach(totalPop::add);
+
+                    double delSel = stopwatch.split();
                     recordMetric(DEL_SEL, delSel);
-                    timeStart = System.nanoTime();
+                    
                     // Add random grammars as well
                     totalPop.addAll(randomSelection(allMutants, 15));
-                    
-                    System.err.println("Added 15 random grammars to next generation, time taken: " + (System.nanoTime()-timeStart));
+
+                    System.err.println("Added 15 random grammars to next generation, time taken: "
+                            + stopwatch.split());
                 }
 
                 List<Double> scoreList = evaluatedGrammars.keySet().stream().sorted(reverseOrder()).collect(toList());
@@ -217,7 +221,8 @@ public class App {
 
                     ArrayList<Gram> crossoverPop = performCrossover(scoreList, totalPop);
                     crossoverPop.forEach(App::runTests);
-                    crossoverPop.stream().filter(Gram.passesPosTest).sorted(reverseOrder()).limit(10).forEach(totalPop::add);
+                    crossoverPop.stream().filter(Gram.passesPosTest).sorted(reverseOrder()).limit(10)
+                            .forEach(totalPop::add);
 
                 }
 
@@ -255,10 +260,11 @@ public class App {
                 // evaluatedGrammars.keySet().stream().sorted(Comparator.reverseOrder())
                 // .collect(Collectors.toList());
 
-                List<Gram> allGrammars = scoreList.stream()
-                                            .map(evaluatedGrammars::get)
-                                            .flatMap(LinkedList::stream)
-                                            .collect(toList());
+                List<Gram> allGrammars = scoreList.stream().map(evaluatedGrammars::get).flatMap(LinkedList::stream)
+                        .collect(toList());
+
+                Chelsea.logSlowGrammars(genNum);
+                Chelsea.clearSlowGrammars();
 
                 int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
                 int tourSize = Math.min(totalPop.size(), TOUR_SIZE);
@@ -267,63 +273,41 @@ public class App {
                     myGrammars.add(tournamentSelect(totalPop, tourSize));
                 }
 
-
-                recordMetric(MUTANT_COMP_TIME, mutTime.stream().reduce(0.0, Double::sum));
-                logMetric(MUTANT_COMP_TIME);
-
+                
                 recordMetric(TEST_TIME, testingTime.stream().reduce(0.0, Double::sum));
                 logMetric(TEST_TIME);
 
                 recordMetric(CODE_GEN_TIME, codeGenTime.stream().reduce(0.0, Double::sum));
                 logMetric(CODE_GEN_TIME);
                 // blockRead("Code gen took " + codeGenTime.stream().reduce(0.0, Double::sum));
-                recordMetric(POS_TEST_TIME, posTestTime.stream().reduce(0.0, Double::sum));
-                logMetric(POS_TEST_TIME);
 
-                recordMetric(NEG_TEST_TIME, negTestTime.stream().reduce(0.0, Double::sum));
-                logMetric(NEG_TEST_TIME);
-
-                recordMetric(NUM_BROKEN_GRAMMARS, numBrokenGrammars*1.0);
-                logMetric(NUM_BROKEN_GRAMMARS);
 
                 recordPopMetrics(myGrammars);
-                logMetric(MAX_SCORE_METRIC);
-                logMetric(NUM_PASS_TOT_METRIC);
-                logMetric(TIME_PER_GEN_METRIC);
-                logMetric(NUM_PASS_POS_METRIC);
-                logMetric(NUM_PASS_NEG_METRIC);
-                logMetric(TOTAL_GRAMMARS_METRIC);
-                logMetric(HASH_TABLE_HITS_METRIC);
-                logMetric(RAW_SEL);
-                logMetric(DEL_SEL);
-                logMetric(RAN_SEL);
 
-                recordMetric(LR_RECURS, Double.valueOf(Gram.NUM_LR));
-                recordMetric(TOTAL_MUTS, Double.valueOf(Gram.NUM_MUTS));
-                logMetric(LR_RECURS);
-                logMetric(TOTAL_MUTS);
+                logMetric(List.of(MAX_SCORE_METRIC, TIME_PER_GEN_METRIC, NUM_PASS_POS_METRIC,
+                                NUM_PASS_NEG_METRIC, HASH_TABLE_HITS_METRIC));
+                
 
-                
-                
-                try(FileWriter out = new FileWriter(new File(Constants.LOG_DIR+"/"+ (Constants.USE_LOCALIZATION ? "local_" : "") +System.nanoTime()))) {
+
+                try (FileWriter out = new FileWriter(new File(
+                        Constants.LOG_DIR + "/" + (Constants.USE_LOCALIZATION ? "local_" : "") + System.nanoTime()))) {
                     out.write(bestGrammar.fullHashString());
-                } catch(Exception e) {
-    
-                }
+                } catch (Exception e) {
 
+                }
 
                 long timeStart = System.nanoTime();
                 myGrammars.forEach(grammar -> {
                     System.err.println(myGrammars.indexOf(grammar) + "/" + myGrammars.size());
 
-                    if(Constants.USE_LOCALIZATION && grammar.getMutationConsideration().isEmpty()) {
+                    if (Constants.USE_LOCALIZATION && grammar.getMutationConsideration().isEmpty()) {
                         runLocaliser(grammar);
                     } else {
                         grammar.genFakeSuggestions();
                     }
                 });
 
-                double localizationTime = (System.nanoTime()-timeStart)/Math.pow(10, 9);
+                double localizationTime = (System.nanoTime() - timeStart) / Math.pow(10, 9);
                 recordMetric(LOCALIZATION_TIME, localizationTime);
                 logMetric(LOCALIZATION_TIME);
 
@@ -340,9 +324,10 @@ public class App {
         } finally {
             System.err.println("Best Grammar " + getBestScore() + "\n" + bestGrammar);
             System.err.println("Floating EOF " + floatingEOF + "genNum " + scores.get(MIN_SCORE_METRIC).size());
-            try(FileWriter out = new FileWriter(new File(Constants.LOG_DIR+"/"+ (Constants.USE_LOCALIZATION ? "local_" : "") +System.nanoTime()))) {
+            try (FileWriter out = new FileWriter(new File(
+                    Constants.LOG_DIR + "/" + (Constants.USE_LOCALIZATION ? "local_" : "") + System.nanoTime()))) {
                 out.write(bestGrammar.fullHashString());
-            } catch(Exception e) {
+            } catch (Exception e) {
 
             }
         }
@@ -361,20 +346,19 @@ public class App {
         myReader.injectEOF();
         long startTime = System.nanoTime();
         Chelsea.generateSources(myReader);
-        double thisTime = (System.nanoTime()-startTime)/Math.pow(10,9);
-        System.err.println("Sources generated in " + thisTime);
+        double thisTime = (System.nanoTime() - startTime) / Math.pow(10, 9);
+        // System.err.println("Sources generated in " + thisTime);
         codeGenTime.add(thisTime);
         if (myReader.toRemove()) {
             System.err.println("Code gen failed for \n" + myReader);
             return;
         }
 
-
         try {
 
             startTime = System.nanoTime();
             int[] testResult = Chelsea.runTestcases(Constants.POS_MODE);
-            thisTime = (System.nanoTime()-startTime)/Math.pow(10,9);
+            thisTime = (System.nanoTime() - startTime) / Math.pow(10, 9);
             posTestTime.add(thisTime);
             if (myReader.toRemove()) {
                 return;
@@ -382,21 +366,22 @@ public class App {
 
             Constants.positiveScoring.eval(testResult, myReader);
             myReader.stripEOF();
-            
+
             numTests++;
-            
+
             // Only do negative testing if all pos tests pass
             // this || true is to get parity with how localiser hanndles testing
-            //you dont have to neg score here, only do pos scoring thats what we care about, can check neg scoring when doing localisation
+            // you dont have to neg score here, only do pos scoring thats what we care
+            // about, can check neg scoring when doing localisation
             startTime = System.nanoTime();
             testResult = Chelsea.runTestcases(Constants.NEG_MODE);
-            thisTime = (System.nanoTime()-startTime)/Math.pow(10,9);
+            thisTime = (System.nanoTime() - startTime) / Math.pow(10, 9);
             negTestTime.add(thisTime);
             Constants.negativeScoring.eval(testResult, myReader);
 
         } catch (Exception e) {
             System.err.println("Exception in runTests " + e.getCause());
-            
+
         } finally {
             // Clears out the generated files
             Chelsea.clearGenerated();
@@ -423,6 +408,7 @@ public class App {
      * tournament selection
      * 
      * param scoreArr
+     * 
      * @param useLocal
      * @return The children produced
      */
@@ -655,7 +641,8 @@ public class App {
             susScore.keySet().stream().sorted(reverseOrder()).map(susScore::get).flatMap(LinkedList::stream)
                     .forEach(out::add);
 
-            // System.err.println("Mutation considerations for " + currGrammar + "\n " + out);
+            // System.err.println("Mutation considerations for " + currGrammar + "\n " +
+            // out);
             currGrammar.setMutationConsideration(out);
 
         } catch (Exception e) {
@@ -702,18 +689,20 @@ public class App {
 
     /**
      * Records all metrics relating to the entire pop
+     * 
      * @param pop
      */
     public static void recordPopMetrics(List<Gram> pop) {
-        
+
         double minScore = pop.stream().mapToDouble(Gram::getScore).min().getAsDouble();
         double avgScore = pop.stream().mapToDouble(Gram::getScore).average().getAsDouble();
         double maxScore = pop.stream().mapToDouble(Gram::getScore).max().getAsDouble();
-        double scoreDelta = scores.getOrDefault(MAX_SCORE_METRIC, new LinkedList<>()).size() == 0 ? 0 : maxScore - scores.get(MAX_SCORE_METRIC).getLast();
+        double scoreDelta = scores.getOrDefault(MAX_SCORE_METRIC, new LinkedList<>()).size() == 0 ? 0
+                : maxScore - scores.get(MAX_SCORE_METRIC).getLast();
         double posTestPass = pop.stream().mapToLong(Gram::numPassPos).max().getAsLong();
         double negTestPass = pop.stream().mapToLong(Gram::numPassNeg).max().getAsLong();
-        double allTestPass = negTestPass+posTestPass;
-        double timeTaken = (System.nanoTime()-startTime)/(Math.pow(10,9));
+        double allTestPass = negTestPass + posTestPass;
+        double timeTaken = stopwatch.elapsedTime("GEN_START");
         double numGrams = generatedGrammars.size();
 
         recordMetric(MIN_SCORE_METRIC, minScore);
@@ -884,9 +873,6 @@ public class App {
         runOut.output(Gui.GENNUMToken(Gui.setToken("generation: " + genNum)));
     }
 
-
-
-
     public static <E> E randGet(List<E> input, boolean replace) {
         if (replace) {
             return input.get(randInt(input.size()));
@@ -910,31 +896,36 @@ public class App {
     }
 
     public static void logMetric(String key) {
-        String fileName =  (Constants.USE_LOCALIZATION ? "local_" : "") + (Constants.ANY_PASS_POS ? "passAny_" : "passPos_") + Constants.CURR_GRAMMAR_NAME + "_"  + key + "_" + Rule.genName() + ".json";
-        try (FileWriter out = new FileWriter(Constants.LOG_DIR+"/"+fileName)) {
-            StringBuilder outText = new StringBuilder();
-            outText.append("\"numGens\":" + scores.get(key).size() + ",\n");
-            outText.append("\"dataPoints\":" + Arrays.toString(scores.get(key).stream().toArray(Double[]::new)) + ",\n");
-            outText.append("\"legend\":\"myLegend\"" + ",\n");
-            outText.append("\"title\":\""+ key + " over time\"" + "\n");
+        // int genNum = scores.get(key).size();
+        // if(currLogFile.isEmpty()) currLogFile = Optional.of(new File((Constants.USE_LOCALIZATION ? "local_" : "") + genNum +  "_" + LocalDateTime.now() + ".json"));
+        
+        // try (FileWriter out = new FileWriter(Constants.LOG_DIR + "/" + currLogFile.get(), true)) {
+            
+        //     outText.append(format("\"%s\": {\n", key));
 
-            out.write(String.format("{\n %s \n}", outText.toString()));
+        //     outText.append(
+        //             "\t \"dataPoints\":" + Arrays.toString(scores.get(key).stream().toArray(Double[]::new)) + ",\n");
+        //     outText.append(format("\t},\n"))
 
+        // } catch (Exception e) {
 
-        } catch(Exception e) {
+        // }
+    }
 
-        }
+    public static void writeLogFile() {
+        
+    }
+
+    public static void logMetric(List<String> keys) {
+        keys.forEach(App::logMetric);
     }
 
     // public static Double[] extractMetric(int index) {
-    //     System.err.println("Scores");
-    //     System.err.println(scores.stream().map(Arrays::toString).collect(Collectors.joining("\n")));
-    //     return scores.stream()
-    //             .map(entry -> entry[index])
-    //             .toArray(Double[]::new);
+    // System.err.println("Scores");
+    // System.err.println(scores.stream().map(Arrays::toString).collect(Collectors.joining("\n")));
+    // return scores.stream()
+    // .map(entry -> entry[index])
+    // .toArray(Double[]::new);
     // }
 
-
-    
-    
 }

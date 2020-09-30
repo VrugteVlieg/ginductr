@@ -23,6 +23,7 @@ import static java.util.stream.Collectors.toCollection;
 import static java.lang.String.format;
 import static stb.App.logMetric;
 import static stb.App.recordMetric;
+import static java.util.function.Predicate.not;
 
 public class Gram implements Comparable<Gram> {
 
@@ -437,13 +438,22 @@ public class Gram implements Comparable<Gram> {
      * terminal rules are involved in some rule
      */
     public void removeUnreachableBoogaloo() {
-        List<String> reachables = getReachables();
-        List<String> unreachables = getAllRules().stream().map(Rule::getName).filter(name -> !reachables.contains(name))
+        System.err.println("---------\nApplying removeUnBoog to \n" + this + "\n");
+        List<String> reachables = parserRules.get(0).getReachables(parserRules);
+        System.err.println("reachables: " + reachables.stream().collect(Collectors.joining(", ")));
+
+        System.err.println("This gram1\n" + this);
+        List<String> unreachables = getAllRules().stream().
+                map(Rule::getName)
+                .filter(not(reachables::contains))
                 .collect(toCollection(ArrayList::new));
 
+        System.err.println("Unreachables: " + unreachables.stream().collect(Collectors.joining(", ")));
+        System.err.println("This gram2\n" + this);
+        
         List<Rule> reachableParserRules = reachables.stream().map(this::getRuleByName).filter(parserRules::contains)
-                .collect(toCollection(ArrayList::new));
-
+        .collect(toCollection(ArrayList::new));
+        
         /**
          * Process 1 compute which rules can be reached/ not reached from start symbol 2
          * compute which parserRules can be reached 3 for every unreachable rule ruleA,
@@ -458,9 +468,9 @@ public class Gram implements Comparable<Gram> {
             System.err.println("Making " + toMakeReachable.getName() + " reachable");
             Rule toExtend = randGet(reachableParserRules, true);
             int indexToExtend = 1 + randInt(toExtend.getTotalSelectables() - 1);
-            Rule toMakeAlt = toExtend.getSelectable(indexToExtend);
             boolean makeNewRule = Math.random() < 0.4; // if we are making a new rule or simply adding the terminal as
-                                                       // an alternative to an existing reachable
+            Rule toMakeAlt = toExtend.getSelectable(indexToExtend);
+            // an alternative to an existing reachable
             if (toMakeReachable.isTerminal()) {
                 /**
                  * If we are trying to make a terminal rule RuleA reachable we make a new rule
@@ -1254,7 +1264,7 @@ public class Gram implements Comparable<Gram> {
     }
 
     public Rule getRuleByName(String name) {
-        // System.err.println("Searching for " + name + " in " + this);
+        System.err.println("Searching for " + name + " in " + this);
 
         return getAllRules().stream().filter(rule -> rule.getName().equals(name)).findFirst().get();
     }

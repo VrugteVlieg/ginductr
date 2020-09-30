@@ -30,7 +30,7 @@ public class GrammarGenerator {
             // curr.append("Before removeUnreach\n");
             // curr.append(currGrammar.toString());
             // System.err.println("Removing unreachables");
-            currGrammar.removeUnreachable();
+            // currGrammar.removeUnreachable();
             // System.err.println("Done removing");
             // currGrammar.removeUnreachableBoogaloo();
             // curr.append("\nPost removeUnreach\n");

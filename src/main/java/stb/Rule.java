@@ -278,7 +278,7 @@ public class Rule {
         if (name.equals(" "))
             return Constants.DEBUG ? "EPSILON" : " "; // this is nullToken
         StringBuilder out = new StringBuilder();
-        if (isSingular() || mainRule) {
+        if (isSingular() || terminal) {
             out.append(name);
         } else {
             out.append("(");
@@ -532,6 +532,7 @@ public class Rule {
     public void addAlternative(Rule toAdd) {
         LinkedList<Rule> wrappedToAdd = new LinkedList<Rule>();
         wrappedToAdd.add(toAdd);
+        System.err.println("Adding " + toAdd + " to " + this);
         this.subRules.add(wrappedToAdd);
     }
 

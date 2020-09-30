@@ -9,15 +9,22 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Lexer;
@@ -34,6 +41,8 @@ import org.antlr.v4.tool.ast.GrammarRootAST;
 import stb.localiser.depend.Pipeline;
 import stb.localiser.depend.Logger;
 
+import static java.lang.String.format;
+
 
 public class Chelsea {
     // Collection of Methods gotten from Chelsea Barraball 19768125@sun.ac.za
@@ -47,9 +56,71 @@ public class Chelsea {
     static String currNegDir = null;
     static List<String> negTests = new LinkedList<>();
     static int numLogs = 0;
-
+    
     static List<String> getAllTests() {
         return Stream.of(posTests, negTests).flatMap(List::stream).collect(Collectors.toList());
+        
+    }
+    static Timer stopwatch = new Timer();
+    static ArrayList<retainedGrammar> slowGrammars = new ArrayList<>();
+    private static int numGramsThisGen = 0;
+    private static double  totalRunTime = 0;
+    
+    private static class retainedGrammar implements Comparable<retainedGrammar> {
+        double time;
+        String gram;
+        public retainedGrammar(double time, String gram) {
+            this.time = time;
+            this.gram = gram;
+        }
+        
+        @Override
+        public int compareTo(retainedGrammar arg0) {
+            return Double.compare(this.time, arg0.time);
+        }
+
+        public double getTime() {
+            return time;
+        }
+
+        @Override
+        public String toString() {
+            return time + ", " + gram.split("\n")[0];
+        }
+    }
+    
+    public static void clearSlowGrammars() {
+        System.err.println("Clearing " + slowGrammars.toString());
+        slowGrammars.clear();
+        totalRunTime = 0;
+        numGramsThisGen = 0;
+    }
+    
+
+    static Predicate<retainedGrammar> slowGramPred = g -> g.time > 2*(totalRunTime/numGramsThisGen);
+    public static void logSlowGrammars(int genNum) {
+        // System.err.println(format("SlowGrams: %s", slowGrammars));
+        //if the slowest grammar took more that 10 seconds to generate we should flag this particular generation to not get cleared by the clearing algorithm
+        String flagString = slowGrammars.get(slowGrammars.size()-1).getTime() > 10 ? "GEN" : "gen";
+        
+
+        String fileName = Constants.SLOW_LOG_DIR + format("/%s_%d_%s.log", flagString , genNum, LocalDateTime.now());
+        System.err.println(format("Filtering with avg %f %s", totalRunTime/numGramsThisGen, slowGrammars));
+        List<retainedGrammar> toWrite = slowGrammars.stream().filter(slowGramPred).collect(Collectors.toList());
+
+        if(toWrite.size() == 0) return;
+        try (FileWriter out = new FileWriter(new File(fileName))) {
+            StringBuilder outBuilder = new StringBuilder(format("Average time: %f\n", totalRunTime/numGramsThisGen));
+            toWrite.stream().forEachOrdered(gram -> 
+                outBuilder.append(format("%d:Time taken: %f\n%s\n\n",slowGrammars.indexOf(gram), gram.time, gram.gram))
+            );
+
+            out.write(outBuilder.toString());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
 
     }
 
@@ -115,6 +186,7 @@ public class Chelsea {
         myReader = grammar;
         String finName = "default";
         Map<String, Class<?>> hm = null;
+        stopwatch.startClock();
         try {
             // System.err.println("Generating sources for " + grammar);
             
@@ -183,6 +255,8 @@ public class Chelsea {
 
             grammar.flagForRemoval();
         }
+        addToSlowGrammars(new retainedGrammar(stopwatch.elapsedTime(), grammar.toString()));
+
     }
 
     /**
@@ -303,26 +377,13 @@ public class Chelsea {
                 parser.removeErrorListeners();
                 myListen.setGrammarName(parser.getGrammarFileName());
                 parser.setErrorHandler(new BailErrorStrategy());
-                // parser.removeErrorListeners();
-                // parser.addErrorListener(Spectra.getErrorListener())
-                // parser.setErrorHandler(new myErrorStrategy());
-
-                // Begin parsing at the first rule of the grammar. In this case it was *program*
-                // but you might need to
-                // figure out how to tell your parser what the entry point is.
-                // System.err.println("Testing " + myReader.getName() + " on " + fileName + "
-                // entrypoint " + myReader.getStartSymbol());
                 
                 Method parseEntrypoint = parser.getClass().getMethod(myReader.getStartSymbol());
                 
 
                 //equiv of UUTParser.program()
                 parseEntrypoint.invoke(parser);
-                // ArrayList<String> spec = Spectra.produceSpectra(parser, tree, walker);
                 
-
-                // Finally, this will run the parser with the provided test case. Yay! Ignore
-                // the rest of this function.
                 passingTests.push(test);
                 out[0]++;
                 passArr[testNum[0] - 1] = true;
@@ -343,23 +404,6 @@ public class Chelsea {
                 }
             }
         });
-
-        // if(failingTests.size() == 0) {
-        // StringBuilder toPrint = new StringBuilder();
-        // toPrint.append("No failing tests\n" + myReader.hashString());
-        // toPrint.append("Passing tests: " + passingTests.size() + "\n");
-        // passingTests.forEach(test -> toPrint.append(test + "\n"));
-        // toPrint.append("Failing tests: " + failingTests.size() + "\n");
-        // failingTests.forEach(test -> toPrint.append(test + "\n"));
-        // App.rgoAppendText(toPrint.toString());
-        // System.err.println(toPrint.toString());
-        // try {
-        // System.err.println("Press enter to continue");
-        // System.in.read();
-        // } catch(Exception e) {
-
-        // }
-        // }
 
         return out;
 
@@ -416,6 +460,22 @@ public class Chelsea {
         cleanDirectory(new File(Constants.ANTLR_DIR));
     }
 
+    static void addToSlowGrammars(retainedGrammar toAdd) {
+        if(slowGrammars.size() == 5 && toAdd.time < slowGrammars.get(0).time) return;
+        // System.err.println(format("Adding %s to %s\n", toAdd, slowGrammars));
+        slowGrammars.add(toAdd);
+        Collections.sort(slowGrammars);
+        numGramsThisGen++;
+        totalRunTime += toAdd.time;
+        if(slowGrammars.size() > 5) slowGrammars.remove(0);
+    }
 
-
+    static void logSlowGrammar(retainedGrammar gram, int genNum) {
+        String fileName = Constants.SLOW_LOG_DIR + format("/gen_%d_gram_%d.log", genNum, slowGrammars.indexOf(gram));
+        try (FileWriter out = new FileWriter(new File(fileName))) {
+            out.write(format("Time taken: %f\n%s", gram.time, gram.gram));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
