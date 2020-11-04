@@ -419,6 +419,7 @@ public class App {
         // if (numScores == 0)
         // return null;
         double maxIndex = numScores - 1;
+        HashMap<Gram, List<Gram>> pairings = new HashMap<>();
         ArrayList<Gram> toConsider = new ArrayList<Gram>();
 
         // Switch between 2 grammar pool selection strategies, Bernd suggested using the
@@ -427,10 +428,14 @@ public class App {
         // new selection strategy selectes
         if (true) {
             for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
-                Gram toAdd1 = tournamentSelect(grammarPool, Constants.TOUR_SIZE);
-                grammarPool.stream().sorted(Comparator.reverseOrder()).limit(10)
-                        .sorted((g0, g1) -> toAdd1.compPosPassSimil(g0, g1)).limit(3).forEach(toConsider::add);
+                Gram base = tournamentSelect(grammarPool, Constants.TOUR_SIZE);
 
+                pairings.put(base, grammarPool.stream().sorted(Comparator.reverseOrder()).limit(10)
+                            .sorted((g0, g1) -> base.compAllPassSimil(g0, g1))
+                            .limit(3)
+                            .collect(toList()));
+
+                
             }
 
         } else {
@@ -443,8 +448,8 @@ public class App {
         }
 
         for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
-            Gram base1 = toConsider.remove(randInt(toConsider.size()));
-            Gram base2 = toConsider.remove(randInt(toConsider.size()));
+            Gram base1 = randGet(new ArrayList<Gram>(pairings.keySet()), true);
+            Gram base2 = randGet(pairings.get(base1), true);
             Gram g1 = new Gram(base1);
             Gram g2 = new Gram(base2);
             System.out.println("Performing crossover on " + g1 + " \nand\n" + g2);
@@ -452,8 +457,10 @@ public class App {
             g1.setName(base1.getName() + "XX" + base2.getName());
             g2.setName(base2.getName() + "XX" + base1.getName());
             System.out.println("Produced " + g1 + "\nand\n" + g2);
+            // Gram g3 = Gram.Union(base1, base2);
             crossoverPop.add(g1);
             crossoverPop.add(g2);
+            // crossoverPop.add(g3);
 
         }
         // remove all grammars that are already in the generatedGrammars hashset

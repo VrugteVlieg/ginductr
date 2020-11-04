@@ -151,7 +151,7 @@ public class Gram implements Comparable<Gram> {
     }
 
     public String getStartSymbol() {
-        return parserRules.get(0).getName();
+        return parserRules.get(0).name;
     }
 
     // Calculates the ANTLR grammar form of this
@@ -186,8 +186,9 @@ public class Gram implements Comparable<Gram> {
         StringBuilder newRuleText = new StringBuilder();
         for (int i = 0; i < RHSLen; i++) {
             Rule ruleToAppend = randGet(allRules, true);
-            newRuleText.append(ruleToAppend.getName() + " ");
+            newRuleText.append(ruleToAppend.name + " ");
         }
+        if(Math.random() < 0.05) newRuleText.append("| ");
         newRuleText.append(";");
 
         Rule toAdd = new Rule(ruleName, newRuleText.toString());
@@ -438,18 +439,18 @@ public class Gram implements Comparable<Gram> {
      * terminal rules are involved in some rule
      */
     public void removeUnreachableBoogaloo() {
-        System.err.println("---------\nApplying removeUnBoog to \n" + this + "\n");
+        // System.err.println("---------\nApplying removeUnBoog to \n" + this + "\n");
         List<String> reachables = parserRules.get(0).getReachables(parserRules);
-        System.err.println("reachables: " + reachables.stream().collect(Collectors.joining(", ")));
+        // System.err.println("reachables: " + reachables.stream().collect(Collectors.joining(", ")));
 
-        System.err.println("This gram1\n" + this);
+        // System.err.println("This gram1\n" + this);
         List<String> unreachables = getAllRules().stream().
                 map(Rule::getName)
                 .filter(not(reachables::contains))
                 .collect(toCollection(ArrayList::new));
 
-        System.err.println("Unreachables: " + unreachables.stream().collect(Collectors.joining(", ")));
-        System.err.println("This gram2\n" + this);
+        // System.err.println("Unreachables: " + unreachables.stream().collect(Collectors.joining(", ")));
+        // System.err.println("This gram2\n" + this);
         
         List<Rule> reachableParserRules = reachables.stream().map(this::getRuleByName).filter(parserRules::contains)
         .collect(toCollection(ArrayList::new));
@@ -464,9 +465,11 @@ public class Gram implements Comparable<Gram> {
          * with ruleC
          */
         while (unreachables.size() > 0) {
+            // System.err.println("yeeeeeeet");
             Rule toMakeReachable = getRuleByName(randGet(unreachables, false));
-            System.err.println("Making " + toMakeReachable.getName() + " reachable");
+            // System.err.println("Making " + toMakeReachable.getName() + " reachable");
             Rule toExtend = randGet(reachableParserRules, true);
+            // System.err.println("Extending " + toExtend);
             int indexToExtend = 1 + randInt(toExtend.getTotalSelectables() - 1);
             boolean makeNewRule = Math.random() < 0.4; // if we are making a new rule or simply adding the terminal as
             Rule toMakeAlt = toExtend.getSelectable(indexToExtend);
@@ -480,34 +483,40 @@ public class Gram implements Comparable<Gram> {
                     String newRuleName = genRuleName();
                     String ruleText = toMakeReachable.getName() + " | " + toMakeAlt.getName() + " ;";
                     Rule newRule = new Rule(newRuleName, ruleText);
-                    System.err.println("Making " + toMakeReachable.getName() + " reachble adding new Rule " + newRule
-                            + "\nreplacing\n" + toMakeAlt.getName() + "  in " + toExtend);
+                    // System.err.println("Making " + toMakeReachable.getName() + " reachble adding new Rule " + newRule
+                    //         + "\nreplacing\n" + toMakeAlt.getName() + "  in " + toExtend);
                     parserRules.add(newRule);
                     toMakeReachable = newRule;
                     toExtend.setSelectable(indexToExtend, toMakeReachable);
                 } else {
-                    System.err.println(
-                            "Making " + toMakeReachable.getName() + "  by adding it as an alternative to\n" + toExtend);
+                    // System.err.println(
+                    //         "Making " + toMakeReachable.getName() + "  by adding it as an alternative to\n" + toExtend);
                     toExtend.addAlternative(toMakeReachable.makeMinorCopy());
                 }
             } else {
-                if (makeNewRule) {
+                if (makeNewRule || true) {
                     toMakeReachable.addAlternative(toMakeAlt);
                     toExtend.setSelectable(indexToExtend, toMakeReachable);
-                    System.err.println("Making " + toMakeReachable.getName() + " reachable by making subbing in "
-                            + toMakeAlt.getName() + " in " + toExtend);
+                    // System.err.println("Making " + toMakeReachable.getName() + " reachable by making subbing in "
+                    //         + toMakeAlt.getName() + " in " + toExtend);
                 } else {
                     toExtend.getSubRules().addAll(toMakeReachable.getSubRules());
                     parserRules.remove(toMakeReachable);
+                    
                     System.err.println(
                             "Making " + toMakeReachable.getName() + " reachable by adding all prods to  " + toExtend);
+                    for(Rule rule : parserRules) {
+                        rule.replaceReferences(toMakeReachable, toExtend, nullable(toExtend));
+                    }
                 }
             }
-            System.err.println("Leads to " + this + '\n' + "Remaining unreachables " + unreachables);
+            // System.err.println("Leads to " + this + '\n' + "Remaining unreachables " + unreachables);
+            // System.err.println("awe" + unreachables.size());
             // try {
             // System.in.read();
             // } catch(Exception e) {}
         }
+        // System.err.println("Retuning from removeUnreach");
 
     }
 
@@ -559,7 +568,7 @@ public class Gram implements Comparable<Gram> {
         for (Rule rule : parserRules)
             rule.printParent = (String what) -> flagForRemoval();
         LinkedList<String> nullableNames = new LinkedList<String>();
-        parserRules.stream().filter(Rule::containsEpsilon).map(Rule::getName).forEach(nullableNames::add);
+        parserRules.stream().filter(Rule::containsEpsilon).map(rule -> rule.name).forEach(nullableNames::add);
 
         int startSize = nullableNames.size();
         do {
@@ -567,7 +576,7 @@ public class Gram implements Comparable<Gram> {
             parserRules.stream().forEach(rule -> {
                 rule.nullable(nullableNames);
             });
-
+            System.err.println("awe " + startSize  + " " + nullableNames);
         } while (startSize != nullableNames.size());
         return nullableNames;
     }
@@ -756,6 +765,7 @@ public class Gram implements Comparable<Gram> {
         List<Rule> start = new ArrayList<>();
         List<Rule> visitedRules = new ArrayList<>();
         for (Rule rule : parserRules) {
+            // System.err.println("Checking LRDERIV of " + rule);
             start.add(rule);
             if (containsImmediateLRDeriv(start, visitedRules, nullables))
                 return true;
@@ -767,7 +777,8 @@ public class Gram implements Comparable<Gram> {
 
     private boolean containsImmediateLRDeriv(List<Rule> startRules, List<Rule> visitedRules, List<String> nullables) {
         // If we have already visited this rule then we are in a loop
-        startRules.removeIf(Rule::isTerminal);
+        // System.err.println("contains LRDERIV " + startRules.stream().map(Rule::toString).collect(Collectors.joining(", ")));
+        startRules.removeIf(rule -> rule.isTerminal() || rule.name.equals(" "));
         if (startRules.size() == 0)
             return false;
         if (visitedRules.stream().anyMatch(startRules::contains))
@@ -1264,9 +1275,9 @@ public class Gram implements Comparable<Gram> {
     }
 
     public Rule getRuleByName(String name) {
-        System.err.println("Searching for " + name + " in " + this);
+        // System.err.println("Searching for " + name + " in " + this);
 
-        return getAllRules().stream().filter(rule -> rule.getName().equals(name)).findFirst().get();
+        return getAllRules().stream().filter(rule -> rule.name.equals(name)).findFirst().get();
     }
 
     public static LinkedList<Gram> computeMutants(Gram currBase) {
@@ -1286,6 +1297,13 @@ public class Gram implements Comparable<Gram> {
                     toAdd.initMutHist(strArr);
 
                     Rule targetRule = toAdd.getRuleByName(targetRuleName);
+                    if(Math.random() < 0.02 ) {
+                        if(targetRule.containsEpsilon()) {
+                            targetRule.removeEpsilon();
+                        } else {
+                            targetRule.addEpsilon();
+                        }
+                    } 
                     List<Rule> targetProd = targetRule.getSubRules().get(prodIndex);
 
                     // newNT mutation, this favors expanding the grammar, should be balanced with
@@ -1364,6 +1382,7 @@ public class Gram implements Comparable<Gram> {
                     // toAdd.removeUnreachableBoogaloo();
                     NUM_MUTS++;
                     boolean LrDeriv = toAdd.containsImmediateLRDeriv();
+                    boolean nullClosure = toAdd.containsNullClosure();
                     if (LrDeriv)
                         NUM_LR++;
 
@@ -1374,7 +1393,7 @@ public class Gram implements Comparable<Gram> {
                         // if(NUM_LOGS++ == 10) System.exit(1);
                     }
                     boolean alreadyChecked = App.gramAlreadyChecked(toAdd);
-                    if (alreadyChecked || LrDeriv) {
+                    if (alreadyChecked || LrDeriv || nullClosure) {
                         // if(NUM_LOGS++ < 20) {
                         // System.err.println("Reseting mutatnt comp " + (LrDeriv ? "LRDeriv" : "") +
                         // (alreadyChecked ? "Already Checked" : ""));
@@ -1982,6 +2001,33 @@ public class Gram implements Comparable<Gram> {
         for (int i = 0; i < in.size(); i++) {
             out.add(in.get(i) + "," + i);
         }
+        return out;
+    }
+
+    public boolean nullable(Rule toCheck) {
+        List<String> nullables = constrNullable();
+        if(toCheck.isSingular()) return nullables.contains(toCheck.name);
+        return toCheck.getSubRules().stream().allMatch(this::nullable);
+    }
+    public boolean nullable(Rule toCheck, List<String> nullables) {
+        if(toCheck.isSingular()) return nullables.contains(toCheck.name);
+        return toCheck.getSubRules().stream().allMatch(this::nullable);
+    }
+
+    public boolean containsNullClosure() {
+        List<String> nullables = constrNullable();
+
+        List<Rule> list = parserRules.stream().map(Rule::getSubRules).flatMap(ArrayList<LinkedList<Rule>>::stream)
+                        .map(Gram::getAllSelectables).flatMap(List<Rule>::stream)
+                        .filter(rule -> rule.isOptional() || rule.isIterative())
+                        .filter(rule -> nullable(rule, nullables))
+                        .collect(toList());
+                        
+        // System.err.println("Nullables " +  list.stream().map(Rule::toString).collect(Collectors.joining("\n")));
+        
+        boolean out = list.size() > 0;
+
+        // System.err.println(this + "\ncontains " + (out ? " a nullable closure" : " no nullable closures"));
         return out;
     }
 

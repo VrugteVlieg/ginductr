@@ -261,7 +261,7 @@ public class Rule {
             return getName();
         }
         StringBuilder output = new StringBuilder();
-        output.append(getName() + " : ");
+        output.append(name + " : ");
 
         output.append(getRuleText());
 
@@ -281,17 +281,11 @@ public class Rule {
         if (isSingular() || terminal) {
             out.append(name);
         } else {
-            out.append("(");
-            for (LinkedList<Rule> prod : subRules) {
-                for (int i = 0; i < prod.size(); i++) {
-                    if (i != prod.size() - 1) {
-                        out.append(prod.get(i) + " ");
-                    } else {
-                        out.append(prod.get(i).toString());
-                    }
-                }
-            }            
-            out.append(")");
+            out.append(
+                subRules.get(0).stream()
+                .map(Rule::toString)
+                .collect(Collectors.joining(" ", "(", ")"))
+            );            
         }
 
         if (optional && iterative) {
@@ -557,7 +551,7 @@ public class Rule {
     }
 
     public void getReachables(ArrayList<Rule> parserRules, ArrayList<String> reachables) {
-        if (reachables.contains(getName()) || terminal)
+        if (reachables.contains(getName()) || terminal || name.equals(" "))
             return;
         if (isSingular() && !terminal && !parserRules.contains(this)) {
             reachables.add("Undefined " + getName());
@@ -609,7 +603,7 @@ public class Rule {
         }
 
 
-        if (isSingular() && !nullableNames.contains(getName()) && !mainRule) {
+        if (isSingular() && !nullableNames.contains(name) && !mainRule) {
             // System.err.println(this + " is singuler and is not contained in " + nullableNames + " returning false");
             return false;
         }
@@ -622,7 +616,7 @@ public class Rule {
                     return prod.stream().allMatch(rule -> rule.nullable(nullableNames));
                 })
             ) {
-                nullableNames.add(getName());
+                nullableNames.add(name);
                 return true;
             } else {
                 return false;

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Predicate;
 
 public class GrammarGenerator {
     
@@ -15,7 +16,7 @@ public class GrammarGenerator {
         LinkedList<Gram> output = new LinkedList<Gram>();
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + grammarCount++;
-            // System.err.println("Generating " + grammarName);
+            System.err.println("Generating " + grammarName);
             Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
             int grammarRuleCount = 1 + randInt(Constants.MAX_RULE_COUNT);
             
@@ -32,7 +33,7 @@ public class GrammarGenerator {
             // System.err.println("Removing unreachables");
             // currGrammar.removeUnreachable();
             // System.err.println("Done removing");
-            // currGrammar.removeUnreachableBoogaloo();
+            currGrammar.removeUnreachableBoogaloo();
             // curr.append("\nPost removeUnreach\n");
             // curr.append(currGrammar.toString());
             // App.rgoSetText(curr.toString());
@@ -44,8 +45,13 @@ public class GrammarGenerator {
             // }
 
             // currGrammar.removeLR();
-            // System.out.println("New grammar \n" + currGrammar.toString());
-            if(App.gramAlreadyChecked(currGrammar)) {
+            // System.err.println("New grammar \n" + currGrammar.toString());
+            boolean lrDeriv = currGrammar.containsImmediateLRDeriv();
+            // System.err.println(lrDeriv);
+            // if(lrDeriv) {
+            //     System.err.println(currGrammar + "\ncontains LRDERIV");
+            // }
+            if(App.gramAlreadyChecked(currGrammar) || lrDeriv) {
                 i--;
                 continue;
             } else {
@@ -85,11 +91,9 @@ public class GrammarGenerator {
         while(out.size() < popSize) {
             App.rgoSetText("Init size " + out.size() + "/" + popSize);
             LinkedList<Gram> newPop = generatePopulation(10);
-
-            newPop.stream()
-            .peek(App::runTests)
-            .filter(Gram.passesPosTest)
-            .forEach(out::add);
+            newPop.forEach(App::runTests);
+            newPop.removeIf(Predicate.not(Gram.passesPosTest));
+            out.addAll(newPop);
         }
         
         out = new LinkedList<Gram>(out.subList(0, popSize));
