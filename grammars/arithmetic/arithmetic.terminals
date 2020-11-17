@@ -1,0 +1,8 @@
+grammar terminals;
+Digit : '0';
+Plus : '+';
+Minus : '-';
+Mult : '*';
+Div : '/';
+LPAR : '(';
+RPAR : ')';

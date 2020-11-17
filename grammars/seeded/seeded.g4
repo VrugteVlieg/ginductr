@@ -1,0 +1,14 @@
+grammar grammar_ajdqkwabub_NP;
+wsnxwizsql : ruxktcdfsv zfimyvmhev zfimyvmhev zfimyvmhev ;
+zfimyvmhev : RPAREN | thlboqxmpg | RBRACK | GT | LPAREN wsnxwizsql wsnxwizsql | thlboqxmpg LT |   ;
+wuewyyjkqs : LCURL | LBRACK ;
+ruxktcdfsv : RCURL | wuewyyjkqs ;
+thlboqxmpg : wsnxwizsql | LBRACK |   ;
+LBRACK : '[' ;
+RBRACK : ']' ;
+LPAREN : '(' ;
+RPAREN : ')' ;
+LCURL : '{' ;
+RCURL : '}' ;
+LT : '<' ;
+GT : '>' ;

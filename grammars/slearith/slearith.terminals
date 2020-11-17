@@ -1,0 +1,9 @@
+grammar slearith;
+MUL : '*';
+DIV : '/';
+ADD : '+';
+MIN : '-';
+LPAR : '(';
+RPAR : ')';
+ID : 'x';
+NUM : '0';

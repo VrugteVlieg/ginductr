@@ -1,5 +1,21 @@
 antlrOut
 target
 tests
-grammars
 *.prefs
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+# Local History for Visual Studio Code
+.history/
+logs
+out
+.classpath
+.antlr
+scores.csv
+test
+GUI_TOKENS.out
+grammars/loggedGrammars/
+localiserDependJava/UUT*

@@ -1,0 +1,9 @@
+grammar terminals;
+LBRACK : '[';
+RBRACK : ']';
+LPAREN : '(';
+RPAREN : ')';
+LCURL : '{';
+RCURL : '}';
+LT : '<';
+GT : '>';
