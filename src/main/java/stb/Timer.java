@@ -17,12 +17,12 @@ public class Timer {
     }
 
     public void startClock(String key) {
-        System.err.println("Starting clock for " + key);
+        // System.err.println("Starting clock for " + key);
         if(startTimes.containsKey(key)) {
             startTimes.replace(key, System.nanoTime());
         } else {
             startTimes.put(key, System.nanoTime());
-            System.err.println(startTimes.keySet());
+            // System.err.println(startTimes.keySet());
         }
     }
 
@@ -51,4 +51,11 @@ public class Timer {
         startClock(key);
         return out;
     }
+
+
+
+	public void clear() {
+        startTimes.clear();
+        startTime = 0;
+	}
 }

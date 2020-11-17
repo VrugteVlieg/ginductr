@@ -383,7 +383,7 @@ public class Gui extends Application {
         logToken(token);
         
         String[] data = token.split(TOKEN_DELIM);
-        System.err.println(Arrays.toString(data));
+        // System.err.println(Arrays.toString(data));
         TextArea target = outputAreas.get(data[0]);
         Stack<String> targetStack = outputStacks.get(data[0]);
         switch (data[1]) {

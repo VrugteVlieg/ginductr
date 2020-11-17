@@ -8,7 +8,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 
 public class GrammarGenerator {
-    
+
+    static HashSet<Integer> nullGrams = new HashSet<>();
     static int grammarCount = 0;
     static Gram terminalGrammar = new Gram(new File(Constants.CURR_TERMINALS_PATH));
 
@@ -16,7 +17,7 @@ public class GrammarGenerator {
         LinkedList<Gram> output = new LinkedList<Gram>();
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + grammarCount++;
-            System.err.println("Generating " + grammarName);
+            // System.err.println("Generating " + grammarName);
             Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
             int grammarRuleCount = 1 + randInt(Constants.MAX_RULE_COUNT);
             
@@ -91,7 +92,9 @@ public class GrammarGenerator {
         while(out.size() < popSize) {
             App.rgoSetText("Init size " + out.size() + "/" + popSize);
             LinkedList<Gram> newPop = generatePopulation(10);
+            newPop.removeIf(gram -> nullGrams.contains(gram.hashString().hashCode()));
             newPop.forEach(App::runTests);
+            newPop.forEach(gram -> {if(gram.getPosScore() == 0.0) nullGrams.add(gram.hashString().hashCode());});
             newPop.removeIf(Predicate.not(Gram.passesPosTest));
             out.addAll(newPop);
         }

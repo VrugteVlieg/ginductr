@@ -250,6 +250,9 @@ public class Rule {
 
         Rule c = (Rule) o;
         boolean nameMatch = name.equals(c.name);
+
+        if(c.name.equals(" ")) return nameMatch;
+        
         boolean optionalMatch = optional == c.optional;
         boolean iterativeMatch = iterative== c.iterative;
         return nameMatch && optionalMatch && iterativeMatch;
@@ -420,10 +423,10 @@ public class Rule {
      * any of its subrules
      */
     public int getTotalSelectables() {
-        if (isSingular() && !mainRule) {
-            return 1;
-        }
         int out = 1; // always start at 1 so the rule itself can be selected as well
+        if (isSingular() && !mainRule) {
+            return out;
+        }
 
         for (LinkedList<Rule> subSet : subRules) {
             for (Rule subRule : subSet) {
@@ -526,7 +529,7 @@ public class Rule {
     public void addAlternative(Rule toAdd) {
         LinkedList<Rule> wrappedToAdd = new LinkedList<Rule>();
         wrappedToAdd.add(toAdd);
-        System.err.println("Adding " + toAdd + " to " + this);
+        // System.err.println("Adding " + toAdd + " to " + this);
         this.subRules.add(wrappedToAdd);
     }
 
@@ -852,6 +855,8 @@ public class Rule {
 
     public Rule makeMinorCopy() {
         Rule out = new Rule(this);
+        if(!out.mainRule) return out;
+        out.singular = true;
         out.mainRule = false;
         return out;
     }
