@@ -1,10 +1,8 @@
 package stb;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
@@ -27,6 +25,10 @@ public class Rule {
 
 
         return out;
+    }
+
+    boolean isEpsilon() {
+        return name.equals(" ");
     }
 
     /**
@@ -95,7 +97,6 @@ public class Rule {
         }
         this.name = ruleText;
         this.ruleText = ruleText;
-        printOut("New minor rule " + ruleText);
         this.mainRule = false;
 
         optional = ruleText.charAt(ruleText.length() - 1) == '?' || ruleText.charAt(ruleText.length() - 1) == '*';
@@ -154,11 +155,9 @@ public class Rule {
         boolean StringLiteral = false;
         int brackets = 0;
         while (index < rule.length()) {
-            printOut(rule.charAt(index) + " -> " + currString.toString().replaceAll(" ", "_SPACE_"));
             switch (rule.charAt(index)) {
                 case ' ':
                     if (currString.length() != 0 && !StringLiteral && brackets == 0) {
-                        printOut("Adding rule " + currString.toString());
                         currProduction.add(new Rule(currString.toString()));
                         currString = new StringBuilder();
                     } else if (StringLiteral || brackets != 0 || rule.charAt(index + 1) == ';') {
@@ -182,7 +181,6 @@ public class Rule {
                     } else {
                         if (currString.length() != 0) {
                             if (currString.toString().equals(" ")) {
-                                printOut("Adding EPSILON");
                                 currProduction.add(EPSILON());
                             } else {
                                 currProduction.add(new Rule(currString.toString()));
@@ -251,7 +249,7 @@ public class Rule {
         Rule c = (Rule) o;
         boolean nameMatch = name.equals(c.name);
 
-        if(c.name.equals(" ")) return nameMatch;
+        if(c.isEpsilon()) return nameMatch;
         
         boolean optionalMatch = optional == c.optional;
         boolean iterativeMatch = iterative== c.iterative;
@@ -278,7 +276,7 @@ public class Rule {
      * @return
      */
     String getName() {
-        if (name.equals(" "))
+        if (isEpsilon())
             return Constants.DEBUG ? "EPSILON" : " "; // this is nullToken
         StringBuilder out = new StringBuilder();
         if (isSingular() || terminal) {
@@ -305,16 +303,8 @@ public class Rule {
         return subRules;
     }
 
-    private void printOut(String toPrint) {
-        // if(Constants.DEBUG)System.out.println(" ".repeat(depth) + "Context " + name +
-        // ": " + toPrint);
-    }
-    //TODO: these setting functions should roll to apply recursively to subrules
     public void setIterative(boolean setTo) {
-        StringBuilder out = new StringBuilder(getName());
         iterative = setTo;
-        out.append(" -> " + getName());
-        printOut(out.toString());
     }
 
     public boolean isIterative() {
@@ -373,8 +363,6 @@ public class Rule {
                     if (counter >= index) { // the rule to change was in the the last subrule
                         int indexInRule = index - counterPre - 1; // position withing the rule
                         subRule.setSelectable(indexInRule, test);
-
-                        printOut(subRules.toString());
                     }
                 }
                 subRuleIndex++;
@@ -423,10 +411,10 @@ public class Rule {
      * any of its subrules
      */
     public int getTotalSelectables() {
-        int out = 1; // always start at 1 so the rule itself can be selected as well
         if (isSingular() && !mainRule) {
-            return out;
+            return 1;
         }
+        int out = 0; 
 
         for (LinkedList<Rule> subSet : subRules) {
             for (Rule subRule : subSet) {
@@ -434,15 +422,6 @@ public class Rule {
             }
         }
 
-        
-        /* 
-        if out = 2 then we only have 1 subrule which only has 1 selectable 
-        twe are a grouped rule which has had its neighbours removed and should be flagged as singular
-         */
-        if(out == 2) {
-            singular = false;
-            return 1;
-        }
         return out;
     }
 
@@ -462,8 +441,7 @@ public class Rule {
 
 
     /**
-     * Returns all of the possible rules that can start this rule
-     * 
+     * Returns all of the possible singular rules that can start this rule
      * @return
      */
     public LinkedList<Rule> getFirstSingWOptional(List<String> nullables) {
@@ -485,19 +463,6 @@ public class Rule {
         return out;
     }
 
-    // public static LinkedList<Rule> getFirstSingWOptional(List<Rule> targetProd) {
-    //     LinkedList<Rule> out  = new LinkedList<Rule>();
-    //     for (Rule subRule : targetProd) {
-    //         LinkedList<Rule> currRules = subRule.getFirstSingWOptional();
-    //         out.addAll(currRules);
-    //         if(!currRules.getLast().isOptional()) break;
-    //     }
-    //     return out;
-    // }
-
-    /**
-     * 
-     */
 
     public int getTotalSelectables(int prodIndex) {
         int out = 0;
@@ -554,10 +519,14 @@ public class Rule {
     }
 
     public void getReachables(ArrayList<Rule> parserRules, ArrayList<String> reachables) {
-        if (reachables.contains(getName()) || terminal || name.equals(" "))
+        if (reachables.contains(getName()) || isEpsilon())
             return;
         if (isSingular() && !terminal && !parserRules.contains(this)) {
             reachables.add("Undefined " + getName());
+            return;
+        }
+        if(terminal) {
+            reachables.add(getName());
             return;
         }
         if (mainRule) {
@@ -590,7 +559,7 @@ public class Rule {
 
     public boolean nullable(List<String> nullableNames) {
         //If this rule is optional it can produce ""
-        if(optional) {
+        if(optional || isEpsilon()) {
             // System.err.println(this + " is optional return true");
             return true;
         }
@@ -634,9 +603,6 @@ public class Rule {
     }
 
     public boolean containsEpsilon() {
-        //TODO this is not found sometimes fix it
-        // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
-        // System.err.println("Searching for Epsilon in " + this + " " + this.subRules.size());
         try  {
             return subRules.stream().map(LinkedList::getFirst).map(EPSILON::equals).reduce(false,
                     (prev, next) -> prev || next);
@@ -771,20 +737,6 @@ public class Rule {
     }
 
     /**
-     * Generates a new ruleName
-     * 
-     * @return
-     */
-    public static String genName() {
-        StringBuilder ruleNameBuilder = new StringBuilder();
-        // Generates rule name by randomly concatting letters
-        for (int nameIndex = 0; nameIndex < Constants.RULENAME_LEN; nameIndex++) {
-            ruleNameBuilder.append((char) ('a' + randInt(26)));
-        }
-        return ruleNameBuilder.toString();
-    }
-
-    /**
      * Replaces all references to oldRule with newRule, optional/iterative is
      * maintained unless newRule is nullable
      * 
@@ -861,18 +813,7 @@ public class Rule {
         return out;
     }
 
-    public boolean canGroupProd(int prodIndex) {
-        return subRules.get(prodIndex).size() > 1;
-    }
-
-    public boolean canUngroupProd(int prodIndex) {
-        for (Rule rule : subRules.get(prodIndex)) {
-            if (!rule.isSingular())
-                return true;
-        }
-        return false;
-    }
-
+    
     public <E> E randGet(List<E> input) {
         return input.get(randInt(input.size()));
     }

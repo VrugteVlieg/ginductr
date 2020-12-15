@@ -28,30 +28,9 @@ public class GrammarGenerator {
             }
 
             currGrammar.removeDuplicateProductions();
-            // StringBuilder curr = new StringBuilder();
-            // curr.append("Before removeUnreach\n");
-            // curr.append(currGrammar.toString());
-            // System.err.println("Removing unreachables");
-            // currGrammar.removeUnreachable();
-            // System.err.println("Done removing");
+            
             currGrammar.removeUnreachableBoogaloo();
-            // curr.append("\nPost removeUnreach\n");
-            // curr.append(currGrammar.toString());
-            // App.rgoSetText(curr.toString());
-            // try {
-            //     System.out.println("Displaying removeUnreachable\nPress enter to cont");
-            //     System.in.read();
-            // } catch(Exception e) {
-
-            // }
-
-            // currGrammar.removeLR();
-            // System.err.println("New grammar \n" + currGrammar.toString());
             boolean lrDeriv = currGrammar.containsImmediateLRDeriv();
-            // System.err.println(lrDeriv);
-            // if(lrDeriv) {
-            //     System.err.println(currGrammar + "\ncontains LRDERIV");
-            // }
             if(App.gramAlreadyChecked(currGrammar) || lrDeriv) {
                 i--;
                 continue;
@@ -59,9 +38,32 @@ public class GrammarGenerator {
                 output.add(currGrammar);
             }
         }
-        // System.out.println("New Grammars ");
-        // output.forEach(grammar -> System.out.println(grammar));
+        return output; 
+    }
 
+    public static LinkedList<Gram> generateDemoCrossoverPop() {
+        LinkedList<Gram> output = new LinkedList<Gram>();
+        for (int i = 0; i < 1; i++) {
+            String grammarName = "Grammar_" + grammarCount++;
+            // System.err.println("Generating " + grammarName);
+            Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
+            int grammarRuleCount = 1 + randInt(2);
+            
+            for (int j = 0; j < grammarRuleCount; j++) {
+                int currRuleLen = 1 + randInt(2);
+                String ruleName =  currGrammar.genRuleName();
+                currGrammar.generateNewRule(ruleName, currRuleLen);
+            }
+            currGrammar.removeDuplicateProductions();
+            currGrammar.removeUnreachableBoogaloo();
+            boolean lrDeriv = currGrammar.containsImmediateLRDeriv();
+            if(App.gramAlreadyChecked(currGrammar) || lrDeriv) {
+                i--;
+                continue;
+            } else {
+                output.add(currGrammar);
+            }
+        }
         return output; 
     }
 
@@ -90,10 +92,11 @@ public class GrammarGenerator {
     public static LinkedList<Gram> generateLocalisablePop(int popSize) {
         LinkedList<Gram> out = new LinkedList<Gram>();
         while(out.size() < popSize) {
-            App.rgoSetText("Init size " + out.size() + "/" + popSize);
-            LinkedList<Gram> newPop = generatePopulation(10);
+            // App.rgoSetText("Generating new population: " + out.size() + "/" + popSize);
+            LinkedList<Gram> newPop = generatePopulation(Constants.NUM_THREADS * 5);
             newPop.removeIf(gram -> nullGrams.contains(gram.hashString().hashCode()));
-            newPop.forEach(App::runTests);
+            App.runTests(newPop);
+            // newPop.forEach(App::runTests);
             newPop.forEach(gram -> {if(gram.getPosScore() == 0.0) nullGrams.add(gram.hashString().hashCode());});
             newPop.removeIf(Predicate.not(Gram.passesPosTest));
             out.addAll(newPop);

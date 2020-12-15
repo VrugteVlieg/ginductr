@@ -9,19 +9,17 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Stack;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,7 +47,6 @@ public class Chelsea {
     // Generates, compiles and loads parser,lexer classes from the file
     static Constructor<?> lexerConstructor;
     static Constructor<?> parserConstructor;
-    static Gram myReader;
     static String currPosDir = null;
     static List<String> posTests = new LinkedList<>();
 
@@ -183,7 +180,6 @@ public class Chelsea {
      * @param grammar
      */
     public static void generateSources(Gram grammar) {
-        myReader = grammar;
         String finName = "default";
         Map<String, Class<?>> hm = null;
         stopwatch.startClock();
@@ -196,7 +192,7 @@ public class Chelsea {
             // generated-sources/
 
             // args arrays for writing for normal testing and for writing to localiser
-            String[] args = { "-o", Constants.ANTLR_DIR, "-DcontextSuperClass=RuleContextWithAltNum" };
+            String[] args = { "-o", Constants.ANTLR_DIR  + "/" + finName, "-DcontextSuperClass=RuleContextWithAltNum" };
 
             // Creating a new Tool object with org.antlr.v4.Tool
 
@@ -218,33 +214,33 @@ public class Chelsea {
 
             // Compile source files
             DynamicClassCompiler dynamicClassCompiler = new DynamicClassCompiler();
-            dynamicClassCompiler.compile(new File(Constants.ANTLR_DIR));
+            File myOut = new File(Constants.ANTLR_DIR + "/" + grammar.getName());
+            dynamicClassCompiler.compile(myOut);
 
 
             //Loads all the class files into the hashmap
-            hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR));
+            // hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR + "/" + grammar.getName()));
+            // // Manually creates lexer.java file in outputDir
+            // Class<?> lexer = hm.get(finName + "Lexer");
+            // // Manually creates the lexerConstructor for use later
+            // // Is initialized as Constructor<?> lexerConstructor
+            // lexerConstructor = lexer.getConstructor(CharStream.class);
+            // String.class.getConstructor(String.class);
 
-            // Manually creates lexer.java file in outputDir
-            Class<?> lexer = hm.get(finName + "Lexer");
-            // Manually creates the lexerConstructor for use later
-            // Is initialized as Constructor<?> lexerConstructor
-            lexerConstructor = lexer.getConstructor(CharStream.class);
-            String.class.getConstructor(String.class);
+            // Class<?> parser = hm.get(finName + "Parser");
 
-            Class<?> parser = hm.get(finName + "Parser");
-
-            // Manually creates the parserConstructor for use later
-            // Is initialized as Constructor<?> parserConstructor
-            parserConstructor = parser.getConstructor(TokenStream.class);
+            // // Manually creates the parserConstructor for use later
+            // // Is initialized as Constructor<?> parserConstructor
+            // parserConstructor = parser.getConstructor(TokenStream.class);
             
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            myReader.mutHist.add(e.toString());
-            myReader.logGrammar(true);
+            grammar.mutHist.add(e.toString());
+            grammar.logGrammar(true);
 
             // System.err.println(myReader.mutHist.stream().collect(Collectors.joining("\n")));
             if (hm == null) {
-                System.out.println("Looking for " + myReader + "\n found");
+                System.out.println("Looking for " + grammar + "\n found");
                 List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
                 System.out.println(files.stream().map(File::getName).collect(Collectors.joining("\n")));
 
@@ -338,7 +334,7 @@ public class Chelsea {
      * @throws InstantiationException
      * @throws NoSuchMethodException
      */
-    public static int[] runTestcases( String mode) throws IOException, IllegalAccessException,
+    public static int[] runTestcases( String mode, Gram myReader) throws IOException, IllegalAccessException,
             InvocationTargetException, InstantiationException, NoSuchMethodException {
 
         // output array {numPasses, numTests}
@@ -366,6 +362,20 @@ public class Chelsea {
             out[1]++;
             try {
                 testNum[0]++;
+                Map<String, Class<?>> hm = new DynamicClassLoader().load(new File(Constants.ANTLR_DIR + "/" + myReader.getName()));
+
+                // Manually creates lexer.java file in outputDir
+                Class<?> lexerC = hm.get(myReader.getName() + "Lexer");
+                // Manually creates the lexerConstructor for use later
+                // Is initialized as Constructor<?> lexerConstructor
+                lexerConstructor = lexerC.getConstructor(CharStream.class);
+                String.class.getConstructor(String.class);
+
+                Class<?> parserC = hm.get(myReader.getName() + "Parser");
+
+                // Manually creates the parserConstructor for use later
+                // Is initialized as Constructor<?> parserConstructor
+                parserConstructor = parserC.getConstructor(TokenStream.class);
                 Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
 
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -378,7 +388,7 @@ public class Chelsea {
                 myListen.setGrammarName(parser.getGrammarFileName());
                 parser.setErrorHandler(new BailErrorStrategy());
                 
-                Method parseEntrypoint = parser.getClass().getMethod(myReader.getStartSymbol());
+                Method parseEntrypoint = parser.getClass().getMethod(Constants.GRAM_START_SYMB);
                 
 
                 //equiv of UUTParser.program()
@@ -451,6 +461,27 @@ public class Chelsea {
         for (int i = 0; i < files.size(); i++) {
             files.get(i).delete();
         }
+    }
+
+    /**
+     * Removes all files in target directory, as well as the directory itself
+     * 
+     * @param directory
+     */
+    public static void deepCleanDirectory(File directory) {
+        assert directory.isDirectory();
+        List<File> toDelete = getDirectoryFiles(directory);
+        // System.err.println("Filtering with " + name + "\non\n" + toDelete.stream().map(File::getName).collect(Collectors.joining("\n")));
+        // Pattern r = Pattern.compile(name + "[^0-9]*$");
+        // StringBuilder out  = new StringBuilder("Using key " +  name + "\n");
+        // toDelete.removeIf(f -> {
+        //     if(r.matcher(f.getName()).find()) {
+        //         // out.append(f.getName() + "\n");
+        //     }
+        //     return !r.matcher(f.getName()).find();});
+        // System.err.println("Removing \n" + out.toString());   
+        toDelete.forEach(File::delete);
+        directory.delete();
     }
 
     /**
