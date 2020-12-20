@@ -63,16 +63,16 @@ public class Constants {
     public static boolean HEURISTIC = true;
     public static boolean CROSSOVER = false;
 
-    public static int INIT_POP_SIZE = NUM_THREADS;
-    public static int POP_SIZE = NUM_THREADS * 50;
-    public static int FRESH_POP = NUM_THREADS * 15;
+    public static int INIT_POP_SIZE = NUM_THREADS*10;
+    public static int POP_SIZE = NUM_THREADS * 10;
+    public static int FRESH_POP = NUM_THREADS * 5;
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
-    public static int NUM_ITERATIONS = 50;
+    public static int NUM_ITERATIONS = 2;
     public static int RULENAME_LEN = 10;
-    public static int MAX_RULE_COUNT = 7;
-    public static int MAX_RHS_SIZE = 7;
+    public static int MAX_RULE_COUNT = 3;
+    public static int MAX_RHS_SIZE = 4;
 
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
     public static String localizerCompilPath = "./antlr-localizer/default/target/generated-sources/antlr4";

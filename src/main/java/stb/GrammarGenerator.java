@@ -16,7 +16,7 @@ public class GrammarGenerator {
     public static LinkedList<Gram> generatePopulation(int popSize) {
         LinkedList<Gram> output = new LinkedList<Gram>();
         for (int i = 0; i < popSize; i++) {
-            String grammarName = "Grammar_" + grammarCount++;
+            String grammarName = "Grammar_" + Gram.genGramName();
             // System.err.println("Generating " + grammarName);
             Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
             int grammarRuleCount = 1 + randInt(Constants.MAX_RULE_COUNT);
@@ -35,6 +35,7 @@ public class GrammarGenerator {
                 i--;
                 continue;
             } else {
+                currGrammar.initString = currGrammar.toString();
                 output.add(currGrammar);
             }
         }

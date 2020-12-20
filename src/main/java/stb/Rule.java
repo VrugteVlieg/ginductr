@@ -762,6 +762,17 @@ public class Rule {
     }
 
     /**
+     * Renames all rules with oldName to have newName
+     * @param oldName
+     * @param newName
+     */
+    public void renameReferences(String oldName, String newName) {
+        getAllSelectables().forEach(r -> 
+            r.name = r.name.equals(oldName) ? newName : r.name
+        );
+    }
+
+    /**
      * removes all references to toRemove
      */
     public void removeReferences(String toRemoveName) {

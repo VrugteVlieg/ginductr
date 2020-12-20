@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Stack;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -60,7 +61,11 @@ public class Gram implements Comparable<Gram> {
     int falseNegatives = 0;
     private boolean remove = false;
     public Boolean[] passPosArr;
+    private Stack<String> passingPosTests = new Stack<>();
+    private Stack<String> passingNegTests = new Stack<>();
     public Boolean[] passNegArr;
+    private Stack<String> failingPosTests = new Stack<>();
+    private Stack<String> failingNegTests = new Stack<>();
     List<String> mutHist = new LinkedList<>();
     StringBuilder currMut = new StringBuilder();
 
@@ -288,10 +293,10 @@ public class Gram implements Comparable<Gram> {
     private void applyCrossover(LinkedList<Rule> toInsert, Rule toReplace, boolean toInsertNullable) {
         parserRules.addAll(toInsert);
         parserRules.remove(toReplace);
-        List<String> toInsName = toInsert.stream().map(rule -> rule.name).collect(toList());
-        parserRules.removeIf(rule -> toInsName.contains(rule.name));
+        // this was here, makes no sense doe it just removes all the rules that were just added
+        // parserRules.removeIf(rule -> rule.name.equals(toReplace));
         parserRules.forEach(
-                rule -> rule.replaceReferences(toReplace, toInsert.getFirst().makeMinorCopy(), toInsertNullable));
+            rule -> rule.replaceReferences(toReplace, toInsert.getFirst().makeMinorCopy(), toInsertNullable));
     }
 
     private void applyCrossover(Gram toCrossover) {
@@ -309,6 +314,8 @@ public class Gram implements Comparable<Gram> {
         applyCrossover(otherList, myList.getFirst(), toSendNull);
     }
 
+    StringBuilder prevCross = new StringBuilder("default prevX");
+
     private void applyLoggedCrossover(Gram toCrossover, StringBuilder out) {
         LinkedList<Rule> otherList = toCrossover.getCrossoverRuleList();
         LinkedList<Rule> myList = getCrossoverRuleList();
@@ -316,10 +323,17 @@ public class Gram implements Comparable<Gram> {
         Rule toRecv = otherList.getFirst();
         out.append("\nSwapping " + myList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + " with "
                 + otherList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + "\n");
+
         boolean toInsNull = toCrossover.nullable(toRecv.getName());
         boolean toSendNull = nullable(toSend.getName());
+        prevCross.setLength(0);
+        prevCross.append(format("Applying cross on %s\nand\n%s\n%s",toString(),  toCrossover.toString(), out.toString()));
+        toCrossover.prevCross.setLength(0);
+        toCrossover.prevCross.append(format("Applying cross on %s\nand\n%s\n%s",toString(),  toCrossover.toString(), out.toString()));
         toCrossover.applyCrossover(myList, otherList.getFirst(), toInsNull);
         applyCrossover(otherList, myList.getFirst(), toSendNull);
+        prevCross.append("\nResults in " + this + "\n\nand\n\n" + toCrossover);
+        toCrossover.prevCross.append("\nResults in " + this + "\n\nand\n\n" + toCrossover);
     }
 
     public static void Crossover(Gram g0, Gram g1) {
@@ -371,12 +385,16 @@ public class Gram implements Comparable<Gram> {
         return negScore;
     }
 
+    
+    
+    
+
     /**
      * Makes all rules in the grammar reachable, useful for ensuring that all
      * terminal rules are involved in some rule
      */
     public void removeUnreachableBoogaloo() {
-        System.err.println("Removing unreachables in\n" + this);
+        // System.err.println("Removing unreachables in\n" + this);
         //Which rules can be reached from start symbol
         List<String> reachables = parserRules.get(0).getReachables(parserRules);
         // System.err.println("Reachables: " + reachables);
@@ -525,17 +543,23 @@ public class Gram implements Comparable<Gram> {
         // If we have already visited this rule then we are in a loop
         // System.err.println("contains LRDERIV " +
         // startRules.stream().map(Rule::toString).collect(Collectors.joining(", ")));
+
         startRules.removeIf(rule -> rule.isTerminal() || rule.isEpsilon());
         if (startRules.size() == 0)
             return false;
-        if (visitedRules.stream().anyMatch(startRules::contains))
-            ;
+        
         if (visitedRules.stream().anyMatch(startRules::contains))
             return true;
         for (Rule rule : startRules) {
             visitedRules.add(rule);
-            Rule targetRule = getRuleByName(rule.name);
-            List<Rule> newStarts = targetRule.getFirstSingWOptional(nullables);
+
+            // This was here for some reason but would sometimes cause null pointers 
+            // Rule targetRule = getRuleByName(rule.name);
+            // if(targetRule == null) {
+            //     App.blockRead("SHIIIIT " + rule);
+            //     return true;
+            // } 
+            List<Rule> newStarts = rule.getFirstSingWOptional(nullables);
             if (containsImmediateLRDeriv(newStarts, visitedRules, nullables)) {
                 // System.err.println(targetRule.getName() + " triggers LRDeriv visited rules "
                 // + visitedRules.stream().map(Rule::getName).collect(Collectors.joining(",
@@ -607,11 +631,6 @@ public class Gram implements Comparable<Gram> {
     }
 
     public void groupMutate(List<Rule> prod) {
-
-        /**
-         * this first check makes us favor grouping at higher levels in general this
-         * should be a better solution than equally weighting all levels
-         */
         currMut = new StringBuilder(format("Applying grouping to %s\n\n", stringProd(prod)));
         try {
 
@@ -645,10 +664,10 @@ public class Gram implements Comparable<Gram> {
         } catch (Exception e) {
             e.printStackTrace();
             currMut.append(e.toString());
-        } finally {
-            currMut.append("\n\n" + "Results in " + this + "\n\n");
-            mutHist.add(currMut.toString());
-        }
+        } 
+        currMut.append("\n\n" + "Results in " + this + "\n\n");
+        mutHist.add(currMut.toString());
+        
     }
 
     /**
@@ -735,10 +754,12 @@ public class Gram implements Comparable<Gram> {
     }
 
     public boolean containsInfLoop() {
-        // System.err.println("Checking if " + this + " contains an infLoop");
+
+        if(parserRules.isEmpty())System.err.println("No parserRules :((((((\n" + this + "\n" + prevCross.toString()  + "\nInitStr:\n" + initString);
         if (getUndefinedRules().stream().anyMatch(rule -> rule.contains("Undefined "))) {
             return true;
         }
+        // if(parserRules.isEmpty()) return true;
         Rule start = parserRules.get(0);
         String touchedRules = "";
         try {
@@ -997,14 +1018,23 @@ public class Gram implements Comparable<Gram> {
 
     public Rule getRuleByName(String name) {
         // System.err.println("Searching for " + name + " in " + this);
+        if (name.contains("(") && !name.contains(" "))
+            name = name.replace("(", "").replace(")", "");
+        final String finalName = name;
         try {
-            if (name.contains("(") && !name.contains(" "))
-                name = name.replace("(", "").replace(")", "");
-            final String finalName = name;
             return getAllRules().stream().filter(rule -> rule.name.equals(finalName)).findFirst().get();
 
         } catch (Exception e) {
             System.err.println("Could not find " + name + " in " + this);
+            logGrammar(true);
+            String scrampleMapping = scrambleMap.keySet().stream().map(k -> {
+                String newName  = scrambleMap.get(k);
+                return k + " -> " + newName + (newName.equals(finalName) ? "***" : "");
+            }).collect(Collectors.joining("\n"));
+            // System.err.println(mutHist);
+            System.err.println("Results of scramble: " + scrambleMap.keySet().size() + "\n" + scrampleMapping);
+            System.err.println("Match results:" + getAllRules().stream()
+                .map(rule -> rule.name + ": " + rule.name.equals(finalName)).collect(Collectors.joining("\n")));
             e.printStackTrace();
             return null;
         }
@@ -1021,6 +1051,8 @@ public class Gram implements Comparable<Gram> {
             for (int mutantNum = 0; mutantNum < NUM_SUGGESTED_MUTANTS; mutantNum++) {
                 try {
                     Gram toAdd = new Gram(currBase);
+                    toAdd.setPosScore(0);
+                    toAdd.setNegScore(0);
                     toAdd.setName(toAdd.genMutantName());
                     toAdd.initMutHist(strArr);
 
@@ -1126,6 +1158,7 @@ public class Gram implements Comparable<Gram> {
                         continue;
                     } else {
                         // currMutants.append("\n" + mutantNum + ": " + toAdd.getName());
+                        toAdd.scrambleRuleNames();
                         out.add(toAdd);
                     }
                 } catch (Exception e) {
@@ -1136,6 +1169,22 @@ public class Gram implements Comparable<Gram> {
         });
         return out;
 
+    }
+
+    public HashMap<String, String> scrambleMap =  new HashMap<String, String>();
+
+    public void scrambleRuleNames() {
+        // System.err.println("Pre scramble " + toString());
+        parserRules.forEach(r1 -> {
+            String newName = genRuleName();
+            scrambleMap.put(newName, r1.name);
+            // r1.name = newName;
+            parserRules.forEach(r2 -> 
+                r2.renameReferences(r1.getName(), newName)
+            );
+        }
+        );
+        // System.err.println("Post scramble " + toString());
     }
 
     public static LinkedList<Gram> computeMutantsBoogaloo(Gram currBase) {
@@ -1626,7 +1675,7 @@ public class Gram implements Comparable<Gram> {
         try (FileWriter out = new FileWriter(new File(Constants.LOG_GRAMMAR_PATH + grammarName + ".g4"))) {
             out.write(hashString() + "\n");
             out.write(prettyPrintRules(terminalRules));
-            out.write("\n" + mutHist.stream().collect(Collectors.joining("\n")));
+            if(logMutHist) out.write("\n" + mutHist.stream().collect(Collectors.joining("\n")));
         } catch (Exception e) {
 
         }
@@ -1811,5 +1860,51 @@ public class Gram implements Comparable<Gram> {
     public int compareSize(Gram other) {
         return Integer.compare(getGrammarSize(), other.getGrammarSize());
     }
+
+    public void setPassingPosTests(Stack<String> newPass) {
+        passingPosTests = newPass;
+    }
+
+    public Stack<String> getPassingPosTests() {
+        return passingPosTests;
+    }
+
+    public Stack<String> getPassingNegTests() {
+        return passingNegTests;
+    }
+
+    public void setPassingNegTests(Stack<String> passingNegTests) {
+        this.passingNegTests = passingNegTests;
+    }
+
+    public Stack<String> getFailingPosTests() {
+        return failingPosTests;
+    }
+
+    public void setFailingPosTests(Stack<String> failingPosTests) {
+        this.failingPosTests = failingPosTests;
+    }
+
+    public Stack<String> getFailingNegTests() {
+        return failingNegTests;
+    }
+
+    public void setFailingNegTests(Stack<String> failingNegTests) {
+        this.failingNegTests = failingNegTests;
+    }
+    String toolString = "";
+
+	public void setToolString(String string) {
+        toolString = string;
+    }
+    
+    public String getToolString() {
+        return toolString;
+    }
+    /**
+     * Remove after bugfix
+     */
+
+    public String initString = "default";
 
 }
