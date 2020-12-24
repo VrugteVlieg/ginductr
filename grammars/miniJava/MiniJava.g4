@@ -1,134 +1,36 @@
-/** Mini-Java ANTLR4 grammar **/ //Taken from https://github.com/dwysocki/mini-java
+/** Mini-Java ANTLR4 grammar **/ //Taken from http://www.cambridge.org/resources/052182060X/MCIIJ2e/grammar.htm
 grammar MiniJava;
 
+goal : mainClass classDecl* EOF;
+mainClass : CLASS ID LCURL PUBLIC STATIC VOID MAIN LPAR STRING LBRACK RBRACK ID RPAR LCURL statement RCURL RCURL;
+classDecl : CLASS ID (EXTENDS ID)? LCURL varDecl* methodDecl* RCURL;
+varDecl : TYPE ID SEMICOL;
+methodDecl : PUBLIC TYPE ID LPAR (TYPE ID (COMMA TYPE ID)*)?  RPAR LCURL varDecl* statement* RETURN expr SEMICOL RCURL;
 
-goal
-    :   mainClassDeclaration
-        classDeclaration*
-        EOF
-    ;
+statement :   LCURL statement* RCURL
+            | IF LPAR expr RPAR statement ELSE statement
+            | WHILE LPAR expr RPAR statement
+            | PRINT LPAR statement RPAR SEMICOL
+            | ID EQ expr SEMICOL
+            | ID LBRACK expr RBRACK EQ expr SEMICOL;
 
-mainClassDeclaration
-    :   CLASS ID
-        mainClassBody
-    ;
+expr : expr EXPROP expr
+     | expr LBRACK expr RBRACK
+     | expr DOT LENGTH 
+     | expr DOT ID LPAR (expr (COMMA expr)*)? RPAR
+     | NUM
+     | TRUE
+     | FALSE
+     | ID
+     | THIS
+     | NEW INT LBRACK expr RBRACK
+     | NEW ID  LPAR RPAR
+     | NOT expr
+     | LPAR expr RPAR;
 
-classDeclaration
-    :   CLASS ID (EXTENDS type)?
-        classBody
-    ;
-
-mainClassBody
-    :   LCURL mainMethod RCURL
-    ;
-
-mainMethod
-    :   mainMethodDeclaration LCURL statement RCURL
-    ;
-
-mainMethodDeclaration
-    :   PUBLIC STATIC VOID MAIN LPAR STRING LBRACK RBRACK ID RPAR
-    ;
-
-classBody
-    :   LCURL fieldDeclaration*
-            methodDeclaration* RCURL
-    ;
-
-fieldDeclaration
-    :   type ID SEMICOL
-    ;
-
-varDeclaration
-    :   type ID SEMICOL
-    ;
-
-methodDeclaration
-    :   ( PUBLIC type ID formalParameters
-        |          type ID formalParameters
-        | PUBLIC      ID formalParameters
-        | PUBLIC type    formalParameters
-        | PUBLIC type ID
-        )
-        methodBody
-    ;
-
-methodBody
-    :   LCURL
-            varDeclaration*
-            statement+
-        RCURL
-    ;
-
-formalParameters
-    :   LPAR formalParameterList? RPAR
-    ;
-
-formalParameterList
-    :   formalParameter (COMMA formalParameter)*
-    ;
-
-formalParameter
-    :   type ID
-    ;
-
-type
-    :   intArrayType
-    |   BOOLEAN
-    |   INT
-    |   ID
-    ;
-
-statement
-    :   LCURL statement* RCURL
-    |   IF LPAR expression RPAR
-            statement
-        ELSE
-            statement
-    |   WHILE LPAR expression RPAR
-            statement
-    |   'System.out.println' LPAR expression RPAR SEMICOL
-    |   ID EQ expression SEMICOL
-    |   ID LBRACK expression RBRACK EQ expression SEMICOL
-    |   RETURN expression SEMICOL
-    |   RECUR expression QMARK methodArgumentList COLON expression SEMICOL
-    ;
-
-expression
-    :   expression LBRACK expression RBRACK
-    |   expression DOT LENGTH
-    |   expression DOT ID methodArgumentList
-    |   MIN expression
-    |   NOT expression
-    |   NEW INT LBRACK expression RBRACK
-    |   NEW ID LPAR RPAR
-    |   expression PLUS  expression
-    |   expression MIN  expression
-    |   expression MUL  expression
-    |   expression LT  expression
-    |   expression AND expression
-    |   NUM
-    |   bool
-    |   ID
-    |   THIS
-    |   LPAR expression RPAR
-    ;
-
-methodArgumentList
-    :   LPAR (expression (COMMA expression)*)? RPAR
-    ;
-
-intArrayType
-    :   INT LBRACK RBRACK
-    ;
-
-bool : TRUE | FALSE;
-
-
-ID  :   'java'
-    ;
+ID : 'java';
+TYPE : 'int []' | 'boolean' | INT | ID;
 NUM : '0';
-BOOLEAN: 'boolean';
 INT: 'int';
 CLASS : 'class';
 EXTENDS : 'extends';
@@ -141,7 +43,6 @@ IF : 'if';
 ELSE : 'else';
 WHILE : 'while';
 RETURN : 'return';
-RECUR : 'recur';
 LENGTH : 'length';
 NEW : 'new';
 THIS : 'this';
@@ -156,8 +57,6 @@ RPAR: ')';
 SEMICOL: ';';
 COMMA: ',';
 EQ: '=';
-QMARK: '?';
-COLON: ':';
 DOT: '.';
 MIN: '-';
 NOT: '!';
@@ -165,4 +64,5 @@ PLUS: '+';
 MUL: '*';
 LT: '<';
 AND: '&&';
+EXPROP : AND | LT | PLUS | MIN | MUL;
 PRINT: 'System.out.println';
