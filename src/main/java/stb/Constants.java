@@ -2,13 +2,13 @@ package stb;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "toylang";
+    public static final String CURR_GRAMMAR_NAME = "dyck4";
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
     public static String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
     public static String ANTLR_DIR = "./antlrOut";
     public static String GRAM_START_SYMB = "program";
-    public static int NUM_THREADS = 32;
+    public static int NUM_THREADS = 8;
     public static String LOG_DIR = "./logs";
     public static String PERFECT_LOG_DIR = "./logs/perfectGrams";
     public static String SLOW_LOG_DIR = "./logs/slowGrams";

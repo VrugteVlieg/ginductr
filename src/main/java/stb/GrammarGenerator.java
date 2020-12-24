@@ -93,7 +93,7 @@ public class GrammarGenerator {
     public static LinkedList<Gram> generateLocalisablePop(int popSize) {
         LinkedList<Gram> out = new LinkedList<Gram>();
         while(out.size() < popSize) {
-            // App.rgoSetText("Generating new population: " + out.size() + "/" + popSize);
+            App.rgoSetText("Generating new population: " + out.size() + "/" + popSize);
             LinkedList<Gram> newPop = generatePopulation(Constants.NUM_THREADS * 5);
             newPop.removeIf(gram -> nullGrams.contains(gram.hashString().hashCode()));
             App.runTests(newPop);

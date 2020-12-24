@@ -231,8 +231,6 @@ public class App {
         for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
             totalPop.clear();
             totalPop.addAll(myGrammars);
-            System.err.println("totalPop size:" + totalPop.size());
-            System.err.println("myGrammars size:" + myGrammars.size());
             if (genNum != 0) {
                 List<Gram> allMutants = new ArrayList<>();
                 for (Gram g : myGrammars) {
@@ -283,13 +281,13 @@ public class App {
 
             int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
             int tourSize = Math.min(totalPop.size(), TOUR_SIZE);
-            System.err.println("Next gen size: " + nextGenSize);
-            System.err.println("TG:" + totalPop.size());
-            System.err.println("MG:" + myGrammars.size());
-            System.err.println("TS:" + tourSize);
+            // System.err.println("Next gen size: " + nextGenSize);
+            // System.err.println("TG:" + totalPop.size());
+            // System.err.println("MG:" + myGrammars.size());
+            // System.err.println("TS:" + tourSize);
             myGrammars.clear();
 
-            System.err.println("Recording metrics of " + totalPop.size() + " gen " + genNum);
+            System.err.println("Recording metrics of " + totalPop.size() + " gen: " + genNum);
             logFuncs.keySet().forEach(k -> recordMetric(k, totalPop));
 
             for (int i = 0; i < nextGenSize; i++) {
