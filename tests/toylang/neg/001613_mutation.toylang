@@ -1,0 +1,1 @@
+program a = { while a do 0 sleep; } .

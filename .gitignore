@@ -1,6 +1,5 @@
 antlrOut
 target
-tests
 *.prefs
 .vscode/*
 !.vscode/settings.json

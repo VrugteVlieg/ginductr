@@ -1,0 +1,1 @@
+class java { public static void Main ( String [ ] java ) { static if ( 0 ) { } else { } } }

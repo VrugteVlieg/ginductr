@@ -1,0 +1,1 @@
+class java { public static void Main ( String [ ] java ) { while System.out.println ( 0 ) { } } }

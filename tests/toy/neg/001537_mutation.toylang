@@ -1,0 +1,1 @@
+program a = { var then a : bool; } .

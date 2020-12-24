@@ -1,0 +1,1 @@
+program a = { var a : 0 int; } .
