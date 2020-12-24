@@ -9,9 +9,19 @@ import java.util.function.Predicate;
 
 public class GrammarGenerator {
 
-    static HashSet<Integer> nullGrams = new HashSet<>();
+    static HashSet<String> nullGrams = new HashSet<>();
+    static int nullGramHits = 0;
     static int grammarCount = 0;
     static Gram terminalGrammar = new Gram(new File(Constants.CURR_TERMINALS_PATH));
+
+    static boolean hasBeenChecked(Gram in) {
+        if(nullGrams.contains(in.hashString())) {
+            nullGramHits++;
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     public static LinkedList<Gram> generatePopulation(int popSize) {
         LinkedList<Gram> output = new LinkedList<Gram>();
@@ -92,13 +102,18 @@ public class GrammarGenerator {
 
     public static LinkedList<Gram> generateLocalisablePop(int popSize) {
         LinkedList<Gram> out = new LinkedList<Gram>();
+
         while(out.size() < popSize) {
-            App.rgoSetText("Generating new population: " + out.size() + "/" + popSize);
+            System.err.print("Generating new pop " + out.size() + "/" + popSize);
             LinkedList<Gram> newPop = generatePopulation(Constants.NUM_THREADS * 5);
-            newPop.removeIf(gram -> nullGrams.contains(gram.hashString().hashCode()));
+            int sizeIn = newPop.size();
+            newPop.removeIf(GrammarGenerator::hasBeenChecked);
+            int sizeOut = newPop.size();
+            nullGramHits += sizeOut-sizeIn;
+            System.err.print("Filtered out " + (sizeOut-sizeIn) + " null grams, totalHits: " + nullGramHits + ", totalNulls: " + nullGrams.size() + "\r");
             App.runTests(newPop);
             // newPop.forEach(App::runTests);
-            newPop.forEach(gram -> {if(gram.getPosScore() == 0.0) nullGrams.add(gram.hashString().hashCode());});
+            newPop.forEach(gram -> {if(gram.getPosScore() == 0.0) nullGrams.add(gram.hashString());});
             newPop.removeIf(Predicate.not(Gram.passesPosTest));
             out.addAll(newPop);
         }

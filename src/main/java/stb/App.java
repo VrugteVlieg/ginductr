@@ -109,7 +109,7 @@ public class App {
             if(scores.get(MAX_SCORE_METRIC) == null || scores.get(MAX_SCORE_METRIC).isEmpty() ) return 0.0;
             double prevMax = scores.get(MAX_SCORE_METRIC).getLast();
             double currMax  = g.mapToDouble(Gram::getScore).max().getAsDouble();
-            System.err.println("Prev max was " + prevMax + " curr max is " + currMax);
+            // System.err.println("Prev max was " + prevMax + " curr max is " + currMax);
             return currMax - prevMax;
         });
 
@@ -161,10 +161,10 @@ public class App {
             // runTests(new ArrayList<Gram>(List.of(seeded)));
             // runLocaliser(seeded);
             // stopwatch.startClock();
-            List<Gram> pop = GrammarGenerator.generatePopulation(2);
+            // List<Gram> pop = GrammarGenerator.generatePopulation(2);
             
-            Gram.loggedCrossover(pop.get(0), pop.get(1), new StringBuilder());
-            System.err.println(pop.get(0).prevCross.toString());
+            // Gram.loggedCrossover(pop.get(0), pop.get(1), new StringBuilder());
+            // System.err.println(pop.get(0).prevCross.toString());
             // for (int tCount : new int[] { 1, 4, 8, 16 }) {
             //     Constants.NUM_THREADS = tCount;
             //     runTests(pop);
@@ -231,6 +231,7 @@ public class App {
         for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
             totalPop.clear();
             totalPop.addAll(myGrammars);
+            System.err.println("Starting  gen " + genNum + "@" + LocalDateTime.now());
             if (genNum != 0) {
                 List<Gram> allMutants = new ArrayList<>();
                 for (Gram g : myGrammars) {
@@ -240,9 +241,13 @@ public class App {
                 allMutants.addAll(GrammarGenerator.generateLocalisablePop(Constants.FRESH_POP));
 
                 runTests(allMutants);
-
+                allMutants.stream()
+                    .filter(Gram.passesPosTest.negate())
+                    .map(Gram::hashString)
+                    .forEach(GrammarGenerator.nullGrams::add); 
+                
                 allMutants.removeIf(Gram.passesPosTest.negate());
-                allMutants.stream().filter(notYetChecked).forEach(totalPop::add);
+                allMutants.stream().filter(g -> !App.gramAlreadyChecked(g)).forEach(totalPop::add);
             }
 
             // Add crossover grammars
@@ -619,7 +624,6 @@ public class App {
     }
 
     static void writePerfectGrammars(List<Gram> grammars, int genNum) {
-        System.out.println("Found " + perfectGrammars.size() + " perfect grammars");
         grammars.forEach(gram -> {
             try (FileWriter out = new FileWriter(new File(Constants.LOG_DIR + "/" + outputID + "/"
                     + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
@@ -632,13 +636,12 @@ public class App {
     }
 
     static void writeGrammar(Gram gram, int genNum) {
-        System.out.println("Found " + perfectGrammars.size() + " perfect grammars");
         try (FileWriter out = new FileWriter(new File(Constants.LOG_DIR + "/" + outputID + "/"
                 + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
             out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s",
                     genNum, gram.getScore(), gram, Constants.getParamString()));
-            System.err.println(String.format("iteration count: %d\nScore: %f\n%s\n%s",
-            genNum, gram.getScore(), gram, Constants.getParamString()));
+            System.err.println(String.format("iteration count: %d\nScore: %f\n%s",
+            genNum, gram.getScore(), gram.hashString()));
         } catch (Exception e) {
             e.printStackTrace();
         }

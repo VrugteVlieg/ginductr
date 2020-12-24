@@ -2,7 +2,7 @@ package stb;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "dyck4";
+    public static final String CURR_GRAMMAR_NAME = "dyck";
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
     public static String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
@@ -65,14 +65,14 @@ public class Constants {
 
     public static int INIT_POP_SIZE = NUM_THREADS*10;
     public static int POP_SIZE = NUM_THREADS * 10;
-    public static int FRESH_POP = NUM_THREADS * 5;
+    public static int FRESH_POP = NUM_THREADS * 2;
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
-    public static int NUM_ITERATIONS = 2;
+    public static int NUM_ITERATIONS = 100;
     public static int RULENAME_LEN = 10;
-    public static int MAX_RULE_COUNT = 3;
-    public static int MAX_RHS_SIZE = 4;
+    public static int MAX_RULE_COUNT = 5;
+    public static int MAX_RHS_SIZE = 6;
 
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
     public static String localizerCompilPath = "./antlr-localizer/default/target/generated-sources/antlr4";
