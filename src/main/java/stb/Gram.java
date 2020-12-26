@@ -224,14 +224,14 @@ public class Gram implements Comparable<Gram> {
      * @param targetProd
      */
     public void genNewNT(List<Rule> targetProd) {
-        currMut = new StringBuilder("Applying genNewNT to" + stringProd(targetProd) + "\n");
+        // currMut = new StringBuilder("Applying genNewNT to" + stringProd(targetProd) + "\n");
         int newRuleLen = 1 + randInt(Constants.MAX_RHS_SIZE);
         int numSelectables = getTotalSelectables(targetProd);
         int replacementIndex = randInt(numSelectables);
         Rule toReplace = getSelectable(targetProd, replacementIndex);
         Rule toInsert;
-        currMut.append(String.format("New rule has len %d\nReplacing %s in %s\n", newRuleLen, toReplace,
-                stringProd(targetProd)));
+        // currMut.append(String.format("New rule has len %d\nReplacing %s in %s\n", newRuleLen, toReplace,
+        //         stringProd(targetProd)));
 
         if (newRuleLen == 1) {
             // if the new rule would have had len 1 it would be of the form newRule: ruleA;
@@ -242,20 +242,20 @@ public class Gram implements Comparable<Gram> {
             while (toInsert.equals(toReplace)) {
                 toInsert = randGet(allRules, true);
             }
-            currMut.append("New rule would have had len 1 so inserting " + toInsert + "\n");
+            // currMut.append("New rule would have had len 1 so inserting " + toInsert + "\n");
         } else if (parserRules.size() == Constants.MAX_RULE_COUNT) {
             return;
         } else {
             int newRuleIndex = 1 + randInt(parserRules.size() - 1);
             generateNewRule(genRuleName(), newRuleLen, newRuleIndex);
             toInsert = parserRules.get(newRuleIndex);
-            currMut.append("Generated new rule " + toInsert + "\n");
+            // currMut.append("Generated new rule " + toInsert + "\n");
         }
 
         setSelectable(targetProd, replacementIndex, toInsert);
         // setName(getName() + "_" + NEWNT_MUTATION);
-        currMut.append("\n\nResults in " + this + "\n\n");
-        mutHist.add(currMut.toString());
+        // currMut.append("\n\nResults in " + this + "\n\n");
+        // mutHist.add(currMut.toString());
 
     }
 
@@ -610,28 +610,28 @@ public class Gram implements Comparable<Gram> {
      * incremented
      */
     public void changeSymbolCount(List<Rule> targetProd) {
-        currMut = new StringBuilder("Applying changeSymbolCount to " + stringProd(targetProd) + "\n\n");
+        // currMut = new StringBuilder("Applying changeSymbolCount to " + stringProd(targetProd) + "\n\n");
         int numSelectables = getTotalSelectables(targetProd);
         int index = randInt(numSelectables);
         long rhsSize = getAllSelectables(targetProd).stream().filter(rule -> rule.getTotalSelectables() == 1).count();
         if (Math.random() < Constants.P_ADD_SYMBOL && rhsSize < Constants.MAX_RHS_SIZE) {
             Rule toInsert = randGet(parserRules, true);
-            currMut.append("Inserting " + toInsert.getName() + " at index " + index + "\n");
+            // currMut.append("Inserting " + toInsert.getName() + " at index " + index + "\n");
             insertSelectable(targetProd, index, randGet(parserRules, true));
         } else if (targetProd.size() > 1 || index > 0) {
             // If there is only 1 rule in the prod removing it would break the grammar
             // if the index is not 0 however then the rule must be a composite rule and we
             // proceed
-            currMut.append("Removing " + getSelectable(targetProd, index) + " at index " + index);
+            // currMut.append("Removing " + getSelectable(targetProd, index) + " at index " + index);
             removeSelectable(targetProd, index);
 
         }
-        currMut.append("\n\n" + "Results in " + this + "\n\n");
-        mutHist.add(currMut.toString());
+        // currMut.append("\n\n" + "Results in " + this + "\n\n");
+        // mutHist.add(currMut.toString());
     }
 
     public void groupMutate(List<Rule> prod) {
-        currMut = new StringBuilder(format("Applying grouping to %s\n\n", stringProd(prod)));
+        // currMut = new StringBuilder(format("Applying grouping to %s\n\n", stringProd(prod)));
         try {
 
             boolean prodSize = prod.size() > 1;
@@ -644,9 +644,9 @@ public class Gram implements Comparable<Gram> {
                 Rule toInsert = new Rule(toGroup);
 
                 IntStream.rangeClosed(startIndex, endIndex).forEach(val -> prod.remove(startIndex));
-                currMut.append("Removing indices " + startIndex + " - " + endIndex + " " + toInsert + " from "
-                        + origProd + "\n");
-                currMut.append("Inserting  " + toInsert + " at " + startIndex + " in " + stringProd(prod) + "\n");
+                // currMut.append("Removing indices " + startIndex + " - " + endIndex + " " + toInsert + " from "
+                //         + origProd + "\n");
+                // currMut.append("Inserting  " + toInsert + " at " + startIndex + " in " + stringProd(prod) + "\n");
                 // If we grouped untill the end of the prod, e.g | ruleA (ruleB ruleC) | then
                 // start index would be 2, after removing ruleB and ruleC however, the prod is
                 // only len1 so we cannot insert at index2 we need to append
@@ -656,17 +656,17 @@ public class Gram implements Comparable<Gram> {
                     prod.add(startIndex, toInsert);
                 }
             } else {
-                currMut.append("Getting the sole rule in " + stringProd(prod) + " in " + this);
+                // currMut.append("Getting the sole rule in " + stringProd(prod) + " in " + this);
                 Rule soleRule = prod.get(0);
                 List<Rule> innerRules = soleRule.getSubRules().get(0);
                 groupMutate(innerRules);
             }
         } catch (Exception e) {
             e.printStackTrace();
-            currMut.append(e.toString());
+            // currMut.append(e.toString());
         } 
-        currMut.append("\n\n" + "Results in " + this + "\n\n");
-        mutHist.add(currMut.toString());
+        // currMut.append("\n\n" + "Results in " + this + "\n\n");
+        // mutHist.add(currMut.toString());
         
     }
 
@@ -780,7 +780,7 @@ public class Gram implements Comparable<Gram> {
 
     public void demoChangeRuleCount(outputLambda logOut, outputLambda grammarOut) {
         
-        if (parserRules.size() < Constants.MAX_RULE_COUNT && Math.random() < Constants.P_ADD_RULE) {
+        if (parserRules.size() < Constants.MAX_RULE_COUNT ) {
             int ruleLen = 1 + randInt(Constants.MAX_RHS_SIZE);
             logOut.output("Generating new rule of length " + ruleLen);
             generateNewRule("rule_" + parserRules.size(), ruleLen);
@@ -1054,7 +1054,7 @@ public class Gram implements Comparable<Gram> {
                     toAdd.setPosScore(0);
                     toAdd.setNegScore(0);
                     toAdd.setName(toAdd.genMutantName());
-                    toAdd.initMutHist(strArr);
+                    // toAdd.initMutHist(strArr);
 
                     Rule targetRule = toAdd.getRuleByName(targetRuleName);
                     
@@ -1098,11 +1098,11 @@ public class Gram implements Comparable<Gram> {
                         int numSelectables = getTotalSelectables(targetProd) + 1;
                         int toMutIndex = randInt(numSelectables);
                         if (toMutIndex == 0) {
-                            toAdd.currMut = new StringBuilder("Generating a new prod\n");
+                            // toAdd.currMut = new StringBuilder("Generating a new prod\n");
                             targetRule.getSubRules().set(prodIndex, toAdd.generateNewProd());
                             // toAdd.setName(toAdd.getName() + "_" + NEWPROD_MUTATION);
-                            toAdd.currMut.append(format("Results in %s\n", toAdd.toString()));
-                            toAdd.mutHist.add(toAdd.currMut.toString());
+                            // toAdd.currMut.append(format("Results in %s\n", toAdd.toString()));
+                            // toAdd.mutHist.add(toAdd.currMut.toString());
                         } else {
                             toAdd.symbolMutation(targetProd);
                         }
@@ -1122,9 +1122,9 @@ public class Gram implements Comparable<Gram> {
                             List<String> initialNullables = toAdd.constrNullable();
                             toAdd.applyHeuristic(targetProd);
                             if (toAdd.nullable(targetRuleName)) {
-                                toAdd.currMut.append(targetRuleName + " is now nullable cleaning references");
+                                // toAdd.currMut.append(targetRuleName + " is now nullable cleaning references");
                                 toAdd.cleanReferences(targetRule);
-                                toAdd.currMut.append("Results in " + toAdd.toString());
+                                // toAdd.currMut.append("Results in " + toAdd.toString());
                             }
 
                             List<String> newNullables = toAdd.constrNullable();
@@ -1136,13 +1136,13 @@ public class Gram implements Comparable<Gram> {
                             if (newNullables.size() > 0)
                                 toAdd.cleanAllEmptyClosures();
 
-                            toAdd.mutHist.add(toAdd.currMut.toString());
+                            // toAdd.mutHist.add(toAdd.currMut.toString());
                         }
                     }
 
 
                     toAdd.removeDuplicateProductions();
-                    toAdd.mutHist.add("Final Gram " + toAdd.toString());
+                    // toAdd.mutHist.add("Final Gram " + toAdd.toString());
                     // toAdd.removeUnreachableBoogaloo();
                     NUM_MUTS++;
                     boolean LrDeriv = toAdd.containsImmediateLRDeriv();
@@ -1252,11 +1252,11 @@ public class Gram implements Comparable<Gram> {
                         int numSelectables = getTotalSelectables(targetProd) + 1;
                         int toMutIndex = randInt(numSelectables);
                         if (toMutIndex == 0) {
-                            toAdd.currMut = new StringBuilder("Generating a new prod\n");
+                            // toAdd.currMut = new StringBuilder("Generating a new prod\n");
                             targetRule.getSubRules().set(prodIndex, toAdd.generateNewProd());
                             // toAdd.setName(toAdd.getName() + "_" + NEWPROD_MUTATION);
-                            toAdd.currMut.append(format("Results in %s\n", toAdd.toString()));
-                            toAdd.mutHist.add(toAdd.currMut.toString());
+                            // toAdd.currMut.append(format("Results in %s\n", toAdd.toString()));
+                            // toAdd.mutHist.add(toAdd.currMut.toString());
                         } else {
                             toAdd.symbolMutation(targetProd);
                         }
@@ -1276,9 +1276,9 @@ public class Gram implements Comparable<Gram> {
                             List<String> initialNullables = toAdd.constrNullable();
                             toAdd.applyHeuristic(targetProd);
                             if (toAdd.nullable(targetRuleName)) {
-                                toAdd.currMut.append(targetRuleName + " is now nullable cleaning references");
+                                // toAdd.currMut.append(targetRuleName + " is now nullable cleaning references");
                                 toAdd.cleanReferences(targetRule);
-                                toAdd.currMut.append("Results in " + toAdd.toString());
+                                // toAdd.currMut.append("Results in " + toAdd.toString());
                             }
 
                             List<String> newNullables = toAdd.constrNullable();
@@ -1290,7 +1290,7 @@ public class Gram implements Comparable<Gram> {
                             if (newNullables.size() > 0)
                                 toAdd.cleanAllEmptyClosures();
 
-                            toAdd.mutHist.add(toAdd.currMut.toString());
+                            // toAdd.mutHist.add(toAdd.currMut.toString());
                         }
 
                         // System.out.println(toAdd);
@@ -1415,8 +1415,9 @@ public class Gram implements Comparable<Gram> {
 
         Rule toSelect = getSelectable(prod, toSelectIndex);
         if (toSelect == null) {
+
             logGrammar(true);
-            App.blockRead("Null pointer exception in gram \n" + this);
+            // App.blockRead("Null pointer exception in gram \n" + this);
         }
         int counter = 0;
         while (nullable(toSelect.getName()) && counter++ < 5) {
@@ -1426,8 +1427,8 @@ public class Gram implements Comparable<Gram> {
             return;
 
         double choice = Math.random();
-        currMut = new StringBuilder(
-                format("Applying heuristic choice %f to %s in %s", choice, toSelect.toString(), stringProd(prod)));
+        // currMut = new StringBuilder(
+        //         format("Applying heuristic choice %f to %s in %s", choice, toSelect.toString(), stringProd(prod)));
         if (choice < 0.33) {
             toSelect.setIterative(!toSelect.isIterative());
         } else if (choice < 0.66) {
@@ -1436,8 +1437,8 @@ public class Gram implements Comparable<Gram> {
             toSelect.setIterative(!toSelect.isIterative());
             toSelect.setOptional(!toSelect.isOptional());
         }
-        currMut.append(format("\n\nResults in %s\n\n", this.toString()));
-        mutHist.add(currMut.toString());
+        // currMut.append(format("\n\nResults in %s\n\n", this.toString()));
+        // mutHist.add(currMut.toString());
     }
 
     /**
@@ -1447,7 +1448,7 @@ public class Gram implements Comparable<Gram> {
      * @param prod
      */
     public void symbolMutation(List<Rule> prod) {
-        currMut = new StringBuilder(format("Applying symbol mutation to %s\n", stringProd(prod)));
+        // currMut = new StringBuilder(format("Applying symbol mutation to %s\n", stringProd(prod)));
         // System.err.println(format("Applying symbol mutation to %s\n",
         // stringProd(prod)));
         int toMutateIndex = randInt(getTotalSelectables(prod));
@@ -1455,19 +1456,19 @@ public class Gram implements Comparable<Gram> {
         Rule toInsert = randGet(getAllRules(), true);
         if (toReplace == null) {
             logGrammar(true);
-            App.blockRead("Null pointer exception in gram\n " + this + "\ntotSel: " + getTotalSelectables(prod) + "\n"
-                    + stringProd(prod));
+            // App.blockRead("Null pointer exception in gram\n " + this + "\ntotSel: " + getTotalSelectables(prod) + "\n"
+            //         + stringProd(prod));
         }
 
         int earlyExit = 0;
         while (toInsert.equals(toReplace) && earlyExit++ < 5)
             toInsert = randGet(getAllRules(), true);
 
-        currMut.append(format("Replacing %s by %s", toReplace.getName(), toInsert.getName()));
+        // currMut.append(format("Replacing %s by %s", toReplace.getName(), toInsert.getName()));
 
         setSelectable(prod, toMutateIndex, toInsert);
         // setName(getName() + "_" + MODEXSTPROD_MUTATION);
-        currMut.append(format("\n\nResults in %s\n\n", this));
+        // currMut.append(format("\n\nResults in %s\n\n", this));
         mutHist.add(currMut.toString());
     }
 

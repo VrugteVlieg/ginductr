@@ -2,13 +2,13 @@ package stb;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "dyck";
+    public static final String CURR_GRAMMAR_NAME = "dyck4";
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
     public static String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
     public static String ANTLR_DIR = "./antlrOut";
     public static String GRAM_START_SYMB = "program";
-    public static int NUM_THREADS = 8;
+    public static int NUM_THREADS = 32;
     public static String LOG_DIR = "./logs";
     public static String PERFECT_LOG_DIR = "./logs/perfectGrams";
     public static String SLOW_LOG_DIR = "./logs/slowGrams";
@@ -28,30 +28,28 @@ public class Constants {
     public static final String POS_MODE = "pos";
     public static final String NEG_MODE = "neg";
 
-    public static double[] P_CHANGE_RULE_COUNT_VALS = { 0.1, 0.2, 0.3, 0.4 };
+    public static double[] P_CHANGE_RULE_COUNT_VALS = { 0.3, 0.4, 0.5 };
     public static double P_CHANGE_RULE_COUNT = 0.5; // P to add or remove a rule from a grammar
 
-    public static double[] P_ADD_RULE_VALS = { 0.1, 0.2, 0.3, 0.4 };
-    public static double P_ADD_RULE = 0.5; // P to add a rule when adding/removing rules
 
-    public static double[] P_CHANGE_SYMB_VALS = { 0.1, 0.2, 0.3, 0.4 };
-    public static double P_CHANGE_SYMBOL_COUNT = 0.5; // P to add or remove a rule from a grammar
+    public static double[] P_CHANGE_SYMB_VALS = { 0.3, 0.4, 0.5 };
+    public static double P_CHANGE_SYMBOL_COUNT = 0.5; // P to add or remove a symbol from a rule
 
-    public static double[] P_ADD_SYMB_VALS = { 0.1, 0.2, 0.3, 0.4 };
+    public static double[] P_ADD_SYMB_VALS = { 0.3, 0.4, 0.5 };
     public static double P_ADD_SYMBOL = 0.5; // P to add a symbol when adding/removing symbols
 
-    public static double[] P_M_VALS = { 0.1, 0.2, 0.3, 0.4 };
+    public static double[] P_M_VALS = { 0.3, 0.4, 0.5 };
     public static double P_M = 0.5; // P to mutate a symbol in a grammar
 
-    public static double[] P_H_VALS = { 0.1, 0.2, 0.3, 0.4 };
+    public static double[] P_H_VALS = { 0.3, 0.4, 0.5 };
     public static double P_H = 0.5; // P to make a symbol iterative or optional
 
-    public static double[] TOUR_SIZE_VALS = { 0.01, 0.05, 0.1, 0.15 };
+    public static double[] TOUR_SIZE_VALS = { 0.05, 0.1, 0.15 };
     public static int TOUR_SIZE = 5; // Size of tournaments when performing tour selection
 
     public static int NUM_CROSSOVER_PER_GEN = 5;
 
-    public static double[] P_G_VALS = { 0.1, 0.2, 0.3, 0.4 };
+    public static double[] P_G_VALS = { 0.3, 0.4, 0.5 };
     public static double P_G = 0.5; // P to group/ungroup symbols on the RHS
 
     public static double P_GROUP = 0.5; // P to group symbols
@@ -63,9 +61,9 @@ public class Constants {
     public static boolean HEURISTIC = true;
     public static boolean CROSSOVER = false;
 
-    public static int INIT_POP_SIZE = NUM_THREADS*10;
-    public static int POP_SIZE = NUM_THREADS * 10;
-    public static int FRESH_POP = NUM_THREADS * 2;
+    public static int INIT_POP_SIZE = 100;
+    public static int POP_SIZE = 100;
+    public static int FRESH_POP = 10;
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
