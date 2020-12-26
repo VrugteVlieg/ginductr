@@ -193,8 +193,6 @@ public class App {
         createLogDir(baseOutputID);
         for (double pCRC : Constants.P_CHANGE_RULE_COUNT_VALS) {
             Constants.P_CHANGE_RULE_COUNT = pCRC;
-            for (double pAR : Constants.P_ADD_RULE_VALS) {
-                Constants.P_ADD_RULE = pAR;
                 for (double pCS : Constants.P_CHANGE_SYMB_VALS) {
                     Constants.P_CHANGE_SYMBOL_COUNT = pCS;
                     for (double pAS : Constants.P_ADD_SYMB_VALS) {
@@ -207,7 +205,7 @@ public class App {
                                     Constants.TOUR_SIZE = Math.max((int) (Constants.POP_SIZE * tS), 1);
                                     for (double pG : Constants.P_G_VALS) {
                                         Constants.P_G = pG;
-                                        String format = format("CRC:%f_AR:%f_CS:%f_AS:%f_PM:%f_PH:%f_TS:%f_PG:%f", pCRC, pAR, pCS, pAS, pM, pH, tS, pG);
+                                        String format = format("CRC:%f_CS:%f_AS:%f_PM:%f_PH:%f_TS:%f_PG:%f", pCRC, pCS, pAS, pM, pH, tS, pG);
                                         createLogDir(baseOutputID + "/"+ format);
                                         for (int runCount = 0; runCount < 10; runCount++) {
                                             System.err.println("Testing " + format + "_" +  runCount + "@ " + LocalDateTime.now().toString());
@@ -221,17 +219,17 @@ public class App {
                         }
                     }
                 }
-            }
         }
     }
 
     public static void benchmarkMain() {
         resetProg();
         myGrammars = GrammarGenerator.generateLocalisablePop(Constants.INIT_POP_SIZE);
+        stopwatch.startClock("GEN");
         for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
             totalPop.clear();
             totalPop.addAll(myGrammars);
-            System.err.println("Starting  gen " + genNum + "@" + LocalDateTime.now());
+            System.err.println("Starting  gen " + genNum + "@" + LocalDateTime.now() + "   prevGen: " + stopwatch.split("GEN"));
             if (genNum != 0) {
                 List<Gram> allMutants = new ArrayList<>();
                 for (Gram g : myGrammars) {
