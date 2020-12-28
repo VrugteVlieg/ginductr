@@ -92,7 +92,7 @@ public class Gram implements Comparable<Gram> {
     }
 
     public Gram(String grammarText) {
-        System.err.println("Constructing grammar from\n" + grammarText);
+        // System.err.println("Constructing grammar from\n" + grammarText);
         fileLines = Arrays.asList(grammarText.split("\n"));
         grammarName = fileLines.get(0).split(" ")[1];
         this.terminalRules = new ArrayList<Rule>();

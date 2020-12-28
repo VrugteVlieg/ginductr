@@ -109,7 +109,7 @@ public class GrammarGenerator {
             int sizeIn = newPop.size();
             newPop.removeIf(GrammarGenerator::hasBeenChecked);
             int sizeOut = newPop.size();
-            nullGramHits += sizeOut-sizeIn;
+            nullGramHits += sizeIn-sizeOut;
             System.err.print("Filtered out " + (sizeOut-sizeIn) + " null grams, totalHits: " + nullGramHits + ", totalNulls: " + nullGrams.size() + "\r");
             App.runTests(newPop);
             // newPop.forEach(App::runTests);

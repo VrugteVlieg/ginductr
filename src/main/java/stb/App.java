@@ -237,15 +237,17 @@ public class App {
                 }
 
                 allMutants.addAll(GrammarGenerator.generateLocalisablePop(Constants.FRESH_POP));
-
+                // System.err.println("TotalPop In " + totalPop.size() + "\n" + "numMuts " + allMutants.size());
                 runTests(allMutants);
-                allMutants.stream()
-                    .filter(Gram.passesPosTest.negate())
-                    .map(Gram::hashString)
-                    .forEach(GrammarGenerator.nullGrams::add); 
+                // allMutants.stream()
+                //     .filter(Gram.passesPosTest.negate())
+                //     .map(Gram::hashString)
+                //     .forEach(GrammarGenerator.nullGrams::add); 
                 
-                allMutants.removeIf(Gram.passesPosTest.negate());
-                allMutants.stream().filter(g -> !App.gramAlreadyChecked(g)).forEach(totalPop::add);
+                // allMutants.removeIf(Gram.passesPosTest.negate());
+                totalPop.addAll(allMutants);
+                // allMutants.stream().filter(g -> !App.gramAlreadyChecked(g)).forEach(totalPop::add);
+                // System.err.println("TotalPop Out " + totalPop.size());
             }
 
             // Add crossover grammars
