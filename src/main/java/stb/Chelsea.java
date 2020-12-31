@@ -187,7 +187,7 @@ public class Chelsea {
 
             // Name of the file, for example ampl.g4
             finName = grammar.getName();
-            // Setting up the arguments for th e ANTLR Tool. outputDir is in this case
+            // Setting up the arguments for the ANTLR Tool. outputDir is in this case
             // generated-sources/
 
             // args arrays for writing for normal testing and for writing to localiser

@@ -29,7 +29,7 @@ public class GrammarGenerator {
             String grammarName = "Grammar_" + Gram.genGramName();
             // System.err.println("Generating " + grammarName);
             Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
-            int grammarRuleCount = 1 + randInt(Constants.MAX_RULE_COUNT);
+            int grammarRuleCount = 2 + randInt(Constants.MAX_RULE_COUNT-1);
             
             for (int j = 0; j < grammarRuleCount; j++) {
                 int currRuleLen = 1 + randInt(Constants.MAX_RHS_SIZE-1);
@@ -110,7 +110,7 @@ public class GrammarGenerator {
             newPop.removeIf(GrammarGenerator::hasBeenChecked);
             int sizeOut = newPop.size();
             nullGramHits += sizeIn-sizeOut;
-            System.err.print("Filtered out " + (sizeOut-sizeIn) + " null grams, totalHits: " + nullGramHits + ", totalNulls: " + nullGrams.size() + "\r");
+            System.err.print("Filtered out " + (sizeIn-sizeOut) + " null grams, totalHits: " + nullGramHits + ", totalNulls: " + nullGrams.size() + "\r");
             App.runTests(newPop);
             // newPop.forEach(App::runTests);
             newPop.forEach(gram -> {if(gram.getPosScore() == 0.0) nullGrams.add(gram.hashString());});

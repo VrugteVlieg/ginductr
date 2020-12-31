@@ -34,7 +34,7 @@ public class Gram implements Comparable<Gram> {
     public static final String NEWPROD_MUTATION = "NP";
     public static final String SYMCOUNT_MUTATION = "S";
 
-    public static int NUM_SUGGESTED_MUTANTS = 5;
+    public static int NUM_SUGGESTED_MUTANTS = 10;
     public static int NUM_LOGS = 0;
     public static int NUM_LR = 0;
     public static int NUM_MUTS = 0;
@@ -243,8 +243,6 @@ public class Gram implements Comparable<Gram> {
                 toInsert = randGet(allRules, true);
             }
             // currMut.append("New rule would have had len 1 so inserting " + toInsert + "\n");
-        } else if (parserRules.size() == Constants.MAX_RULE_COUNT) {
-            return;
         } else {
             int newRuleIndex = 1 + randInt(parserRules.size() - 1);
             generateNewRule(genRuleName(), newRuleLen, newRuleIndex);
@@ -432,6 +430,8 @@ public class Gram implements Comparable<Gram> {
                 ruleB.setSelectable(indexToExtend, ruleA);
             }
         }
+
+        // System.err.println("Results in " + this);
 
     }
 
@@ -1069,7 +1069,7 @@ public class Gram implements Comparable<Gram> {
 
                     // newNT mutation, this favors expanding the grammar, should be balanced with
                     // contracting rule
-                    if (Constants.CHANGE_RULE_COUNT && Math.random() < Constants.P_CHANGE_RULE_COUNT) {
+                    if (Math.random() < Constants.P_CHANGE_RULE_COUNT) {
                         // if(Math.random() < Constants.P_ADD_RULE) {
                         if (toAdd.parserRules.size() <= Constants.MAX_RULE_COUNT)
                             toAdd.genNewNT(targetProd);
@@ -1078,12 +1078,12 @@ public class Gram implements Comparable<Gram> {
                         // }
                     }
 
-                    if (Constants.CHANGE_SYMBOL_COUNT && Math.random() < Constants.P_CHANGE_SYMBOL_COUNT) {
+                    if (Math.random() < Constants.P_CHANGE_SYMBOL_COUNT) {
                         // System.out.println("Changing symbol count of " + toAdd.getName());
                         toAdd.changeSymbolCount(targetProd);
                     }
 
-                    if (Constants.GROUP && Math.random() < Constants.P_G) {
+                    if (Math.random() < Constants.P_G) {
                         // System.out.println("Grouping in " + toAdd);
                         if (Math.random() < Constants.P_GROUP && canGroup(targetProd)) {
                             // System.err.println(stringProd(targetProd) + " is considered groupable");
@@ -1093,7 +1093,7 @@ public class Gram implements Comparable<Gram> {
                         }
                     }
 
-                    if (Constants.MUTATE && Math.random() < Constants.P_M) {
+                    if (Math.random() < Constants.P_M) {
                         // System.out.println("Mutating " + toAdd);
                         int numSelectables = getTotalSelectables(targetProd) + 1;
                         int toMutIndex = randInt(numSelectables);

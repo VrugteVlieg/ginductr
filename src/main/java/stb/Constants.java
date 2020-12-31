@@ -8,7 +8,7 @@ public class Constants {
     public static String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
     public static String ANTLR_DIR = "./antlrOut";
     public static String GRAM_START_SYMB = "program";
-    public static int NUM_THREADS = 32;
+    public static int NUM_THREADS = 8;
     public static String LOG_DIR = "./logs";
     public static String PERFECT_LOG_DIR = "./logs/perfectGrams";
     public static String SLOW_LOG_DIR = "./logs/slowGrams";
@@ -28,14 +28,13 @@ public class Constants {
     public static final String POS_MODE = "pos";
     public static final String NEG_MODE = "neg";
 
-    public static double[] P_CHANGE_RULE_COUNT_VALS = { 0.3, 0.4, 0.5 };
+    public static double[] P_CHANGE_RULE_COUNT_VALS = { 0.5 };
     public static double P_CHANGE_RULE_COUNT = 0.5; // P to add or remove a rule from a grammar
-
 
     public static double[] P_CHANGE_SYMB_VALS = { 0.3, 0.4, 0.5 };
     public static double P_CHANGE_SYMBOL_COUNT = 0.5; // P to add or remove a symbol from a rule
 
-    public static double[] P_ADD_SYMB_VALS = { 0.3, 0.4, 0.5 };
+    public static double[] P_ADD_SYMB_VALS = { 0.5 };
     public static double P_ADD_SYMBOL = 0.5; // P to add a symbol when adding/removing symbols
 
     public static double[] P_M_VALS = { 0.3, 0.4, 0.5 };
@@ -49,7 +48,7 @@ public class Constants {
 
     public static int NUM_CROSSOVER_PER_GEN = 5;
 
-    public static double[] P_G_VALS = { 0.3, 0.4, 0.5 };
+    public static double[] P_G_VALS = { 0.5 };
     public static double P_G = 0.5; // P to group/ungroup symbols on the RHS
 
     public static double P_GROUP = 0.5; // P to group symbols
@@ -70,7 +69,7 @@ public class Constants {
     public static int NUM_ITERATIONS = 100;
     public static int RULENAME_LEN = 10;
     public static int MAX_RULE_COUNT = 5;
-    public static int MAX_RHS_SIZE = 6;
+    public static int MAX_RHS_SIZE = 5;
 
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
     public static String localizerCompilPath = "./antlr-localizer/default/target/generated-sources/antlr4";
@@ -104,8 +103,8 @@ public class Constants {
     public static String getParamString() {
         return String.format(
                 "iterCount:%d\n" + "popSize:%d\n" + "maxRuleCount:%d\n" + "initPopSize:%d\n" + "xCount:%d\n"
-                        + "freshPop:%d",
-                NUM_ITERATIONS, POP_SIZE, MAX_RULE_COUNT, INIT_POP_SIZE, NUM_CROSSOVER_PER_GEN, FRESH_POP);
+                        + "freshPop:%d" + "pCRC:%f",
+                NUM_ITERATIONS, POP_SIZE, MAX_RULE_COUNT, INIT_POP_SIZE, NUM_CROSSOVER_PER_GEN, FRESH_POP, P_CHANGE_RULE_COUNT);
     }
 
     /**

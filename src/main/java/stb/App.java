@@ -209,6 +209,7 @@ public class App {
                                         createLogDir(baseOutputID + "/"+ format);
                                         for (int runCount = 0; runCount < 10; runCount++) {
                                             System.err.println("Testing " + format + "_" +  runCount + "@ " + LocalDateTime.now().toString());
+                                            System.err.println(Constants.getParamString());
                                             outputID = String.join("/", List.of(baseOutputID, format, "run_"+ runCount));
                                             stopwatch.startClock(MAIN_START_TIME);
                                             benchmarkMain();
@@ -237,8 +238,10 @@ public class App {
                 }
 
                 allMutants.addAll(GrammarGenerator.generateLocalisablePop(Constants.FRESH_POP));
-                // System.err.println("TotalPop In " + totalPop.size() + "\n" + "numMuts " + allMutants.size());
+                // System.err.println("TotalPop in: " + totalPop.size() + "\n" + "numMuts: " + allMutants.size());
+                stopwatch.startClock("mutTest");
                 runTests(allMutants);
+                System.err.println(format("Testing %d grams took %f", allMutants.size(), stopwatch.elapsedTime("mutTest")));
                 // allMutants.stream()
                 //     .filter(Gram.passesPosTest.negate())
                 //     .map(Gram::hashString)
@@ -247,7 +250,7 @@ public class App {
                 // allMutants.removeIf(Gram.passesPosTest.negate());
                 totalPop.addAll(allMutants);
                 // allMutants.stream().filter(g -> !App.gramAlreadyChecked(g)).forEach(totalPop::add);
-                // System.err.println("TotalPop Out " + totalPop.size());
+                // System.err.println("TotalPop out: " + totalPop.size());
             }
 
             // Add crossover grammars
@@ -274,13 +277,13 @@ public class App {
                 if (currScore > getBestScore()) {
                     setBestGrammar(gram);
                 }
-                if (evaluatedGrammars.containsKey(currScore)) {
-                    evaluatedGrammars.get(currScore).add(gram);
-                } else {
-                    LinkedList<Gram> thisScoreList = new LinkedList<Gram>();
-                    thisScoreList.add(gram);
-                    evaluatedGrammars.put(currScore, thisScoreList);
-                }
+                // if (evaluatedGrammars.containsKey(currScore)) {
+                //     evaluatedGrammars.get(currScore).add(gram);
+                // } else {
+                //     LinkedList<Gram> thisScoreList = new LinkedList<Gram>();
+                //     thisScoreList.add(gram);
+                //     evaluatedGrammars.put(currScore, thisScoreList);
+                // }
             }
 
 
@@ -640,8 +643,8 @@ public class App {
                 + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
             out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s",
                     genNum, gram.getScore(), gram, Constants.getParamString()));
-            System.err.println(String.format("iteration count: %d\nScore: %f\n%s",
-            genNum, gram.getScore(), gram.hashString()));
+            System.err.println(String.format("iteration count: %d\nScore: %f\n%s\nMutation options\n%s",
+            genNum, gram.getScore(), gram, gram.getMutationConsideration()));
         } catch (Exception e) {
             e.printStackTrace();
         }
