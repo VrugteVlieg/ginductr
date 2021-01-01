@@ -104,19 +104,20 @@ public class GrammarGenerator {
         LinkedList<Gram> out = new LinkedList<Gram>();
 
         while(out.size() < popSize) {
-            System.err.print("Generating new pop " + out.size() + "/" + popSize);
-            LinkedList<Gram> newPop = generatePopulation(Constants.NUM_THREADS * 5);
-            int sizeIn = newPop.size();
-            newPop.removeIf(GrammarGenerator::hasBeenChecked);
-            int sizeOut = newPop.size();
-            nullGramHits += sizeIn-sizeOut;
-            System.err.print("Filtered out " + (sizeIn-sizeOut) + " null grams, totalHits: " + nullGramHits + ", totalNulls: " + nullGrams.size() + "\r");
+            System.err.print("Generating new pop " + out.size() + "/" + popSize + "\r");
+            LinkedList<Gram> newPop = generatePopulation(Constants.NUM_THREADS * 20);
+            // int sizeIn = newPop.size();
+            // newPop.removeIf(GrammarGenerator::hasBeenChecked);
+            // int sizeOut = newPop.size();
+            // nullGramHits += sizeIn-sizeOut;
+            // System.err.print("Filtered out " + (sizeIn-sizeOut) + " null grams, totalHits: " + nullGramHits + ", totalNulls: " + nullGrams.size() + "\r");
             App.runTests(newPop);
             // newPop.forEach(App::runTests);
-            newPop.forEach(gram -> {if(gram.getPosScore() == 0.0) nullGrams.add(gram.hashString());});
+            // newPop.forEach(gram -> {if(gram.getPosScore() == 0.0) nullGrams.add(gram.hashString());});
             newPop.removeIf(Predicate.not(Gram.passesPosTest));
             out.addAll(newPop);
         }
+
         
         out = new LinkedList<Gram>(out.subList(0, popSize));
         

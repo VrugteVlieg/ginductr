@@ -224,7 +224,10 @@ public class App {
     }
 
     public static void benchmarkMain() {
+        stopwatch.startClock();
+        System.err.println("resetting program");
         resetProg();
+        System.err.println("Reset took " + stopwatch.elapsedTime());
         myGrammars = GrammarGenerator.generateLocalisablePop(Constants.INIT_POP_SIZE);
         stopwatch.startClock("GEN");
         for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
@@ -232,14 +235,18 @@ public class App {
             totalPop.addAll(myGrammars);
             System.err.println("Starting  gen " + genNum + "@" + LocalDateTime.now() + "   prevGen: " + stopwatch.split("GEN"));
             if (genNum != 0) {
+                System.err.println("Generating mutants from  " + myGrammars.size() + " base grammars");
                 List<Gram> allMutants = new ArrayList<>();
-                for (Gram g : myGrammars) {
-                    allMutants.addAll(Gram.computeMutants(g));
+                for(int i = 0; i < myGrammars.size(); i++) {
+                    System.err.print(format("%d/%d\r", i, myGrammars.size()));
+                    allMutants.addAll(Gram.computeMutants(myGrammars.get(i)));
                 }
+                System.err.println();
 
                 allMutants.addAll(GrammarGenerator.generateLocalisablePop(Constants.FRESH_POP));
                 // System.err.println("TotalPop in: " + totalPop.size() + "\n" + "numMuts: " + allMutants.size());
                 stopwatch.startClock("mutTest");
+                System.err.println("Starting mutTesting with " + allMutants.size() +  " grams");
                 runTests(allMutants);
                 System.err.println(format("Testing %d grams took %f", allMutants.size(), stopwatch.elapsedTime("mutTest")));
                 // allMutants.stream()
@@ -269,6 +276,8 @@ public class App {
 
             for (Gram gram : totalPop) {
                 double currScore = gram.getScore();
+                System.err.print(currScore + "\r");
+
                 if (currScore == 1.0) {
                     Gram toAdd = new Gram(gram);
                     toAdd.genNum = genNum;
@@ -285,6 +294,7 @@ public class App {
                 //     evaluatedGrammars.put(currScore, thisScoreList);
                 // }
             }
+            System.err.println();
 
 
             int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
@@ -559,7 +569,6 @@ public class App {
 
             testRunner(List<Gram> toRun) {
                 myGrams = toRun;
-                // System.err.println("New Testrunner that is testing " + myGrams.size() + " grams");
             }
 
             @Override
@@ -611,6 +620,10 @@ public class App {
         while (!pop.isEmpty()) {
             splitPop.get(counter++ % splitPop.size()).add(pop.remove(0));
         }
+        List<Integer> allocation = splitPop.stream().map(List<Gram>::size).collect(toList());
+        System.err.println(format("Testing %d grammars using %d threads\nAllocation: %s", 
+            allocation.stream().reduce(Integer::sum).get(), splitPop.size(), allocation));
+        stopwatch.startClock("testing");
         try {
             List<Future<List<Gram>>> res = myExecutors
                     .invokeAll(splitPop.stream().map(testRunner::new).collect(toList()));
@@ -620,6 +633,7 @@ public class App {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
         myExecutors.shutdown();
         // splitPop.forEach(l -> myExecutors.submit(new testRunner(l)));
         // splitPop.forEach(pop::addAll);
@@ -797,6 +811,7 @@ public class App {
         StringBuilder newBestString = new StringBuilder("Best Score: " + newBest.getScore() + "\n");
         newBestString.append(newBest.fullHashString());
         bestGrammarString = newBestString.toString();
+        bestGrammar.setMutationConsideration(newBest.getMutationConsideration().stream().map(Arrays::toString).collect(toList()));
     }
 
     static double getBestScore() {
