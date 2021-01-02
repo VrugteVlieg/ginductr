@@ -265,8 +265,7 @@ public class Chelsea {
     public static void Localise(Gram grammar) {
         Map<String, Class<?>> hm = null;
         try {
-            // System.err.println("LOCALISING" + grammar);
-
+            //System.err.println("LOCALISING" + grammar);
             String toWrite = grammar.toString().replaceFirst(grammar.getName(), "UUT");
             Pipeline.pipeline(toWrite);
             String[] args = { "-o", Constants.LOCALISER_JAVA_DIR, "-DcontextSuperClass=RuleContextWithAltNum" };
@@ -275,7 +274,7 @@ public class Chelsea {
 
             Tool tool = new Tool(args);
             GrammarRootAST grast = tool.parseGrammarFromString(toWrite);
-
+	    //System.err.println("Tool created using " + Arrays.toString(args));
             // Create a new Grammar object from the tool
             Grammar g = tool.createGrammar(grast);
 
@@ -290,8 +289,7 @@ public class Chelsea {
             dynamicClassCompiler.compile(new File(Constants.LOCALISER_JAVA_DIR));
 
             hm = new DynamicClassLoader().load(new File(Constants.LOCALISER_CLASS_DIR));
-            System.err.println(hm.keySet().stream().collect(Collectors.joining(",\n", "[\n", "\n]")));
-
+	    //System.err.println(hm.keySet().stream().collect(Collectors.joining(",\n", "[\n", "\n]")));
             // Load and call the testRunner class that was just compiled
             Class<?> TR = hm.get("TestRunner");
             Class<?>[] cArg = new Class[3];
@@ -310,7 +308,7 @@ public class Chelsea {
 
             Method parseMethod = TR.getMethod("parse", cArg);
             Object[] argsToPass = { allTests, Logger.noOfRules, Logger.ruleIndices };
-            System.err.println("Calling testrunner for \n" + grammar.hashString());
+            //System.err.println("Calling testrunner for \n" + grammar.hashString());
             parseMethod.invoke(null, argsToPass);
 
         } catch (Exception e) {
