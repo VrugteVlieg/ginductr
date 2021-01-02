@@ -20,6 +20,7 @@ import java.util.Stack;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -289,6 +290,7 @@ public class Chelsea {
             dynamicClassCompiler.compile(new File(Constants.LOCALISER_JAVA_DIR));
 
             hm = new DynamicClassLoader().load(new File(Constants.LOCALISER_CLASS_DIR));
+            System.err.println(hm.keySet().stream().collect(Collectors.joining(",\n", "[\n", "\n]")));
 
             // Load and call the testRunner class that was just compiled
             Class<?> TR = hm.get("TestRunner");
@@ -308,7 +310,7 @@ public class Chelsea {
 
             Method parseMethod = TR.getMethod("parse", cArg);
             Object[] argsToPass = { allTests, Logger.noOfRules, Logger.ruleIndices };
-            // System.err.println("Calling testrunner for \n" + grammar.hashString());
+            System.err.println("Calling testrunner for \n" + grammar.hashString());
             parseMethod.invoke(null, argsToPass);
 
         } catch (Exception e) {

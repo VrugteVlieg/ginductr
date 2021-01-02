@@ -153,15 +153,15 @@ public class App {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
         } else {
-            mainWTuning();
+            //mainWTuning();
             // clearANTLRfolder();
-            // Gram seeded = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
+            Gram seeded = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
+            seeded.groupMutate(seeded.getParserRules().get(0).getSubRules().get(0));
             // seeded.scrambleRuleNames();
             // System.err.println(seeded.getParserRules().get(0).getReachables(seeded.getParserRules()));
-            // runTests(new ArrayList<Gram>(List.of(seeded)));
-            // runLocaliser(seeded);
             // stopwatch.startClock();
-            // List<Gram> pop = GrammarGenerator.generatePopulation(2);
+        //     List<Gram> pop = GrammarGenerator.generatePopulation(1000);
+	    // runTests(pop);
             
             // Gram.loggedCrossover(pop.get(0), pop.get(1), new StringBuilder());
             // System.err.println(pop.get(0).prevCross.toString());
@@ -908,8 +908,8 @@ public class App {
             susScore.keySet().stream().sorted(reverseOrder()).map(susScore::get).flatMap(LinkedList::stream)
                     .forEach(out::add);
 
-            // System.err.println("Mutation considerations for " + currGrammar + "\n " +
-            // out);
+            System.err.println("Mutation considerations for " + currGrammar + "\n " +
+            out);
             currGrammar.setMutationConsideration(out);
 
         } catch (Exception e) {

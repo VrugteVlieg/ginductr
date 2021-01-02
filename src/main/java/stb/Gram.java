@@ -613,11 +613,10 @@ public class Gram implements Comparable<Gram> {
         // currMut = new StringBuilder("Applying changeSymbolCount to " + stringProd(targetProd) + "\n\n");
         int numSelectables = getTotalSelectables(targetProd);
         int index = randInt(numSelectables);
-        long rhsSize = getAllSelectables(targetProd).stream().filter(rule -> rule.getTotalSelectables() == 1).count();
-        if (Math.random() < Constants.P_ADD_SYMBOL && rhsSize < Constants.MAX_RHS_SIZE) {
+        if (Math.random() < Constants.P_ADD_SYMBOL && numSelectables < Constants.MAX_RHS_SIZE) {
             Rule toInsert = randGet(parserRules, true);
             // currMut.append("Inserting " + toInsert.getName() + " at index " + index + "\n");
-            insertSelectable(targetProd, index, randGet(parserRules, true));
+            insertSelectable(targetProd, index, toInsert);
         } else if (targetProd.size() > 1 || index > 0) {
             // If there is only 1 rule in the prod removing it would break the grammar
             // if the index is not 0 however then the rule must be a composite rule and we
@@ -629,7 +628,7 @@ public class Gram implements Comparable<Gram> {
         // currMut.append("\n\n" + "Results in " + this + "\n\n");
         // mutHist.add(currMut.toString());
     }
-
+    private int groupingDepth = 0;
     public void groupMutate(List<Rule> prod) {
         // currMut = new StringBuilder(format("Applying grouping to %s\n\n", stringProd(prod)));
         try {
@@ -639,6 +638,11 @@ public class Gram implements Comparable<Gram> {
                 int startIndex = randInt(prod.size() - 1);
                 int endIndex = startIndex + 1 + randInt(prod.size() - startIndex - 1);
                 String origProd = stringProd(prod);
+                int numSelectables = getTotalSelectables(prod.subList(startIndex, endIndex + 1));
+                int numProds = endIndex+1 - startIndex;
+                if(numProds != numSelectables) {
+                    return;
+                }
                 List<Rule> toGroup = new LinkedList<>();
                 prod.subList(startIndex, endIndex + 1).forEach(toGroup::add);
                 Rule toInsert = new Rule(toGroup);
@@ -655,11 +659,13 @@ public class Gram implements Comparable<Gram> {
                 } else {
                     prod.add(startIndex, toInsert);
                 }
-            } else {
+            } else if(groupingDepth++ == 0) {
                 // currMut.append("Getting the sole rule in " + stringProd(prod) + " in " + this);
                 Rule soleRule = prod.get(0);
                 List<Rule> innerRules = soleRule.getSubRules().get(0);
                 groupMutate(innerRules);
+            } else {
+                groupingDepth=0;
             }
         } catch (Exception e) {
             e.printStackTrace();
