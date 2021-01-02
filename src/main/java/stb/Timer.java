@@ -36,7 +36,7 @@ public class Timer {
     }
 
     public double elapsedTime(String key) {
-        System.err.println(startTimes.keySet());
+//        System.err.println(startTimes.keySet());
         return (System.nanoTime() - startTimes.get(key)) / Math.pow(10, 9);
     }
 

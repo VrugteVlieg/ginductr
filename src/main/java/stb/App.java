@@ -161,8 +161,6 @@ public class App {
             // runTests(new ArrayList<Gram>(List.of(seeded)));
             // runLocaliser(seeded);
             // stopwatch.startClock();
-            // List<Gram> pop = GrammarGenerator.generatePopulation(2);
-            
             // Gram.loggedCrossover(pop.get(0), pop.get(1), new StringBuilder());
             // System.err.println(pop.get(0).prevCross.toString());
             // for (int tCount : new int[] { 1, 4, 8, 16 }) {
@@ -207,7 +205,7 @@ public class App {
                                         Constants.P_G = pG;
                                         String format = format("CRC:%f_CS:%f_AS:%f_PM:%f_PH:%f_TS:%f_PG:%f", pCRC, pCS, pAS, pM, pH, tS, pG);
                                         createLogDir(baseOutputID + "/"+ format);
-                                        for (int runCount = 0; runCount < 10; runCount++) {
+                                        for (int runCount = 0; runCount < 5; runCount++) {
                                             System.err.println("Testing " + format + "_" +  runCount + "@ " + LocalDateTime.now().toString());
                                             System.err.println(Constants.getParamString());
                                             outputID = String.join("/", List.of(baseOutputID, format, "run_"+ runCount));
@@ -273,7 +271,7 @@ public class App {
                     totalPop.add(tournamentSelect(crossoverPop, TOUR_SIZE));
                 }
             }
-
+	    String bestGramName = "";
             for (Gram gram : totalPop) {
                 double currScore = gram.getScore();
                 System.err.print(currScore + "\r");
@@ -284,6 +282,7 @@ public class App {
                     perfectGrammars.add(toAdd);
                 }
                 if (currScore > getBestScore()) {
+		    bestGramName = gram.getName();
                     setBestGrammar(gram);
                 }
                 // if (evaluatedGrammars.containsKey(currScore)) {
@@ -319,6 +318,7 @@ public class App {
                     if (g.getMutationConsideration().isEmpty())
                         // System.err.println("\nLocalising " + g + "\nscore: " + g.getScore());
                         runLocaliser(g);
+		        if(g.getName().equals(bestGramName)) setBestGrammar(g);
                 } else {
                     g.genFakeSuggestions();
                 }
@@ -621,9 +621,9 @@ public class App {
             splitPop.get(counter++ % splitPop.size()).add(pop.remove(0));
         }
         List<Integer> allocation = splitPop.stream().map(List<Gram>::size).collect(toList());
-        System.err.println(format("Testing %d grammars using %d threads\nAllocation: %s", 
-            allocation.stream().reduce(Integer::sum).get(), splitPop.size(), allocation));
-        stopwatch.startClock("testing");
+        //System.err.println(format("Testing %d grammars using %d threads\nAllocation: %s", 
+          //  allocation.stream().reduce(Integer::sum).get(), splitPop.size(), allocation));
+        //stopwatch.startClock("testing");
         try {
             List<Future<List<Gram>>> res = myExecutors
                     .invokeAll(splitPop.stream().map(testRunner::new).collect(toList()));
@@ -633,7 +633,7 @@ public class App {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
+        //System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
         myExecutors.shutdown();
         // splitPop.forEach(l -> myExecutors.submit(new testRunner(l)));
         // splitPop.forEach(pop::addAll);
@@ -658,7 +658,7 @@ public class App {
             out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s",
                     genNum, gram.getScore(), gram, Constants.getParamString()));
             System.err.println(String.format("iteration count: %d\nScore: %f\n%s\nMutation options\n%s",
-            genNum, gram.getScore(), gram, gram.getMutationConsideration()));
+            genNum, gram.getScore(), gram, gram.getMutationConsideration().get(0)));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -811,7 +811,7 @@ public class App {
         StringBuilder newBestString = new StringBuilder("Best Score: " + newBest.getScore() + "\n");
         newBestString.append(newBest.fullHashString());
         bestGrammarString = newBestString.toString();
-        bestGrammar.setMutationConsideration(newBest.getMutationConsideration().stream().map(Arrays::toString).collect(toList()));
+        bestGrammar.setMutationConsideration(newBest.getMutationConsideration().stream().map(i -> i[0] + ":" + i[1]).collect(toList()));
     }
 
     static double getBestScore() {
@@ -872,7 +872,7 @@ public class App {
             HashMap<Double, LinkedList<String>> susScore = new HashMap<Double, LinkedList<String>>();
 
             // The first line is always going to be program:1 so we throw it out
-            inputReader.readLine();
+           inputReader.readLine();
 
             inputReader.lines().map(line -> line.split(",")).forEach(data -> {
                 // System.err.println(Arrays.toString(data));
@@ -908,8 +908,8 @@ public class App {
             susScore.keySet().stream().sorted(reverseOrder()).map(susScore::get).flatMap(LinkedList::stream)
                     .forEach(out::add);
 
-            // System.err.println("Mutation considerations for " + currGrammar + "\n " +
-            // out);
+        //     System.err.println("Mutation considerations for " + currGrammar + "\n " +
+          //  out);
             currGrammar.setMutationConsideration(out);
 
         } catch (Exception e) {
