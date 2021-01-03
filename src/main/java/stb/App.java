@@ -155,8 +155,21 @@ public class App {
         } else {
             //mainWTuning();
             // clearANTLRfolder();
-            Gram seeded = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
-            seeded.groupMutate(seeded.getParserRules().get(0).getSubRules().get(0));
+            GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
+            // Gram myGram = GrammarGenerator.generatePopulation(100).getFirst();
+            // runTests(myGram);
+            // System.err.println(myGram);
+            stopwatch.startClock();
+            Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
+            
+            System.err.println("With mlcs takes " + stopwatch.split());
+            System.err.println(myGram.hashString());
+            generatedGrammars.clear();
+            GrammarGenerator.skeletonBases = null;
+            GrammarGenerator.generateLocalisablePop(1);
+            System.err.println("Without mlcs takes " + stopwatch.split());
+            // Gram seeded = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
+            // seeded.groupMutate(seeded.getParserRules().get(0).getSubRules().get(0));
             // seeded.scrambleRuleNames();
             // System.err.println(seeded.getParserRules().get(0).getReachables(seeded.getParserRules()));
             // stopwatch.startClock();
@@ -573,10 +586,11 @@ public class App {
             @Override
             public List<Gram> call() {
                 myGrams.forEach(myGram -> {
+                    // System.err.println(myGram.toRemove());
                     myGram.injectEOF();
                     Chelsea.generateSources(myGram);
                     if (myGram.toRemove()) {
-                        System.err.println("Code gen failed for \n" + myGram);
+                        System.err.println("Code gen failed post generation for \n" + myGram);
                         return;
                     }
                     try {
@@ -620,9 +634,9 @@ public class App {
             splitPop.get(counter++ % splitPop.size()).add(pop.remove(0));
         }
         List<Integer> allocation = splitPop.stream().map(List<Gram>::size).collect(toList());
-        //System.err.println(format("Testing %d grammars using %d threads\nAllocation: %s", 
-          //  allocation.stream().reduce(Integer::sum).get(), splitPop.size(), allocation));
-        //stopwatch.startClock("testing");
+        // System.err.println(format("Testing %d grammars using %d threads\nAllocation: %s", 
+        //    allocation.stream().reduce(Integer::sum).get(), splitPop.size(), allocation));
+        stopwatch.startClock("testing");
         try {
             List<Future<List<Gram>>> res = myExecutors
                     .invokeAll(splitPop.stream().map(testRunner::new).collect(toList()));
@@ -632,7 +646,7 @@ public class App {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        //System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
+        // System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
         myExecutors.shutdown();
         // splitPop.forEach(l -> myExecutors.submit(new testRunner(l)));
         // splitPop.forEach(pop::addAll);
@@ -907,8 +921,8 @@ public class App {
             susScore.keySet().stream().sorted(reverseOrder()).map(susScore::get).flatMap(LinkedList::stream)
                     .forEach(out::add);
 
-        //     System.err.println("Mutation considerations for " + currGrammar + "\n " +
-          //  out);
+            System.err.println("Mutation considerations for " + currGrammar + "\n " +
+           out);
             currGrammar.setMutationConsideration(out);
 
         } catch (Exception e) {

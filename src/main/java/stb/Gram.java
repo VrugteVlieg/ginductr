@@ -139,7 +139,6 @@ public class Gram implements Comparable<Gram> {
     private void readRules() {
         fileLines.forEach(input -> {
             input = input.replaceAll("[ ]+", " ").trim();
-            System.out.println(input);
             String RuleName = input.substring(0, input.indexOf(":")).trim();
             String RuleString = input.substring(input.indexOf(":") + 1); // cuts off the ; at the end
             Rule currRule = new Rule(RuleName, RuleString);
@@ -442,7 +441,7 @@ public class Gram implements Comparable<Gram> {
      */
     public LinkedList<String> constrNullable() {
         for (Rule rule : parserRules)
-            rule.printParent = (String what) -> flagForRemoval();
+            rule.printParent = (String what) -> {System.err.println("NULLABLE FLAG");flagForRemoval();};
         LinkedList<String> nullableNames = new LinkedList<String>();
         parserRules.stream().filter(Rule::containsEpsilon).map(rule -> rule.name).forEach(nullableNames::add);
 
@@ -1195,7 +1194,7 @@ public class Gram implements Comparable<Gram> {
             scrambleMap.put(newName, r1.name);
             // r1.name = newName;
             parserRules.forEach(r2 -> 
-                r2.renameReferences(r1.getName(), newName)
+                r2.renameReferences(scrambleMap.get(newName), newName)
             );
         }
         );

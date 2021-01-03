@@ -1,11 +1,20 @@
 package stb;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class GrammarGenerator {
 
@@ -13,6 +22,11 @@ public class GrammarGenerator {
     static int nullGramHits = 0;
     static int grammarCount = 0;
     static Gram terminalGrammar = new Gram(new File(Constants.CURR_TERMINALS_PATH));
+    static Gram skeletonGrammar;
+    static int numSkeletonRules = 0;
+    static List<String> potentialRules = new LinkedList<>();
+    static List<String> terminalRules = new LinkedList<>();
+    static String[] skeletonBases;
 
     static boolean hasBeenChecked(Gram in) {
         if(nullGrams.contains(in.hashString())) {
@@ -23,18 +37,28 @@ public class GrammarGenerator {
         }
     }
 
+
     public static LinkedList<Gram> generatePopulation(int popSize) {
         LinkedList<Gram> output = new LinkedList<Gram>();
         for (int i = 0; i < popSize; i++) {
             String grammarName = "Grammar_" + Gram.genGramName();
             // System.err.println("Generating " + grammarName);
-            Gram currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
-            int grammarRuleCount = 2 + randInt(Constants.MAX_RULE_COUNT-1);
             
-            for (int j = 0; j < grammarRuleCount; j++) {
-                int currRuleLen = 1 + randInt(Constants.MAX_RHS_SIZE-1);
-                String ruleName =  currGrammar.genRuleName();
-                currGrammar.generateNewRule(ruleName, currRuleLen);
+            Gram currGrammar;
+            if(skeletonBases  == null) {
+                currGrammar = new Gram(grammarName,terminalGrammar.getAllRules());
+                int grammarRuleCount = 2 + randInt(Constants.MAX_RULE_COUNT-1);
+                for (int j = 0; j < grammarRuleCount; j++) {
+                    int currRuleLen = 1 + randInt(Constants.MAX_RHS_SIZE-1);
+                    String ruleName =  currGrammar.genRuleName();
+                    currGrammar.generateNewRule(ruleName, currRuleLen);
+                }
+            } else {
+                currGrammar = getSkeletonBase();
+                currGrammar.scrambleRuleNames();
+                // System.err.println("PreFill " + currGrammar);
+                fillBlanks(currGrammar);
+                // System.err.println("PostFill " + currGrammar);
             }
 
             currGrammar.removeDuplicateProductions();
@@ -87,11 +111,18 @@ public class GrammarGenerator {
                     LinkedList<Rule> currProd = currRule.get(prodIndex);
                     for (int ruleIndex = 0; ruleIndex < currProd.size(); ruleIndex++) {
                         if(currProd.get(ruleIndex).getName().equals("_new_")){
-                            int currRuleLen = 1 + ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE-1);
-                            String ruleName = toFill.genRuleName();
-                            Rule newRule = toFill.generateReturnNewRule(ruleName, currRuleLen);
-                            toFill.getParserRules().add(newRule);
-                            currProd.set(ruleIndex,newRule.makeMinorCopy());
+                            boolean generateNewRule = toFill.getParserRules().size() < Constants.MAX_RULE_COUNT && Math.random() < 1.0/(mainRules.size()+1);
+                            Rule newRule;
+                            if(generateNewRule) {
+                                int currRuleLen = 1 + ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE-1);
+                                String ruleName = toFill.genRuleName();
+                                newRule = toFill.generateReturnNewRule(ruleName, currRuleLen);
+                                toFill.getParserRules().add(newRule);
+                            } else {
+                                newRule = Gram.randGet(toFill.getParserRules(), true).makeMinorCopy();
+                            }
+                            newRule = newRule.makeMinorCopy();
+                            currProd.set(ruleIndex,newRule);
                         }
                     }
                 }
@@ -100,8 +131,106 @@ public class GrammarGenerator {
         
     }
 
+    public static Gram getSkeletonBase() {
+        int key = ThreadLocalRandom.current().nextInt(256);
+        Gram out = new Gram(skeletonBases[key]);
+        out.setName(Gram.genGramName());
+        return out;
+        
+    }
+
+
+    public static void readFromMLCS(String toReadPath) {
+        HashMap<String, List<String>> initRules = new HashMap<>();
+        HashMap<String, String> terminalMappings = new HashMap<>();
+        try(BufferedReader in = new BufferedReader(new FileReader(new File(toReadPath)))) {
+            in.lines().forEach(l -> {
+                l = l.split(":", 2)[1];
+                String[] data = l.split("->", 2);
+                data[1] = data[1].substring(1, data[1].length()-1).replaceAll("[,]", " ").trim();
+                data[1] = data[1].isEmpty() ? "EPS" : data[1];
+                if(initRules.containsKey(data[0])) {
+                    initRules.get(data[0]).add(data[1]);
+                } else {
+                    initRules.put(data[0], new LinkedList<String>(List.of(data[1])));
+                }
+            });
+
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        try(BufferedReader in = new BufferedReader(new FileReader(new File(Constants.CURR_TERMINALS_PATH)))) {
+            in.readLine();
+            in.lines().forEach(l -> {
+                terminalRules.add(l);
+                String[] data = l.replaceAll("[ ;']", "").split(":",2);
+                terminalMappings.put(data[1].trim(), data[0]);
+            });
+
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        // terminalMappings.entrySet().forEach(System.err::println);
+        List<String> possibleRules = new LinkedList<>();
+
+        initRules.entrySet().forEach(r -> {
+            String rhs = r.getValue().stream().map(s -> 
+                    s.equals("EPS") ? " " : 
+                    Arrays.stream(s.split(" ")).map(t -> terminalMappings.getOrDefault(t, t)).collect(Collectors.joining(" ")))
+                .collect(Collectors.joining(" | ")) + ";";
+            
+
+            System.err.println(r.getKey() + ": " + r.getValue());
+            if(r.getKey().equals("start") || !rhs.contains("null")) possibleRules.add(r.getKey() + ": " + rhs.replaceAll("null", "_new_"));
+        });
+
+        //Reorder rules so start is first
+        for (int i = 0; i < possibleRules.size(); i++) {
+            if(possibleRules.get(i).startsWith("start")) {
+                possibleRules.add(0, possibleRules.remove(i));
+                break;
+            }
+        }
+        numSkeletonRules = possibleRules.size()-1;
+        System.err.println("**POTENTIAL RULES**");
+        
+        potentialRules = possibleRules;
+        skeletonBases = new String[1 << possibleRules.size()-1];
+
+        System.err.println("There are " +  skeletonBases.length + " bases");
+
+        for (int j = 0; j < skeletonBases.length; j++) {
+            skeletonBases[j] = generateBase(j);
+        }
+        // System.err.println("**SKELETON GRAMMAR**");
+        // StringBuilder skeletonStr = new StringBuilder();
+        // possibleRules.forEach(r -> skeletonStr.append(r + "\n"));
+        // terminalRules.forEach(r -> skeletonStr.append(r + "\n"));
+        // skeletonGrammar = new Gram(skeletonStr.toString());
+        // skeletonGrammar.setName("skeleton");
+    }
+
+    public static String generateBase(int key) {
+        List<String> toInclude = new LinkedList<>();
+        for (int i = 0; i < numSkeletonRules; i++) {
+            if((key >> i) % 2 == 1) {
+                toInclude.add("x" + i);
+            }
+        }
+        String parserRulesStr = potentialRules.stream().filter(r -> toInclude.contains(r.substring(0, r.indexOf(":")))).collect(Collectors.joining("\n"));
+        parserRulesStr = (potentialRules.get(0)  + "\n" + parserRulesStr).trim();
+        for (int i = 0; i < potentialRules.size(); i++) {
+            if(!toInclude.contains("x"+i)) parserRulesStr = parserRulesStr.replaceAll("x"+i, "_new_");
+        }
+        return parserRulesStr + "\n" + terminalRules.stream().collect(Collectors.joining("\n"));
+    }
+
     public static LinkedList<Gram> generateLocalisablePop(int popSize) {
         LinkedList<Gram> out = new LinkedList<Gram>();
+        System.err.println("Generating " + popSize + " candidates");
+        
 
         while(out.size() < popSize) {
             System.err.print("Generating new pop " + out.size() + "/" + popSize + "\r");

@@ -162,6 +162,9 @@ public class Rule {
                         currString = new StringBuilder();
                     } else if (StringLiteral || brackets != 0 || rule.charAt(index + 1) == ';') {
                         currString.append(" ");
+                    } else if(currString.length() == 0 && rule.charAt(index + 1) == '|') {
+                        System.err.println("EPSILON in " + rule);
+                        currProduction.add(Rule.EPSILON());
                     }
                     break;
 
@@ -169,6 +172,10 @@ public class Rule {
                     if (StringLiteral) {
                         currString.append("|");
                     } else {
+                        if(currProduction.isEmpty()) {
+                            //This might break down the line, it was a bandaid for crashes when parsing rules that begin with EPS ruleA: | ruleB ...;
+                            currProduction.add(Rule.EPSILON());
+                        }
                         subRules.add(currProduction);
                         currProduction = new LinkedList<Rule>();
                     }
@@ -252,7 +259,7 @@ public class Rule {
         if(c.isEpsilon()) return nameMatch;
         
         boolean optionalMatch = optional == c.optional;
-        boolean iterativeMatch = iterative== c.iterative;
+        boolean iterativeMatch = iterative == c.iterative;
         return nameMatch && optionalMatch && iterativeMatch;
 
     }
@@ -607,6 +614,8 @@ public class Rule {
             return subRules.stream().map(LinkedList::getFirst).map(EPSILON::equals).reduce(false,
                     (prev, next) -> prev || next);
         } catch (Exception e) {
+            System.err.println("Error while checking for epsilon in  " + this);
+            e.printStackTrace();
             printParent.output("toOutput");
             return false;
         }
@@ -767,6 +776,7 @@ public class Rule {
      * @param newName
      */
     public void renameReferences(String oldName, String newName) {
+        List<Rule> allSelectables = getAllSelectables();
         getAllSelectables().forEach(r -> 
             r.name = r.name.equals(oldName) ? newName : r.name
         );
