@@ -209,9 +209,10 @@ public class App {
         Constants.P_CHANGE_SYMBOL_COUNT = Double.parseDouble(System.getenv("pCSC"));
         Constants.P_M = Double.parseDouble(System.getenv("pM"));
         Constants.P_H = Double.parseDouble(System.getenv("pH"));
-        Constants.TOUR_SIZE = Math.max((int) (Constants.POP_SIZE * Double.parseDouble(System.getenv("tS"))), 1);
+        Double ts = Double.parseDouble(System.getenv("tS"));
+        Constants.TOUR_SIZE = Math.max((int) (Constants.POP_SIZE * ts), 1);
         String format = format("CRC:%f_CS:%f_PM:%f_PH:%f_TS:%f", Constants.P_CHANGE_RULE_COUNT,
-                Constants.P_CHANGE_SYMBOL_COUNT, Constants.P_M, Constants.P_H, Constants.TOUR_SIZE);
+                Constants.P_CHANGE_SYMBOL_COUNT, Constants.P_M, Constants.P_H, ts);
         createLogDir(baseOutputID + "/" + format);
         for (int runCount = 0; runCount < 2; runCount++) {
             System.err.println("Testing " + format + "_" + runCount + "@ " + LocalDateTime.now().toString());
