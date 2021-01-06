@@ -106,9 +106,10 @@ public class App {
         });
 
         logFuncs.put(SCORE_DELTA_METRIC, g -> {
-            if(scores.get(MAX_SCORE_METRIC) == null || scores.get(MAX_SCORE_METRIC).isEmpty() ) return 0.0;
+            if (scores.get(MAX_SCORE_METRIC) == null || scores.get(MAX_SCORE_METRIC).isEmpty())
+                return 0.0;
             double prevMax = scores.get(MAX_SCORE_METRIC).getLast();
-            double currMax  = g.mapToDouble(Gram::getScore).max().getAsDouble();
+            double currMax = g.mapToDouble(Gram::getScore).max().getAsDouble();
             // System.err.println("Prev max was " + prevMax + " curr max is " + currMax);
             return currMax - prevMax;
         });
@@ -153,20 +154,20 @@ public class App {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
         } else {
-            //mainWTuning();
+            mainWTuning();
             // clearANTLRfolder();
             GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
             // Gram myGram = GrammarGenerator.generatePopulation(100).getFirst();
             // runTests(myGram);
             // System.err.println(myGram);
             stopwatch.startClock();
-            Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
-            
+            Gram myGram = GrammarGenerator.generateLocalisablePop(10).getFirst();
+
             System.err.println("With mlcs takes " + stopwatch.split());
             System.err.println(myGram.hashString());
             generatedGrammars.clear();
             GrammarGenerator.skeletonBases = null;
-            GrammarGenerator.generateLocalisablePop(1);
+            GrammarGenerator.generateLocalisablePop(10);
             System.err.println("Without mlcs takes " + stopwatch.split());
             // Gram seeded = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
             // seeded.groupMutate(seeded.getParserRules().get(0).getSubRules().get(0));
@@ -176,9 +177,10 @@ public class App {
             // Gram.loggedCrossover(pop.get(0), pop.get(1), new StringBuilder());
             // System.err.println(pop.get(0).prevCross.toString());
             // for (int tCount : new int[] { 1, 4, 8, 16 }) {
-            //     Constants.NUM_THREADS = tCount;
-            //     runTests(pop);
-            //     System.err.println("Using " + Constants.NUM_THREADS + pop.size() + " grams took " + stopwatch.split());
+            // Constants.NUM_THREADS = tCount;
+            // runTests(pop);
+            // System.err.println("Using " + Constants.NUM_THREADS + pop.size() + " grams
+            // took " + stopwatch.split());
 
             // }
         }
@@ -198,38 +200,39 @@ public class App {
      */
 
     public static void mainWTuning() {
+        System.err.println(System.getenv("set"));
         String baseOutputID = (Constants.USE_LOCALIZATION ? "local_" : "") + Constants.CURR_GRAMMAR_NAME
-                + LocalDateTime.now().toString();
+                + System.getenv("outLbl").replaceAll(" ", "");
+            
         createLogDir(baseOutputID);
+        Constants.P_CHANGE_RULE_COUNT = Double.parseDouble(System.getenv("pCRC"));
         for (double pCRC : Constants.P_CHANGE_RULE_COUNT_VALS) {
-            Constants.P_CHANGE_RULE_COUNT = pCRC;
-                for (double pCS : Constants.P_CHANGE_SYMB_VALS) {
-                    Constants.P_CHANGE_SYMBOL_COUNT = pCS;
-                    for (double pAS : Constants.P_ADD_SYMB_VALS) {
-                        Constants.P_ADD_SYMBOL = pAS;
-                        for (double pM : Constants.P_M_VALS) {
-                            Constants.P_M = pM;
-                            for (double pH : Constants.P_H_VALS) {
-                                Constants.P_H = pH;
-                                for (double tS : Constants.TOUR_SIZE_VALS) {
-                                    Constants.TOUR_SIZE = Math.max((int) (Constants.POP_SIZE * tS), 1);
-                                    for (double pG : Constants.P_G_VALS) {
-                                        Constants.P_G = pG;
-                                        String format = format("CRC:%f_CS:%f_AS:%f_PM:%f_PH:%f_TS:%f_PG:%f", pCRC, pCS, pAS, pM, pH, tS, pG);
-                                        createLogDir(baseOutputID + "/"+ format);
-                                        for (int runCount = 0; runCount < 5; runCount++) {
-                                            System.err.println("Testing " + format + "_" +  runCount + "@ " + LocalDateTime.now().toString());
-                                            System.err.println(Constants.getParamString());
-                                            outputID = String.join("/", List.of(baseOutputID, format, "run_"+ runCount));
-                                            stopwatch.startClock(MAIN_START_TIME);
-                                            benchmarkMain();
-                                        }
-                                    }
-                                }
+            for (double pCS : Constants.P_CHANGE_SYMB_VALS) {
+                Constants.P_CHANGE_SYMBOL_COUNT = Double.parseDouble(System.getenv("pCSC"));
+                for (double pM : Constants.P_M_VALS) {
+                    Constants.P_M = Double.parseDouble(System.getenv("pM"));
+                    for (double pH : Constants.P_H_VALS) {
+                        Constants.P_H = Double.parseDouble(System.getenv("pH"));
+                        for (double tS : Constants.TOUR_SIZE_VALS) {
+                            Constants.TOUR_SIZE = Math
+                                    .max((int) (Constants.POP_SIZE * Double.parseDouble(System.getenv("tS"))), 1);
+                            String format = format("CRC:%f_CS:%f_PM:%f_PH:%f_TS:%f", pCRC, pCS, pM, pH,
+                                    tS);
+                            createLogDir(baseOutputID + "/" + format);
+                            for (int runCount = 0; runCount < 2; runCount++) {
+                                System.err.println(
+                                        "Testing " + format + "_" + runCount + "@ " + LocalDateTime.now().toString());
+                                System.err.println(Constants.getParamString());
+                                outputID = String.join("/", List.of(baseOutputID, format, "run_" + runCount));
+                                stopwatch.startClock(MAIN_START_TIME);
+                                benchmarkMain();
                             }
+
                         }
                     }
                 }
+
+            }
         }
     }
 
@@ -243,30 +246,34 @@ public class App {
         for (int genNum = 0; genNum < Constants.NUM_ITERATIONS; genNum++) {
             totalPop.clear();
             totalPop.addAll(myGrammars);
-            System.err.println("Starting  gen " + genNum + "@" + LocalDateTime.now() + "   prevGen: " + stopwatch.split("GEN"));
+            System.err.println(
+                    "Starting  gen " + genNum + "@" + LocalDateTime.now() + "   prevGen: " + stopwatch.split("GEN"));
             if (genNum != 0) {
                 System.err.println("Generating mutants from  " + myGrammars.size() + " base grammars");
                 List<Gram> allMutants = new ArrayList<>();
-                for(int i = 0; i < myGrammars.size(); i++) {
+                for (int i = 0; i < myGrammars.size(); i++) {
                     System.err.print(format("%d/%d\r", i, myGrammars.size()));
                     allMutants.addAll(Gram.computeMutants(myGrammars.get(i)));
                 }
                 System.err.println();
 
                 allMutants.addAll(GrammarGenerator.generateLocalisablePop(Constants.FRESH_POP));
-                // System.err.println("TotalPop in: " + totalPop.size() + "\n" + "numMuts: " + allMutants.size());
+                // System.err.println("TotalPop in: " + totalPop.size() + "\n" + "numMuts: " +
+                // allMutants.size());
                 stopwatch.startClock("mutTest");
-                System.err.println("Starting mutTesting with " + allMutants.size() +  " grams");
+                System.err.println("Starting mutTesting with " + allMutants.size() + " grams");
                 runTests(allMutants);
-                System.err.println(format("Testing %d grams took %f", allMutants.size(), stopwatch.elapsedTime("mutTest")));
+                System.err.println(
+                        format("Testing %d grams took %f", allMutants.size(), stopwatch.elapsedTime("mutTest")));
                 // allMutants.stream()
-                //     .filter(Gram.passesPosTest.negate())
-                //     .map(Gram::hashString)
-                //     .forEach(GrammarGenerator.nullGrams::add); 
-                
+                // .filter(Gram.passesPosTest.negate())
+                // .map(Gram::hashString)
+                // .forEach(GrammarGenerator.nullGrams::add);
+
                 // allMutants.removeIf(Gram.passesPosTest.negate());
                 totalPop.addAll(allMutants);
-                // allMutants.stream().filter(g -> !App.gramAlreadyChecked(g)).forEach(totalPop::add);
+                // allMutants.stream().filter(g ->
+                // !App.gramAlreadyChecked(g)).forEach(totalPop::add);
                 // System.err.println("TotalPop out: " + totalPop.size());
             }
 
@@ -283,7 +290,7 @@ public class App {
                     totalPop.add(tournamentSelect(crossoverPop, TOUR_SIZE));
                 }
             }
-	    String bestGramName = "";
+            String bestGramName = "";
             for (Gram gram : totalPop) {
                 double currScore = gram.getScore();
                 System.err.print(currScore + "\r");
@@ -294,19 +301,18 @@ public class App {
                     perfectGrammars.add(toAdd);
                 }
                 if (currScore > getBestScore()) {
-		    bestGramName = gram.getName();
+                    bestGramName = gram.getName();
                     setBestGrammar(gram);
                 }
                 // if (evaluatedGrammars.containsKey(currScore)) {
-                //     evaluatedGrammars.get(currScore).add(gram);
+                // evaluatedGrammars.get(currScore).add(gram);
                 // } else {
-                //     LinkedList<Gram> thisScoreList = new LinkedList<Gram>();
-                //     thisScoreList.add(gram);
-                //     evaluatedGrammars.put(currScore, thisScoreList);
+                // LinkedList<Gram> thisScoreList = new LinkedList<Gram>();
+                // thisScoreList.add(gram);
+                // evaluatedGrammars.put(currScore, thisScoreList);
                 // }
             }
             System.err.println();
-
 
             int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
             int tourSize = Math.min(totalPop.size(), TOUR_SIZE);
@@ -323,14 +329,13 @@ public class App {
                 myGrammars.add(tournamentSelect(totalPop, tourSize));
             }
 
-
-
             for (Gram g : myGrammars) {
                 if (Constants.USE_LOCALIZATION) {
                     if (g.getMutationConsideration().isEmpty())
                         // System.err.println("\nLocalising " + g + "\nscore: " + g.getScore());
                         runLocaliser(g);
-		        if(g.getName().equals(bestGramName)) setBestGrammar(g);
+                    if (g.getName().equals(bestGramName))
+                        setBestGrammar(g);
                 } else {
                     g.genFakeSuggestions();
                 }
@@ -634,8 +639,10 @@ public class App {
             splitPop.get(counter++ % splitPop.size()).add(pop.remove(0));
         }
         List<Integer> allocation = splitPop.stream().map(List<Gram>::size).collect(toList());
-        // System.err.println(format("Testing %d grammars using %d threads\nAllocation: %s", 
-        //    allocation.stream().reduce(Integer::sum).get(), splitPop.size(), allocation));
+        // System.err.println(format("Testing %d grammars using %d threads\nAllocation:
+        // %s",
+        // allocation.stream().reduce(Integer::sum).get(), splitPop.size(),
+        // allocation));
         stopwatch.startClock("testing");
         try {
             List<Future<List<Gram>>> res = myExecutors
@@ -668,10 +675,10 @@ public class App {
     static void writeGrammar(Gram gram, int genNum) {
         try (FileWriter out = new FileWriter(new File(Constants.LOG_DIR + "/" + outputID + "/"
                 + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
-            out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s",
-                    genNum, gram.getScore(), gram, Constants.getParamString()));
-            System.err.println(String.format("iteration count: %d\nScore: %f\n%s\nMutation options\n%s",
-            genNum, gram.getScore(), gram, gram.getMutationConsideration().get(0)));
+            out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s", genNum, gram.getScore(), gram,
+                    Constants.getParamString()));
+            System.err.println(String.format("iteration count: %d\nScore: %f\n%s\nMutation options\n%s", genNum,
+                    gram.getScore(), gram, gram.getMutationConsideration().get(0)));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -717,7 +724,6 @@ public class App {
             g1.setPosScore(0.0);
             g2.setNegScore(0.0);
             g2.setPosScore(0.0);
-
 
             Gram.loggedCrossover(g1, g2, new StringBuilder());
 
@@ -824,7 +830,8 @@ public class App {
         StringBuilder newBestString = new StringBuilder("Best Score: " + newBest.getScore() + "\n");
         newBestString.append(newBest.fullHashString());
         bestGrammarString = newBestString.toString();
-        bestGrammar.setMutationConsideration(newBest.getMutationConsideration().stream().map(i -> i[0] + ":" + i[1]).collect(toList()));
+        bestGrammar.setMutationConsideration(
+                newBest.getMutationConsideration().stream().map(i -> i[0] + ":" + i[1]).collect(toList()));
     }
 
     static double getBestScore() {
@@ -885,27 +892,23 @@ public class App {
             HashMap<Double, LinkedList<String>> susScore = new HashMap<Double, LinkedList<String>>();
 
             // The first line is always going to be program:1 so we throw it out
-           inputReader.readLine();
+            inputReader.readLine();
 
             inputReader.lines().map(line -> line.split(",")).forEach(data -> {
                 // System.err.println(Arrays.toString(data));
-                if(data[5].equals("nan")) {
-                    String toPrint = "\nNAN when localizing\n" + currGrammar  + 
-                        "\nPos: " + currGrammar.getPosScore() + 
-                        "\nNeg: " + currGrammar.getNegScore() + 
-                        "\nTot: " + currGrammar.getScore() + 
-                        "\nPassing: " + currGrammar.getPassingPosTests() +
-                        "\nPassArr: " + Arrays.toString(currGrammar.passPosArr) +
-                        "\nNegArr: " + Arrays.toString(currGrammar.passNegArr) +
-                        "\nToolString " + currGrammar.getToolString();
+                if (data[5].equals("nan")) {
+                    String toPrint = "\nNAN when localizing\n" + currGrammar + "\nPos: " + currGrammar.getPosScore()
+                            + "\nNeg: " + currGrammar.getNegScore() + "\nTot: " + currGrammar.getScore() + "\nPassing: "
+                            + currGrammar.getPassingPosTests() + "\nPassArr: " + Arrays.toString(currGrammar.passPosArr)
+                            + "\nNegArr: " + Arrays.toString(currGrammar.passNegArr) + "\nToolString "
+                            + currGrammar.getToolString();
 
                     blockRead(toPrint);
                     currGrammar.stripEOF();
                     runTests(new ArrayList<>(List.of(currGrammar)));
                     currGrammar.injectEOF();
-                    blockRead(
-                        format("\n\nRerun scores:\nPos: %f\nNeg:  %f", currGrammar.getPosScore(), currGrammar.getNegScore())
-                    );
+                    blockRead(format("\n\nRerun scores:\nPos: %f\nNeg:  %f", currGrammar.getPosScore(),
+                            currGrammar.getNegScore()));
 
                 }
                 Double tarantula = Double.valueOf(data[5]);
@@ -921,8 +924,7 @@ public class App {
             susScore.keySet().stream().sorted(reverseOrder()).map(susScore::get).flatMap(LinkedList::stream)
                     .forEach(out::add);
 
-            System.err.println("Mutation considerations for " + currGrammar + "\n " +
-           out);
+            System.err.println("Mutation considerations for " + currGrammar + "\n " + out);
             currGrammar.setMutationConsideration(out);
 
         } catch (Exception e) {
@@ -937,7 +939,7 @@ public class App {
      * 
      * @param pop      population to sample from
      * @param tourSize size of the tournament
-     * @return 
+     * @return
      */
     public static Gram tournamentSelect(List<Gram> pop, int tourSize) {
         // System.err.println("Performing tournament selection on a population of " +
@@ -956,7 +958,7 @@ public class App {
      * 
      * @param pop      population to sample from
      * @param tourSize size of the tournament
-     * @return 
+     * @return
      */
     public static Gram tournamentSelectWReplace(List<Gram> pop, int tourSize) {
         // System.err.println("Performing tournament selection on a population of " +
@@ -966,10 +968,10 @@ public class App {
             tour.add(pop.get(randInt(pop.size())));
         }
         Gram out = Collections.max(tour);
-         tour.stream().max(Comparator.comparing(Gram::getScore)).get();
+        tour.stream().max(Comparator.comparing(Gram::getScore)).get();
         return out;
     }
-    
+
     /**
      * Randomly selects min(pop.size, size) unique grammars from pop
      * 
@@ -1194,7 +1196,6 @@ public class App {
         }
     }
 
-
     public static void logMetricsJSON(metricLog currMetrics) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String parsedString = gson.toJson(currMetrics);
@@ -1204,8 +1205,6 @@ public class App {
 
         }
     }
-
-    
 
     public static void logMetric(String key) {
         if (!scores.containsKey(key))
