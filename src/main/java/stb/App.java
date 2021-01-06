@@ -203,37 +203,24 @@ public class App {
         System.err.println(System.getenv("set"));
         String baseOutputID = (Constants.USE_LOCALIZATION ? "local_" : "") + Constants.CURR_GRAMMAR_NAME
                 + System.getenv("outLbl").replaceAll(" ", "");
-            
+
         createLogDir(baseOutputID);
         Constants.P_CHANGE_RULE_COUNT = Double.parseDouble(System.getenv("pCRC"));
-        for (double pCRC : Constants.P_CHANGE_RULE_COUNT_VALS) {
-            for (double pCS : Constants.P_CHANGE_SYMB_VALS) {
-                Constants.P_CHANGE_SYMBOL_COUNT = Double.parseDouble(System.getenv("pCSC"));
-                for (double pM : Constants.P_M_VALS) {
-                    Constants.P_M = Double.parseDouble(System.getenv("pM"));
-                    for (double pH : Constants.P_H_VALS) {
-                        Constants.P_H = Double.parseDouble(System.getenv("pH"));
-                        for (double tS : Constants.TOUR_SIZE_VALS) {
-                            Constants.TOUR_SIZE = Math
-                                    .max((int) (Constants.POP_SIZE * Double.parseDouble(System.getenv("tS"))), 1);
-                            String format = format("CRC:%f_CS:%f_PM:%f_PH:%f_TS:%f", pCRC, pCS, pM, pH,
-                                    tS);
-                            createLogDir(baseOutputID + "/" + format);
-                            for (int runCount = 0; runCount < 2; runCount++) {
-                                System.err.println(
-                                        "Testing " + format + "_" + runCount + "@ " + LocalDateTime.now().toString());
-                                System.err.println(Constants.getParamString());
-                                outputID = String.join("/", List.of(baseOutputID, format, "run_" + runCount));
-                                stopwatch.startClock(MAIN_START_TIME);
-                                benchmarkMain();
-                            }
-
-                        }
-                    }
-                }
-
-            }
+        Constants.P_CHANGE_SYMBOL_COUNT = Double.parseDouble(System.getenv("pCSC"));
+        Constants.P_M = Double.parseDouble(System.getenv("pM"));
+        Constants.P_H = Double.parseDouble(System.getenv("pH"));
+        Constants.TOUR_SIZE = Math.max((int) (Constants.POP_SIZE * Double.parseDouble(System.getenv("tS"))), 1);
+        String format = format("CRC:%f_CS:%f_PM:%f_PH:%f_TS:%f", Constants.P_CHANGE_RULE_COUNT,
+                Constants.P_CHANGE_SYMBOL_COUNT, Constants.P_M, Constants.P_H, Constants.TOUR_SIZE);
+        createLogDir(baseOutputID + "/" + format);
+        for (int runCount = 0; runCount < 2; runCount++) {
+            System.err.println("Testing " + format + "_" + runCount + "@ " + LocalDateTime.now().toString());
+            System.err.println(Constants.getParamString());
+            outputID = String.join("/", List.of(baseOutputID, format, "run_" + runCount));
+            stopwatch.startClock(MAIN_START_TIME);
+            benchmarkMain();
         }
+
     }
 
     public static void benchmarkMain() {
