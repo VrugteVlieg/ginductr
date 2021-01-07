@@ -154,20 +154,23 @@ public class App {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
         } else {
-            mainWTuning();
+            // mainWTuning();
             // clearANTLRfolder();
             GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
-            // Gram myGram = GrammarGenerator.generatePopulation(100).getFirst();
+            // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
+            // System.err.println(GrammarGenerator.generateBase(4));
+            // System.err.println("\n\n------------\n\n");
+            // System.err.println(myGram);
             // runTests(myGram);
             // System.err.println(myGram);
             stopwatch.startClock();
-            Gram myGram = GrammarGenerator.generateLocalisablePop(10).getFirst();
+            Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
 
             System.err.println("With mlcs takes " + stopwatch.split());
             System.err.println(myGram.hashString());
             generatedGrammars.clear();
             GrammarGenerator.skeletonBases = null;
-            GrammarGenerator.generateLocalisablePop(10);
+            GrammarGenerator.generateLocalisablePop(1);
             System.err.println("Without mlcs takes " + stopwatch.split());
             // Gram seeded = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
             // seeded.groupMutate(seeded.getParserRules().get(0).getSubRules().get(0));
@@ -200,9 +203,11 @@ public class App {
      */
 
     public static void mainWTuning() {
-        System.err.println(System.getenv("set"));
+        // System.err.println(System.getenv("set"));
+        String outLbl = System.getenv("outLbl").replaceAll(" ", "");
+        System.err.println("Outlbl " + outLbl);
         String baseOutputID = (Constants.USE_LOCALIZATION ? "local_" : "") + Constants.CURR_GRAMMAR_NAME
-                + System.getenv("outLbl").replaceAll(" ", "");
+                + outLbl;
 
         createLogDir(baseOutputID);
         Constants.P_CHANGE_RULE_COUNT = Double.parseDouble(System.getenv("pCRC"));
@@ -216,12 +221,11 @@ public class App {
         createLogDir(baseOutputID + "/" + format);
         for (int runCount = 0; runCount < 2; runCount++) {
             System.err.println("Testing " + format + "_" + runCount + "@ " + LocalDateTime.now().toString());
-            System.err.println(Constants.getParamString());
+            // System.err.println(Constants.getParamString());
             outputID = String.join("/", List.of(baseOutputID, format, "run_" + runCount));
             stopwatch.startClock(MAIN_START_TIME);
             benchmarkMain();
         }
-
     }
 
     public static void benchmarkMain() {
@@ -665,8 +669,8 @@ public class App {
                 + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
             out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s", genNum, gram.getScore(), gram,
                     Constants.getParamString()));
-            System.err.println(String.format("iteration count: %d\nScore: %f\n%s\nMutation options\n%s", genNum,
-                    gram.getScore(), gram, gram.getMutationConsideration().get(0)));
+            System.err.println(String.format("iteration count: %d\nScore: %f\n%s", genNum,
+                    gram.getScore(), gram));
         } catch (Exception e) {
             e.printStackTrace();
         }

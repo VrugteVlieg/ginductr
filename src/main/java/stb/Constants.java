@@ -2,7 +2,7 @@ package stb;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "dyck4";
+    public static final String CURR_GRAMMAR_NAME = "toylang";
     public static final String CURR_MLCS_PATH = String.join("/", "grammars", CURR_GRAMMAR_NAME, CURR_GRAMMAR_NAME + ".mlcs");
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";

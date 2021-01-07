@@ -104,22 +104,29 @@ public class GrammarGenerator {
 
     public static void fillBlanks(Gram toFill) {
         ArrayList<Rule> mainRules = toFill.getParserRules();
+        HashMap<String, String> newRuleMappings = new HashMap<>();
         for (int mainIndex = 0; mainIndex < mainRules.size(); mainIndex++) {
-            if(mainRules.get(mainIndex).toString().contains("_new_")) {
+            if(mainRules.get(mainIndex).toString().contains("_new")) {
                 ArrayList<LinkedList<Rule>> currRule = mainRules.get(mainIndex).getSubRules();
                 for (int prodIndex = 0; prodIndex < currRule.size(); prodIndex++) {
                     LinkedList<Rule> currProd = currRule.get(prodIndex);
                     for (int ruleIndex = 0; ruleIndex < currProd.size(); ruleIndex++) {
-                        if(currProd.get(ruleIndex).getName().equals("_new_")){
+                        String currName = currProd.get(ruleIndex).getName();
+                        if(currName.startsWith("_new")){
                             boolean generateNewRule = toFill.getParserRules().size() < Constants.MAX_RULE_COUNT && Math.random() < 1.0/(mainRules.size()+1);
                             Rule newRule;
                             if(generateNewRule) {
                                 int currRuleLen = 1 + ThreadLocalRandom.current().nextInt(Constants.MAX_RHS_SIZE-1);
                                 String ruleName = toFill.genRuleName();
+                                newRuleMappings.put(currName, ruleName);
                                 newRule = toFill.generateReturnNewRule(ruleName, currRuleLen);
                                 toFill.getParserRules().add(newRule);
                             } else {
-                                newRule = Gram.randGet(toFill.getParserRules(), true).makeMinorCopy();
+                                if(newRuleMappings.containsKey(currName)) {
+                                    newRule = toFill.getRuleByName(newRuleMappings.get(currName));
+                                } else {
+                                    newRule = Gram.randGet(toFill.getParserRules(), true);
+                                }
                             }
                             newRule = newRule.makeMinorCopy();
                             currProd.set(ruleIndex,newRule);
@@ -222,7 +229,7 @@ public class GrammarGenerator {
         String parserRulesStr = potentialRules.stream().filter(r -> toInclude.contains(r.substring(0, r.indexOf(":")))).collect(Collectors.joining("\n"));
         parserRulesStr = (potentialRules.get(0)  + "\n" + parserRulesStr).trim();
         for (int i = 0; i < potentialRules.size(); i++) {
-            if(!toInclude.contains("x"+i)) parserRulesStr = parserRulesStr.replaceAll("x"+i, "_new_");
+            if(!toInclude.contains("x"+i)) parserRulesStr = parserRulesStr.replaceAll("x"+i, "_new" + i);
         }
         return parserRulesStr + "\n" + terminalRules.stream().collect(Collectors.joining("\n"));
     }
