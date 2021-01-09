@@ -2,7 +2,7 @@ package stb;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "toylang";
+    public static final String CURR_GRAMMAR_NAME = "dyck4";
     public static final String CURR_MLCS_PATH = String.join("/", "grammars", CURR_GRAMMAR_NAME, CURR_GRAMMAR_NAME + ".mlcs");
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
@@ -45,9 +45,9 @@ public class Constants {
     public static double P_H = 0.5; // P to make a symbol iterative or optional
 
     public static double[] TOUR_SIZE_VALS = { 0.1, 0.15 };
-    public static int TOUR_SIZE = 5; // Size of tournaments when performing tour selection
+    public static int TOUR_SIZE = 7; // Size of tournaments when performing tour selection
 
-    public static int NUM_CROSSOVER_PER_GEN = 5;
+    public static int NUM_CROSSOVER_PER_GEN = 10;
 
     public static double[] P_G_VALS = { 0.5 };
     public static double P_G = 0.5; // P to group/ungroup symbols on the RHS

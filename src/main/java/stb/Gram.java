@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Stack;
 import java.util.concurrent.ThreadLocalRandom;
@@ -25,14 +26,7 @@ import static java.util.function.Predicate.not;
 
 public class Gram implements Comparable<Gram> {
 
-    public static final String RANDOM_MUTATION = "R";
-    public static final String HEUR_MUTATION = "H";
-    public static final String GROUP_MUTATION = "G";
-    public static final String UNGROUP_MUTATION = "U";
-    public static final String NEWNT_MUTATION = "NT";
-    public static final String MODEXSTPROD_MUTATION = "M";
-    public static final String NEWPROD_MUTATION = "NP";
-    public static final String SYMCOUNT_MUTATION = "S";
+    
 
     public static int NUM_SUGGESTED_MUTANTS = 10;
     public static int NUM_LOGS = 0;
@@ -40,17 +34,16 @@ public class Gram implements Comparable<Gram> {
     public static int NUM_MUTS = 0;
     public static Predicate<Gram> passesAnyTest = gram -> gram.getScore() > 0 && !gram.toRemove();
     public static Predicate<Gram> passesPosTest = gram -> gram.getPosScore() > 0 && !gram.toRemove();
+    public static Map<String, Rule> terminals = new HashMap<>();
+    public static String terminalString;
 
     public int genNum = 0;
-    public static int currGramNum = 0;
-    public static int totalBaseGrams = 0;
+    
 
     private File grammarFile;
-    private List<String> fileLines = new LinkedList<String>();
     private String grammarName;
     private ArrayList<Rule> parserRules = new ArrayList<Rule>();
-    private ArrayList<Rule> terminalRules;
-    private List<String[]> mutationConsiderations = new LinkedList<String[]>();
+    private List<String[]> mutationConsiderations;
     private double posScore = 0.0;
     private double negScore = 0.0;
     int truePositivesPos = 0;
@@ -61,11 +54,11 @@ public class Gram implements Comparable<Gram> {
     int falseNegatives = 0;
     private boolean remove = false;
     public Boolean[] passPosArr;
-    private Stack<String> passingPosTests = new Stack<>();
-    private Stack<String> passingNegTests = new Stack<>();
+    private Stack<String> passingPosTests;
+    private Stack<String> passingNegTests;
     public Boolean[] passNegArr;
-    private Stack<String> failingPosTests = new Stack<>();
-    private Stack<String> failingNegTests = new Stack<>();
+    private Stack<String> failingPosTests;
+    private Stack<String> failingNegTests;
     List<String> mutHist = new LinkedList<>();
     StringBuilder currMut = new StringBuilder();
 
@@ -78,25 +71,22 @@ public class Gram implements Comparable<Gram> {
 
         grammarFile = sourceFile;
         grammarName = grammarFile.getName().split("\\.")[0];
+        List<String> lines;
         try (BufferedReader in = new BufferedReader(new FileReader(grammarFile));) {
-            String input;
+            
             in.readLine();
-            while ((input = in.readLine()) != null) {
-                fileLines.add(input);
-            }
+            lines = in.lines().collect(toList());
+            readRules(lines);
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
-        this.terminalRules = new ArrayList<Rule>();
-        readRules();
     }
 
     public Gram(String grammarText) {
-        // System.err.println("Constructing grammar from\n" + grammarText);
-        fileLines = Arrays.asList(grammarText.split("\n"));
+        List<String> fileLines = Arrays.asList(grammarText.split("\n"));
         grammarName = fileLines.get(0).split(" ")[1];
-        this.terminalRules = new ArrayList<Rule>();
-        readRules();
+        readRules(fileLines);
     }
 
     /**
@@ -104,10 +94,7 @@ public class Gram implements Comparable<Gram> {
      */
     public Gram(Gram toCopy) {
         grammarName = toCopy.grammarName;
-        parserRules = new ArrayList<Rule>();
         toCopy.parserRules.forEach(rule -> parserRules.add(new Rule(rule)));
-        terminalRules = new ArrayList<Rule>();
-        toCopy.terminalRules.forEach(rule -> terminalRules.add(new Rule(rule)));
 
         // toCopy.mutationConsiderations.forEach(mutationConsiderations::add);
 
@@ -123,31 +110,43 @@ public class Gram implements Comparable<Gram> {
      */
     public Gram(String name, ArrayList<Rule> terminalRules) {
         grammarName = name;
-        this.terminalRules = new ArrayList<Rule>(terminalRules);
     }
 
+    public static void loadTerminals(String path) {
+        try(BufferedReader in = new BufferedReader(new FileReader(new File(Constants.CURR_TERMINALS_PATH)))) {
+            in.readLine();
+            in.lines().forEach(l -> {
+                String[] data = l.split(":",2);
+                terminals.put(data[0], new Rule(data[0], data[1]));
+            });
+            terminalString =  Gram.terminals.values().stream().map(Rule::toString).collect(Collectors.joining("\n"));
+
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
     /**
      * Concats parserRules and terminals and returns
      */
     public ArrayList<Rule> getAllRules() {
-        return Stream.of(parserRules, terminalRules).flatMap(ArrayList::stream).collect(toCollection(ArrayList::new));
+        ArrayList<Rule> out = new ArrayList<>();
+        out.addAll(parserRules);
+        out.addAll(terminals.values());
+        return out;
     }
 
     /**
      * Reads a grammar from the ANTLR file associated with this
      */
-    private void readRules() {
+    private void readRules(List<String> fileLines) {
         fileLines.forEach(input -> {
+            if(Character.isUpperCase(input.charAt(0))) return;
             input = input.replaceAll("[ ]+", " ").trim();
             String RuleName = input.substring(0, input.indexOf(":")).trim();
             String RuleString = input.substring(input.indexOf(":") + 1); // cuts off the ; at the end
             Rule currRule = new Rule(RuleName, RuleString);
             // currRule.addRule(RuleString);
-            if (currRule.isTerminal()) {
-                terminalRules.add(currRule);
-            } else {
-                parserRules.add(currRule);
-            }
+            parserRules.add(currRule);
         });
     }
 
@@ -159,7 +158,8 @@ public class Gram implements Comparable<Gram> {
     public String toString() {
         StringBuilder out = new StringBuilder();
         out.append("grammar " + grammarName + ";\n");
-        getAllRules().forEach(Rule -> out.append(Rule + "\n"));
+        parserRules.forEach(Rule -> out.append(Rule + "\n"));
+        out.append(terminalString + "\n");
         out.append("WS  : [ \\n\\r\\t]+ -> skip;");
         return out.toString();
     }
@@ -202,8 +202,11 @@ public class Gram implements Comparable<Gram> {
         generateNewRule(ruleName, RHSLen, 0);
     }
 
+    /**
+     * Generates a sequence of terminals and nonterminals
+     * @return
+     */
     public LinkedList<Rule> generateNewProd() {
-        // wholly new production
         int prodSize = 1 + randInt(Constants.MAX_RHS_SIZE);
         LinkedList<Rule> newProd = new LinkedList<Rule>();
         List<Rule> allRules = getAllRules();
@@ -313,6 +316,7 @@ public class Gram implements Comparable<Gram> {
 
     StringBuilder prevCross = new StringBuilder("default prevX");
 
+    
     private void applyLoggedCrossover(Gram toCrossover, StringBuilder out) {
         LinkedList<Rule> otherList = toCrossover.getCrossoverRuleList();
         LinkedList<Rule> myList = getCrossoverRuleList();
@@ -713,10 +717,7 @@ public class Gram implements Comparable<Gram> {
         return prod.stream().allMatch(rule -> rule.nullable(nullables));
     }
 
-    public ArrayList<Rule> getTerminalRules() {
-        return terminalRules;
-    }
-
+    
     public String hashString() {
         LinkedList<String[]> mappings = new LinkedList<String[]>();
         for (int i = 0; i < parserRules.size(); i++) {
@@ -760,7 +761,6 @@ public class Gram implements Comparable<Gram> {
 
     public boolean containsInfLoop() {
 
-        if(parserRules.isEmpty())System.err.println("No parserRules :((((((\n" + this + "\n" + prevCross.toString()  + "\nInitStr:\n" + initString);
         if (getUndefinedRules().stream().anyMatch(rule -> rule.contains("Undefined "))) {
             return true;
         }
@@ -1013,6 +1013,7 @@ public class Gram implements Comparable<Gram> {
 
     public void setMutationConsideration(List<String> newList) {
         // App.rgoSetText("Setting mutations list for " + this);
+        if(mutationConsiderations == null) mutationConsiderations = new LinkedList<String[]>();
         mutationConsiderations.clear();
         mutationConsiderations.addAll(newList.stream().map(str -> str.split(":")).collect(Collectors.toList()));
     }
@@ -1031,15 +1032,6 @@ public class Gram implements Comparable<Gram> {
 
         } catch (Exception e) {
             System.err.println("Could not find " + name + " in " + this);
-            logGrammar(true);
-            String scrampleMapping = scrambleMap.keySet().stream().map(k -> {
-                String newName  = scrambleMap.get(k);
-                return k + " -> " + newName + (newName.equals(finalName) ? "***" : "");
-            }).collect(Collectors.joining("\n"));
-            // System.err.println(mutHist);
-            System.err.println("Results of scramble: " + scrambleMap.keySet().size() + "\n" + scrampleMapping);
-            System.err.println("Match results:" + getAllRules().stream()
-                .map(rule -> rule.name + ": " + rule.name.equals(finalName)).collect(Collectors.joining("\n")));
             e.printStackTrace();
             return null;
         }
@@ -1185,10 +1177,10 @@ public class Gram implements Comparable<Gram> {
 
     }
 
-    public HashMap<String, String> scrambleMap =  new HashMap<String, String>();
-
+    
     public void scrambleRuleNames() {
         // System.err.println("Pre scramble " + toString());
+        HashMap<String, String> scrambleMap =  new HashMap<String, String>();
         parserRules.forEach(r1 -> {
             String newName = genRuleName();
             scrambleMap.put(newName, r1.name);
@@ -1414,6 +1406,22 @@ public class Gram implements Comparable<Gram> {
         double prec = COMPUTE_PRECISION();
         double recall = COMPUTE_RECALL();
         return (5 * prec * recall) / (4 * prec + recall);
+    }
+
+    public double COMPUTE_F05() {
+        double prec = COMPUTE_PRECISION();
+        double recall = COMPUTE_RECALL();
+        return (5 * prec * recall) / (4 * prec + recall);
+    }
+
+    public double COMPUTE_SPECIFICITY() {
+        double negTestsRejected = truePositivesNeg;
+        double totalTestsRejected = falseNegatives;
+        return negTestsRejected/totalTestsRejected;
+    }
+
+    public double COMPUTE_BALANCED_ACCURACY() {
+        return (COMPUTE_RECALL() + COMPUTE_SPECIFICITY())/2;
     }
 
     /**
@@ -1689,7 +1697,7 @@ public class Gram implements Comparable<Gram> {
     public void logGrammar(boolean logMutHist) {
         try (FileWriter out = new FileWriter(new File(Constants.LOG_GRAMMAR_PATH + grammarName + ".g4"))) {
             out.write(hashString() + "\n");
-            out.write(prettyPrintRules(terminalRules));
+            out.write(terminalString);
             if(logMutHist) out.write("\n" + mutHist.stream().collect(Collectors.joining("\n")));
         } catch (Exception e) {
 
@@ -1697,7 +1705,7 @@ public class Gram implements Comparable<Gram> {
     }
 
     public String fullHashString() {
-        return hashString() + '\n' + prettyPrintRules(terminalRules);
+        return hashString() + '\n' + terminalString;
     }
 
    
@@ -1805,11 +1813,9 @@ public class Gram implements Comparable<Gram> {
 
     public void genFakeSuggestions() {
         List<String> toPass = new LinkedList<String>();
+        List<String> allOptions = new LinkedList<>();
         for (int i = 0; i < NUM_SUGGESTED_MUTANTS; i++) {
-            Rule targetRule = randGet(parserRules, true);
-            int index = (1 + randInt(targetRule.getSubRules().size()));
-            String toAdd = targetRule.name + ":" + index;
-            toPass.add(toAdd);
+            toPass.add(randGet(allOptions, false));
         }
         setMutationConsideration(toPass);
     }
@@ -1916,10 +1922,5 @@ public class Gram implements Comparable<Gram> {
     public String getToolString() {
         return toolString;
     }
-    /**
-     * Remove after bugfix
-     */
-
-    public String initString = "default";
-
+    
 }

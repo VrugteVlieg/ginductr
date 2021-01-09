@@ -15,6 +15,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class GrammarGenerator {
 
@@ -27,6 +28,7 @@ public class GrammarGenerator {
     static List<String> potentialRules = new LinkedList<>();
     static List<String> terminalRules = new LinkedList<>();
     static String[] skeletonBases;
+    
 
     static boolean hasBeenChecked(Gram in) {
         if(nullGrams.contains(in.hashString())) {
@@ -63,13 +65,12 @@ public class GrammarGenerator {
 
             currGrammar.removeDuplicateProductions();
             
-            currGrammar.removeUnreachableBoogaloo();
+            // currGrammar.removeUnreachableBoogaloo();
             boolean lrDeriv = currGrammar.containsImmediateLRDeriv();
             if(App.gramAlreadyChecked(currGrammar) || lrDeriv) {
                 i--;
                 continue;
             } else {
-                currGrammar.initString = currGrammar.toString();
                 output.add(currGrammar);
             }
         }
@@ -137,9 +138,10 @@ public class GrammarGenerator {
         }
         
     }
+    static int upperLimit  = 128;
 
     public static Gram getSkeletonBase() {
-        int key = ThreadLocalRandom.current().nextInt(256);
+        int key = ThreadLocalRandom.current().nextInt(upperLimit);
         Gram out = new Gram(skeletonBases[key]);
         out.setName(Gram.genGramName());
         return out;
@@ -221,9 +223,10 @@ public class GrammarGenerator {
 
     public static String generateBase(int key) {
         List<String> toInclude = new LinkedList<>();
+        List<Integer> freeRules = new LinkedList<>(IntStream.range(0, numSkeletonRules).boxed().collect(Collectors.toList()));
         for (int i = 0; i < numSkeletonRules; i++) {
             if((key >> i) % 2 == 1) {
-                toInclude.add("x" + i);
+                toInclude.add("x" + Gram.randGet(freeRules, false));
             }
         }
         String parserRulesStr = potentialRules.stream().filter(r -> toInclude.contains(r.substring(0, r.indexOf(":")))).collect(Collectors.joining("\n"));

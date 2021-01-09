@@ -16,9 +16,7 @@ for pCrc in "${pCrcVals[@]}"; do
                 export pH=$ph
                 for ts in "${tsVals[@]}"; do
                     export tS=$ts
-                    echo "outie"
-                    echo $outLbl
-                    ./buildGui.sh > /dev/null
+                    ./buildGui.sh
                 done
             done
         done

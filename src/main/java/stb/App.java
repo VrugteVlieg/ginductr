@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -150,6 +151,7 @@ public class App {
     public static void main(String[] args) {
 
         Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR);
+        Gram.loadTerminals(Constants.CURR_TERMINALS_PATH);
         if (Constants.USE_GUI && false) {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
@@ -157,35 +159,14 @@ public class App {
             // mainWTuning();
             // clearANTLRfolder();
             GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
-            // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
-            // System.err.println(GrammarGenerator.generateBase(4));
-            // System.err.println("\n\n------------\n\n");
-            // System.err.println(myGram);
-            // runTests(myGram);
-            // System.err.println(myGram);
-            stopwatch.startClock();
-            Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
 
-            System.err.println("With mlcs takes " + stopwatch.split());
-            System.err.println(myGram.hashString());
-            generatedGrammars.clear();
-            GrammarGenerator.skeletonBases = null;
-            GrammarGenerator.generateLocalisablePop(1);
-            System.err.println("Without mlcs takes " + stopwatch.split());
-            // Gram seeded = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
-            // seeded.groupMutate(seeded.getParserRules().get(0).getSubRules().get(0));
-            // seeded.scrambleRuleNames();
-            // System.err.println(seeded.getParserRules().get(0).getReachables(seeded.getParserRules()));
-            // stopwatch.startClock();
-            // Gram.loggedCrossover(pop.get(0), pop.get(1), new StringBuilder());
-            // System.err.println(pop.get(0).prevCross.toString());
-            // for (int tCount : new int[] { 1, 4, 8, 16 }) {
-            // Constants.NUM_THREADS = tCount;
-            // runTests(pop);
-            // System.err.println("Using " + Constants.NUM_THREADS + pop.size() + " grams
-            // took " + stopwatch.split());
-
-            // }
+            // benchmarkMain();
+            List<Gram> pop = GrammarGenerator.generateLocalisablePop(100);
+            int[] threadCounts = {1, 2, 4, 8, 16};
+            for(int tc : threadCounts) {
+                Constants.NUM_THREADS = tc;
+                runTests(pop);
+            }
         }
     }
 
@@ -196,10 +177,16 @@ public class App {
      */
 
     /**
-     * Structure of paper Can we successfully infer using GP Show that blind search
-     * works for smaller grammars, struggles for larger ones Introduce Local as a
-     * way to guide mutation, show comparison Introduce MLCS as a way to improve
-     * initial grammars, show comparison
+     * Structure of paper:
+     * Can we successfully infer using GP? 
+     * Show that blind search works for smaller grammars, struggles for larger ones. To do this for toylang and above mlcs generation has to be used, so we should use it for d4 as well?
+     * Introduce Local as a way to guide mutation and improve effectiveness of asexual reproduction in GP 
+     *   show comparison of max scores across 100 generations
+     * Introduce MLCS as a way to improve initial grammars + show comparison
+     *   Strategy used to generate candidates from MLCS grammars
+     *    MLCS generation works best when using NTs higher up in the tree
+     *   show comparison in variance of population scores using mlcs vs not
+     *   to get a idea of the quality of candidates generated using mlcs
      */
 
     public static void mainWTuning() {
@@ -323,7 +310,7 @@ public class App {
 
             for (Gram g : myGrammars) {
                 if (Constants.USE_LOCALIZATION) {
-                    if (g.getMutationConsideration().isEmpty())
+                    if (g.getMutationConsideration() == null)
                         // System.err.println("\nLocalising " + g + "\nscore: " + g.getScore());
                         runLocaliser(g);
                     if (g.getName().equals(bestGramName))
@@ -372,8 +359,6 @@ public class App {
                     rloAppendText("Computing mutants\n");
                     stopwatch.startClock();
 
-                    Gram.currGramNum = 0;
-                    Gram.totalBaseGrams = myGrammars.size();
                     List<Gram> allMutants = new ArrayList<>();
                     int counter = 0;
                     for (Gram g : myGrammars) {
@@ -498,7 +483,7 @@ public class App {
                     // System.err.print("Localizing " + (gCount) + "/" + myGrammars.size() + "\r");
                     rgoSetText("Localizing " + (gCount++) + "/" + myGrammars.size() + "\r");
                     if (Constants.USE_LOCALIZATION) {
-                        if (g.getMutationConsideration().isEmpty())
+                        if (g.getMutationConsideration() == null)
                             runLocaliser(g);
                     } else {
                         g.genFakeSuggestions();
@@ -573,15 +558,20 @@ public class App {
 
     public static void runTests(List<Gram> pop) {
         pop.removeIf(Gram::containsInfLoop);
+        ConcurrentHashMap<Integer, String> times = new ConcurrentHashMap<>();
         class testRunner implements Callable<List<Gram>> {
             private List<Gram> myGrams;
-
-            testRunner(List<Gram> toRun) {
+            private int id;
+            testRunner(List<Gram> toRun, int id) {
                 myGrams = toRun;
+                this.id = id;
             }
+
 
             @Override
             public List<Gram> call() {
+                Timer myTime = new Timer();
+                myTime.startClock();
                 myGrams.forEach(myGram -> {
                     // System.err.println(myGram.toRemove());
                     myGram.injectEOF();
@@ -614,11 +604,15 @@ public class App {
                         Chelsea.deepCleanDirectory(myGram.getOutputDir());
                     }
                 });
+
+                double timeTaken = myTime.split();
+                times.put(id, format("%d took %.2f, @ %.2f p/g", id, timeTaken, timeTaken/myGrams.size()));
                 myGrams.removeIf(Gram::toRemove);
                 return myGrams;
             }
 
         }
+        
         ExecutorService myExecutors = Executors.newFixedThreadPool(Constants.NUM_THREADS);
         List<List<Gram>> splitPop = new LinkedList<>();
         for (int i = 0; i < Constants.NUM_THREADS; i++) {
@@ -631,21 +625,22 @@ public class App {
             splitPop.get(counter++ % splitPop.size()).add(pop.remove(0));
         }
         List<Integer> allocation = splitPop.stream().map(List<Gram>::size).collect(toList());
-        // System.err.println(format("Testing %d grammars using %d threads\nAllocation:
-        // %s",
-        // allocation.stream().reduce(Integer::sum).get(), splitPop.size(),
-        // allocation));
+        System.err.println(format("Testing %d grammars using %d threads\nAllocation:%s",allocation.stream().reduce(Integer::sum).get(), splitPop.size(),allocation));
         stopwatch.startClock("testing");
         try {
-            List<Future<List<Gram>>> res = myExecutors
-                    .invokeAll(splitPop.stream().map(testRunner::new).collect(toList()));
+            List<Callable<List<Gram>>> toCall = new LinkedList<>();
+            for(int i = 0; i < splitPop.size(); i++) {
+                toCall.add(new testRunner(splitPop.get(i),i));
+            }
+            List<Future<List<Gram>>> res = myExecutors.invokeAll(toCall);
             for (Future<List<Gram>> r : res) {
                 pop.addAll(r.get());
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        // System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
+        System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
+        times.values().forEach(System.err::println);
         myExecutors.shutdown();
         // splitPop.forEach(l -> myExecutors.submit(new testRunner(l)));
         // splitPop.forEach(pop::addAll);
@@ -656,8 +651,8 @@ public class App {
         grammars.forEach(gram -> {
             try (FileWriter out = new FileWriter(new File(Constants.LOG_DIR + "/" + outputID + "/"
                     + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
-                out.write(String.format("time taken:%s\niteration count: %d\n%s\n%s",
-                        stopwatch.elapsedTime(MAIN_START_TIME), genNum, gram, Constants.getParamString()));
+                out.write(String.format("iteration count: %d\n%s\n%s",
+                         genNum, gram, Constants.getParamString()));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -743,7 +738,7 @@ public class App {
     public static void loadStartGrammar() {
         Gram out = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
         Gram hashedOut = new Gram(out.hashString() + '\n'
-                + out.getTerminalRules().stream().map(Rule::toString).collect(Collectors.joining("\n")));
+                + Gram.terminalString);
         demoGrammar = hashedOut;
         hashedOut.setName("demoGrammar");
     }
@@ -815,15 +810,13 @@ public class App {
 
     static void setBestGrammar(Gram newBest) {
         bestGrammar = new Gram(newBest.hashString() + '\n'
-                + newBest.getTerminalRules().stream().map(Rule::toString).collect(Collectors.joining("\n")));
+                + Gram.terminalString);
         bestGrammar.setName("bestCandidate");
         bestGrammar.setNegScore(newBest.getNegScore());
         bestGrammar.setPosScore(newBest.getPosScore());
         StringBuilder newBestString = new StringBuilder("Best Score: " + newBest.getScore() + "\n");
         newBestString.append(newBest.fullHashString());
         bestGrammarString = newBestString.toString();
-        bestGrammar.setMutationConsideration(
-                newBest.getMutationConsideration().stream().map(i -> i[0] + ":" + i[1]).collect(toList()));
     }
 
     static double getBestScore() {
@@ -888,21 +881,7 @@ public class App {
 
             inputReader.lines().map(line -> line.split(",")).forEach(data -> {
                 // System.err.println(Arrays.toString(data));
-                if (data[5].equals("nan")) {
-                    String toPrint = "\nNAN when localizing\n" + currGrammar + "\nPos: " + currGrammar.getPosScore()
-                            + "\nNeg: " + currGrammar.getNegScore() + "\nTot: " + currGrammar.getScore() + "\nPassing: "
-                            + currGrammar.getPassingPosTests() + "\nPassArr: " + Arrays.toString(currGrammar.passPosArr)
-                            + "\nNegArr: " + Arrays.toString(currGrammar.passNegArr) + "\nToolString "
-                            + currGrammar.getToolString();
-
-                    blockRead(toPrint);
-                    currGrammar.stripEOF();
-                    runTests(new ArrayList<>(List.of(currGrammar)));
-                    currGrammar.injectEOF();
-                    blockRead(format("\n\nRerun scores:\nPos: %f\nNeg:  %f", currGrammar.getPosScore(),
-                            currGrammar.getNegScore()));
-
-                }
+    
                 Double tarantula = Double.valueOf(data[5]);
                 if (susScore.containsKey(tarantula)) {
                     susScore.get(tarantula).add(data[0]);
@@ -915,8 +894,6 @@ public class App {
 
             susScore.keySet().stream().sorted(reverseOrder()).map(susScore::get).flatMap(LinkedList::stream)
                     .forEach(out::add);
-
-            System.err.println("Mutation considerations for " + currGrammar + "\n " + out);
             currGrammar.setMutationConsideration(out);
 
         } catch (Exception e) {
