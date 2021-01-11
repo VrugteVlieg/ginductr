@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -152,22 +153,105 @@ public class App {
 
         Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR);
         Gram.loadTerminals(Constants.CURR_TERMINALS_PATH);
+        // GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
         if (Constants.USE_GUI && false) {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
         } else {
             // mainWTuning();
             // clearANTLRfolder();
-            GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
+            // benchmarkMain();
+            String vanillaOut = compareInit(() -> {}, "Vanilla");
+            String vanillaBoogOut = compareInit(() -> {
+                generatedGrammars.clear();
+                GrammarGenerator.removeUnreachables = true;
+            }, "VanillaBoog");
+            String mlcsOut = compareInit(() -> {
+                generatedGrammars.clear();
+                GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
+                GrammarGenerator.removeUnreachables = false;
+            }, "mlcs");
+
+            String mlcsBoogOut = compareInit(() -> {
+                generatedGrammars.clear();
+                GrammarGenerator.removeUnreachables = true;
+            }, "mlcsBoog");
+            
+            System.err.println(String.join("\n***\n", vanillaOut, vanillaBoogOut, mlcsOut, mlcsBoogOut));
 
             // benchmarkMain();
-            List<Gram> pop = GrammarGenerator.generateLocalisablePop(100);
-            int[] threadCounts = {1, 2, 4, 8, 16};
-            for(int tc : threadCounts) {
-                Constants.NUM_THREADS = tc;
-                runTests(pop);
-            }
+            // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
+            // System.err.println(myGram.getScore() + " | " + (myGram.getPosScore() +
+            // myGram.getNegScore())/2 + "\n" + myGram);
+            // int[] threadCounts = {1, 2, 4, 8, 16};
+            // for(int tc : threadCounts) {
+            // Constants.NUM_THREADS = tc;
+            // runTests(pop);
+            // }
         }
+    }
+
+    private interface testSetup {
+        public void setup();
+    }
+
+    public static String compareInit(testSetup setup, String name) {
+        setup.setup();
+        stopwatch.startClock(name);
+        List<Double[]> scores = new LinkedList<>();
+            List<Gram> pop = GrammarGenerator.generateLocalisablePop(100);
+            pop.forEach(g -> {
+                Double f05 = g.getScore();
+                double defScore = (g.getPosScore() + g.getNegScore()) / 2;
+                Double ba = g.COMPUTE_BALANCED_ACCURACY();
+                scores.add(new Double[] { f05, defScore, ba });
+            });
+            Boolean[] passPos = new Boolean[Chelsea.posTests.size()];
+            Boolean[] passNeg = new Boolean[Chelsea.negTests.size()];
+            Arrays.fill(passNeg, false);
+            Arrays.fill(passPos, false);
+
+            pop.forEach(g -> {
+                for (int i = 0; i < passPos.length; i++) {
+                    passPos[i] |= g.passPosArr[i];
+                }
+                for (int i = 0; i < passNeg.length; i++) {
+                    passNeg[i] |= g.passNegArr[i];
+                }
+            });
+            int numPassPos = Arrays.stream(passPos).mapToInt(v -> v ? 1 : 0).sum();
+            int numPassNeg = Arrays.stream(passNeg).mapToInt(v -> v ? 0 : 1).sum();
+            double diversity = (1.0 * (numPassNeg + numPassPos)
+                    / (passPos.length + passNeg.length));
+
+            DoubleSummaryStatistics f05Stats = scores.stream().mapToDouble(g -> g[0]).summaryStatistics();
+            Double f05Var = getVar(scores.stream().map(g -> g[0]).collect(toList()), f05Stats.getAverage());
+            DoubleSummaryStatistics defStats = scores.stream().mapToDouble(g -> g[1]).summaryStatistics();
+            Double defVar = getVar(scores.stream().map(g -> g[1]).collect(toList()), defStats.getAverage());
+            DoubleSummaryStatistics baStats = scores.stream().mapToDouble(g -> g[1]).summaryStatistics();
+            Double baVar = getVar(scores.stream().map(g -> g[2]).collect(toList()), baStats.getAverage());
+
+            return String.join("\n", 
+                format("%s\nTimeTaken: %f\nNumGramsTested: %d\nDiversity: %f", name, stopwatch.stop(name), generatedGrammars.size(), diversity),
+
+                format("default:\n\tavg: %f\n\tvar: %f\n\tmax: %f",    
+                        defStats.getAverage(), 
+                        defVar,
+                        defStats.getMax()),
+                format("05:\n\tavg: %f\n\tvar: %f\n\tmax: %f",    
+                        f05Stats.getAverage(), 
+                        f05Var,
+                        f05Stats.getMax()),
+                format("BA:\n\tavg: %f\n\tvar: %f\n\tmax: %f",    
+                        baStats.getAverage(), 
+                        baVar,
+                        baStats.getMax())
+                );
+    }
+
+    private static Double getVar(List<Double> vals, Double avg) {
+        Double out = vals.stream().mapToDouble(v -> Math.pow(avg - v, 2)).sum() / (vals.size() - 1);
+        return out;
     }
 
     /**
@@ -177,24 +261,32 @@ public class App {
      */
 
     /**
-     * Structure of paper:
-     * Can we successfully infer using GP? 
-     * Show that blind search works for smaller grammars, struggles for larger ones. To do this for toylang and above mlcs generation has to be used, so we should use it for d4 as well?
-     * Introduce Local as a way to guide mutation and improve effectiveness of asexual reproduction in GP 
-     *   show comparison of max scores across 100 generations
-     * Introduce MLCS as a way to improve initial grammars + show comparison
-     *   Strategy used to generate candidates from MLCS grammars
-     *    MLCS generation works best when using NTs higher up in the tree
-     *   show comparison in variance of population scores using mlcs vs not
-     *   to get a idea of the quality of candidates generated using mlcs
+     * Structure of paper: Can we successfully infer using GP? Show that blind
+     * search works for smaller grammars, struggles for larger ones. To do this for
+     * toylang and above mlcs generation has to be used, so we should use it for d4
+     * as well? Introduce Local as a way to guide mutation and improve effectiveness
+     * of asexual reproduction in GP show comparison of max scores across 100
+     * generations Introduce MLCS as a way to improve initial grammars + show
+     * comparison Strategy used to generate candidates from MLCS grammars MLCS
+     * generation works best when using NTs higher up in the tree show comparison in
+     * variance of population scores using mlcs vs not to get a idea of the quality
+     * of candidates generated using mlcs
+     * 
+     * MLCS notes: Using random generation you tend to get candidates that pass
+     * simple test cases, In the case of arith, this means grammars starting with
+     * either ID or NUM which pass trivial testcases x or 0 Mlcs produces grammars
+     * that pass a wider variety of test cases If we consider the diversity of the
+     * population to be the % of total test cases that any member of the pop can
+     * pass then mlcs produces more diverse populations which in turn should improve
+     * the effectiveness of crossover
+     * 
      */
 
     public static void mainWTuning() {
         // System.err.println(System.getenv("set"));
         String outLbl = System.getenv("outLbl").replaceAll(" ", "");
         System.err.println("Outlbl " + outLbl);
-        String baseOutputID = (Constants.USE_LOCALIZATION ? "local_" : "") + Constants.CURR_GRAMMAR_NAME
-                + outLbl;
+        String baseOutputID = (Constants.USE_LOCALIZATION ? "local_" : "") + Constants.CURR_GRAMMAR_NAME + outLbl;
 
         createLogDir(baseOutputID);
         Constants.P_CHANGE_RULE_COUNT = Double.parseDouble(System.getenv("pCRC"));
@@ -256,6 +348,18 @@ public class App {
                 // System.err.println("TotalPop out: " + totalPop.size());
             }
 
+            for (Gram gram : totalPop) {
+                double currScore = gram.getScore();
+                if (currScore == 1.0) {
+                    Gram toAdd = new Gram(gram);
+                    toAdd.genNum = genNum;
+                    perfectGrammars.add(toAdd);
+                    
+                }
+                if (currScore > getBestScore() || (currScore == getBestScore() && gram.COMPUTE_BALANCED_ACCURACY() > bestGrammar.COMPUTE_BALANCED_ACCURACY()))
+                    setBestGrammar(gram);
+            }
+
             // Add crossover grammars
             double bestScore = getBestScore();
             // Only start performing crossover if some decent grammars already exist
@@ -264,41 +368,25 @@ public class App {
                 ArrayList<Gram> crossoverPop = performCrossover(totalPop);
                 runTests(crossoverPop);
                 crossoverPop.removeIf(Gram.passesPosTest.negate());
-                // Select grammars from xoverPop using tour select and add to totalPop
-                for (int i = 0; i < min(10, crossoverPop.size()); i++) {
-                    totalPop.add(tournamentSelect(crossoverPop, TOUR_SIZE));
-                }
-            }
-            String bestGramName = "";
-            for (Gram gram : totalPop) {
-                double currScore = gram.getScore();
-                System.err.print(currScore + "\r");
 
-                if (currScore == 1.0) {
-                    Gram toAdd = new Gram(gram);
-                    toAdd.genNum = genNum;
-                    perfectGrammars.add(toAdd);
+                for (Gram gram : crossoverPop) {
+                    double currScore = gram.getScore();
+
+                    if (currScore == 1.0) {
+                        Gram toAdd = new Gram(gram);
+                        toAdd.genNum = genNum;
+                        perfectGrammars.add(toAdd);
+                    }
+                    if (currScore > getBestScore()) {
+                        setBestGrammar(gram);
+                    }
                 }
-                if (currScore > getBestScore()) {
-                    bestGramName = gram.getName();
-                    setBestGrammar(gram);
-                }
-                // if (evaluatedGrammars.containsKey(currScore)) {
-                // evaluatedGrammars.get(currScore).add(gram);
-                // } else {
-                // LinkedList<Gram> thisScoreList = new LinkedList<Gram>();
-                // thisScoreList.add(gram);
-                // evaluatedGrammars.put(currScore, thisScoreList);
-                // }
+                totalPop.addAll(crossoverPop);
             }
-            System.err.println();
+            
 
             int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
-            int tourSize = Math.min(totalPop.size(), TOUR_SIZE);
-            // System.err.println("Next gen size: " + nextGenSize);
-            // System.err.println("TG:" + totalPop.size());
-            // System.err.println("MG:" + myGrammars.size());
-            // System.err.println("TS:" + tourSize);
+            int tourSize = Math.min(totalPop.size(), Constants.TOUR_SIZE);
             myGrammars.clear();
 
             System.err.println("Recording metrics of " + totalPop.size() + " gen: " + genNum);
@@ -313,8 +401,6 @@ public class App {
                     if (g.getMutationConsideration() == null)
                         // System.err.println("\nLocalising " + g + "\nscore: " + g.getScore());
                         runLocaliser(g);
-                    if (g.getName().equals(bestGramName))
-                        setBestGrammar(g);
                 } else {
                     g.genFakeSuggestions();
                 }
@@ -323,11 +409,14 @@ public class App {
             createLogDir(outputID);
             logMetricsJSON(new metricLog());
             if (perfectGrammars.size() > 0) {
+                perfectGrammars.sort(Comparator.comparing(Gram::getGrammarSize));
+                perfectGrammars = new LinkedList<>(List.of(perfectGrammars.get(0)));
                 writePerfectGrammars(perfectGrammars, genNum);
             } else {
                 writeGrammar(bestGrammar, genNum);
             }
         }
+
     }
 
     public static void demoMainProgram() {
@@ -558,15 +647,16 @@ public class App {
 
     public static void runTests(List<Gram> pop) {
         pop.removeIf(Gram::containsInfLoop);
+        boolean printDebug = false;
         ConcurrentHashMap<Integer, String> times = new ConcurrentHashMap<>();
         class testRunner implements Callable<List<Gram>> {
             private List<Gram> myGrams;
             private int id;
+
             testRunner(List<Gram> toRun, int id) {
                 myGrams = toRun;
                 this.id = id;
             }
-
 
             @Override
             public List<Gram> call() {
@@ -606,13 +696,13 @@ public class App {
                 });
 
                 double timeTaken = myTime.split();
-                times.put(id, format("%d took %.2f, @ %.2f p/g", id, timeTaken, timeTaken/myGrams.size()));
+                times.put(id, format("%d took %.2f, @ %.2f p/g", id, timeTaken, timeTaken / myGrams.size()));
                 myGrams.removeIf(Gram::toRemove);
                 return myGrams;
             }
 
         }
-        
+
         ExecutorService myExecutors = Executors.newFixedThreadPool(Constants.NUM_THREADS);
         List<List<Gram>> splitPop = new LinkedList<>();
         for (int i = 0; i < Constants.NUM_THREADS; i++) {
@@ -625,12 +715,14 @@ public class App {
             splitPop.get(counter++ % splitPop.size()).add(pop.remove(0));
         }
         List<Integer> allocation = splitPop.stream().map(List<Gram>::size).collect(toList());
-        System.err.println(format("Testing %d grammars using %d threads\nAllocation:%s",allocation.stream().reduce(Integer::sum).get(), splitPop.size(),allocation));
+        if (printDebug)
+            System.err.println(format("Testing %d grammars using %d threads\nAllocation:%s",
+                    allocation.stream().reduce(Integer::sum).get(), splitPop.size(), allocation));
         stopwatch.startClock("testing");
         try {
             List<Callable<List<Gram>>> toCall = new LinkedList<>();
-            for(int i = 0; i < splitPop.size(); i++) {
-                toCall.add(new testRunner(splitPop.get(i),i));
+            for (int i = 0; i < splitPop.size(); i++) {
+                toCall.add(new testRunner(splitPop.get(i), i));
             }
             List<Future<List<Gram>>> res = myExecutors.invokeAll(toCall);
             for (Future<List<Gram>> r : res) {
@@ -639,8 +731,10 @@ public class App {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
-        times.values().forEach(System.err::println);
+        if (printDebug) {
+            System.err.println("Testing took " + stopwatch.elapsedTime("testing"));
+            times.values().forEach(System.err::println);
+        }
         myExecutors.shutdown();
         // splitPop.forEach(l -> myExecutors.submit(new testRunner(l)));
         // splitPop.forEach(pop::addAll);
@@ -651,8 +745,7 @@ public class App {
         grammars.forEach(gram -> {
             try (FileWriter out = new FileWriter(new File(Constants.LOG_DIR + "/" + outputID + "/"
                     + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
-                out.write(String.format("iteration count: %d\n%s\n%s",
-                         genNum, gram, Constants.getParamString()));
+                out.write(String.format("iteration count: %d\n%s\n%s", genNum, gram, Constants.getParamString()));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -664,8 +757,7 @@ public class App {
                 + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
             out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s", genNum, gram.getScore(), gram,
                     Constants.getParamString()));
-            System.err.println(String.format("iteration count: %d\nScore: %f\n%s", genNum,
-                    gram.getScore(), gram));
+            System.err.println(String.format("iteration count: %d\nScore: %f\nBalanced Accuracy: %f\n%s", genNum, gram.getScore(), gram.COMPUTE_BALANCED_ACCURACY(), gram));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -737,8 +829,7 @@ public class App {
 
     public static void loadStartGrammar() {
         Gram out = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
-        Gram hashedOut = new Gram(out.hashString() + '\n'
-                + Gram.terminalString);
+        Gram hashedOut = new Gram(out.hashString() + '\n' + Gram.terminalString);
         demoGrammar = hashedOut;
         hashedOut.setName("demoGrammar");
     }
@@ -809,11 +900,16 @@ public class App {
     }
 
     static void setBestGrammar(Gram newBest) {
-        bestGrammar = new Gram(newBest.hashString() + '\n'
-                + Gram.terminalString);
+        bestGrammar = new Gram(newBest.hashString() + '\n' + Gram.terminalString);
         bestGrammar.setName("bestCandidate");
         bestGrammar.setNegScore(newBest.getNegScore());
         bestGrammar.setPosScore(newBest.getPosScore());
+        bestGrammar.setPosPass(Arrays.copyOf(newBest.passPosArr, newBest.passPosArr.length));
+        bestGrammar.setNegPass(Arrays.copyOf(newBest.passNegArr, newBest.passNegArr.length));
+        bestGrammar.trueNegatives = newBest.trueNegatives;
+        bestGrammar.truePostives = newBest.truePostives;
+        bestGrammar.falseNegatives = newBest.falseNegatives;
+        bestGrammar.falsePositives = newBest.falsePositives;
         StringBuilder newBestString = new StringBuilder("Best Score: " + newBest.getScore() + "\n");
         newBestString.append(newBest.fullHashString());
         bestGrammarString = newBestString.toString();
@@ -881,7 +977,7 @@ public class App {
 
             inputReader.lines().map(line -> line.split(",")).forEach(data -> {
                 // System.err.println(Arrays.toString(data));
-    
+
                 Double tarantula = Double.valueOf(data[5]);
                 if (susScore.containsKey(tarantula)) {
                     susScore.get(tarantula).add(data[0]);

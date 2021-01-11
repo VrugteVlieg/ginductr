@@ -198,7 +198,6 @@ public class Chelsea {
 
             Tool tool = new Tool(args);
             GrammarRootAST grast = tool.parseGrammarFromString(grammar.toString());
-            grammar.setToolString(grammar.toString());
 
             // Create a new Grammar object from the tool
             Grammar g = tool.createGrammar(grast);

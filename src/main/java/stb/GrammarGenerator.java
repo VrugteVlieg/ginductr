@@ -20,6 +20,7 @@ import java.util.stream.IntStream;
 public class GrammarGenerator {
 
     static HashSet<String> nullGrams = new HashSet<>();
+    static boolean removeUnreachables = false;
     static int nullGramHits = 0;
     static int grammarCount = 0;
     static Gram terminalGrammar = new Gram(new File(Constants.CURR_TERMINALS_PATH));
@@ -65,7 +66,7 @@ public class GrammarGenerator {
 
             currGrammar.removeDuplicateProductions();
             
-            // currGrammar.removeUnreachableBoogaloo();
+            if(skeletonBases == null)currGrammar.removeUnreachableBoogaloo();
             boolean lrDeriv = currGrammar.containsImmediateLRDeriv();
             if(App.gramAlreadyChecked(currGrammar) || lrDeriv) {
                 i--;
@@ -138,7 +139,7 @@ public class GrammarGenerator {
         }
         
     }
-    static int upperLimit  = 128;
+    static int upperLimit  = 16;
 
     public static Gram getSkeletonBase() {
         int key = ThreadLocalRandom.current().nextInt(upperLimit);
@@ -204,7 +205,7 @@ public class GrammarGenerator {
         }
         numSkeletonRules = possibleRules.size()-1;
         System.err.println("**POTENTIAL RULES**");
-        
+        possibleRules.forEach(System.err::println);
         potentialRules = possibleRules;
         skeletonBases = new String[1 << possibleRules.size()-1];
 
@@ -244,7 +245,7 @@ public class GrammarGenerator {
 
         while(out.size() < popSize) {
             System.err.print("Generating new pop " + out.size() + "/" + popSize + "\r");
-            LinkedList<Gram> newPop = generatePopulation(Constants.NUM_THREADS * 20);
+            LinkedList<Gram> newPop = generatePopulation(100);
             // int sizeIn = newPop.size();
             // newPop.removeIf(GrammarGenerator::hasBeenChecked);
             // int sizeOut = newPop.size();

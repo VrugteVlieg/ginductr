@@ -2,7 +2,7 @@ package stb;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "dyck4";
+    public static final String CURR_GRAMMAR_NAME = "slearith";
     public static final String CURR_MLCS_PATH = String.join("/", "grammars", CURR_GRAMMAR_NAME, CURR_GRAMMAR_NAME + ".mlcs");
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
@@ -61,9 +61,9 @@ public class Constants {
     public static boolean HEURISTIC = true;
     public static boolean CROSSOVER = false;
 
-    public static int INIT_POP_SIZE = 20;
-    public static int POP_SIZE = 20;
-    public static int FRESH_POP = 10;
+    public static int INIT_POP_SIZE = 200;
+    public static int POP_SIZE = 100;
+    public static int FRESH_POP = 20;
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
@@ -82,7 +82,7 @@ public class Constants {
         int totalTests = testResult[1];
 
         double numPass = testResult[0];
-        GUT.truePositivesPos = (int) numPass;
+        GUT.truePostives = (int) numPass;
         GUT.falseNegatives = totalTests - (int) numPass;
         double out = numPass * 1.0 / totalTests;
 
@@ -93,7 +93,7 @@ public class Constants {
         int totalTests = testResult[1];
 
         double numPass = totalTests - testResult[0];
-        GUT.truePositivesNeg = (int) numPass;
+        GUT.trueNegatives = (int) numPass;
         GUT.falsePositives = testResult[0];
 
         double out = numPass * 1.0 / totalTests;

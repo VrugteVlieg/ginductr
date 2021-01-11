@@ -46,10 +46,10 @@ public class Gram implements Comparable<Gram> {
     private List<String[]> mutationConsiderations;
     private double posScore = 0.0;
     private double negScore = 0.0;
-    int truePositivesPos = 0;
+    int truePostives = 0;
     private double posScoreDelta = 0.0;
     private double negScoreDelta = 0.0;
-    int truePositivesNeg = 0;
+    int trueNegatives = 0;
     int falsePositives = 0;
     int falseNegatives = 0;
     private boolean remove = false;
@@ -375,7 +375,8 @@ public class Gram implements Comparable<Gram> {
     }
 
     public double getScore() {
-        return (posScore + negScore) / 2.0;
+        return COMPUTE_F05();
+        // return (posScore + negScore) / 2.0;
     }
 
     public double getPosScore() {
@@ -1393,12 +1394,12 @@ public class Gram implements Comparable<Gram> {
     }
 
     public double COMPUTE_RECALL() {
-        double truePos = truePositivesNeg + truePositivesPos;
+        double truePos = trueNegatives + truePostives;
         return truePos / (truePos + falseNegatives);
     }
 
     public double COMPUTE_PRECISION() {
-        double truePos = truePositivesNeg + truePositivesPos;
+        double truePos = trueNegatives + truePostives;
         return truePos / (truePos + falsePositives);
     }
 
@@ -1415,13 +1416,14 @@ public class Gram implements Comparable<Gram> {
     }
 
     public double COMPUTE_SPECIFICITY() {
-        double negTestsRejected = truePositivesNeg;
-        double totalTestsRejected = falseNegatives;
+        double negTestsRejected = trueNegatives;
+        double totalTestsRejected = trueNegatives + falsePositives;
         return negTestsRejected/totalTestsRejected;
     }
 
     public double COMPUTE_BALANCED_ACCURACY() {
-        return (COMPUTE_RECALL() + COMPUTE_SPECIFICITY())/2;
+        double out = (COMPUTE_RECALL() + COMPUTE_SPECIFICITY())/2;
+        return out;
     }
 
     /**
@@ -1912,15 +1914,6 @@ public class Gram implements Comparable<Gram> {
 
     public void setFailingNegTests(Stack<String> failingNegTests) {
         this.failingNegTests = failingNegTests;
-    }
-    String toolString = "";
-
-	public void setToolString(String string) {
-        toolString = string;
-    }
-    
-    public String getToolString() {
-        return toolString;
     }
     
 }

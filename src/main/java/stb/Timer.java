@@ -52,6 +52,16 @@ public class Timer {
         return out;
     }
 
+    public void removeKey(String key) {
+        startTimes.remove(key);
+    }
+
+    public double stop(String key) {
+        double out = elapsedTime(key);
+        startTimes.remove(key);
+        return out;
+    }
+
 
 
 	public void clear() {
