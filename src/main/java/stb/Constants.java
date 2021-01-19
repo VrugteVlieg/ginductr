@@ -2,8 +2,11 @@ package stb;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "slearith";
+    public static final String CURR_GRAMMAR_NAME = "dyck4";
     public static final String CURR_MLCS_PATH = String.join("/", "grammars", CURR_GRAMMAR_NAME, CURR_GRAMMAR_NAME + ".mlcs");
+    public static boolean USE_LOCALIZATION = true;
+    public static boolean USE_PARTIAL_SCORING = true;
+    public static boolean USE_MLCS = false;
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
     public static String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
@@ -17,17 +20,21 @@ public class Constants {
     public static String LOCALISER_CLASS_DIR = "./localiserDependClass";
     public static final String GRAMMARS_PATH = "./grammars/";
     public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
-    public static final String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/pos";
+    public static final String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/mass/test0/pos";
     public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
+    public static final String VALIDATION_POS_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/symmetricTesting/pos";
+    public static final String VALIDATION_NEG_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/symmetricTesting/neg";
     public static final String CURR_GRAMMAR_PATH = GRAMMARS_PATH + CURR_GRAMMAR_NAME + "/" + CURR_GRAMMAR_NAME + ".g4";
     public static final String CURR_TERMINALS_PATH = GRAMMARS_PATH + CURR_GRAMMAR_NAME + "/" + CURR_GRAMMAR_NAME
             + ".terminals";
     public static final String LOG_GRAMMAR_PATH = GRAMMARS_PATH + "loggedGrammars/";
     public static final boolean DEBUG = false;
     public static final boolean USE_GUI = true;
-    public static boolean USE_LOCALIZATION = true;
     public static final String POS_MODE = "pos";
     public static final String NEG_MODE = "neg";
+    public static final String POS_VAL_MODE = "posVal";
+    public static final String NEG_VAL_MODE = "negVal";
+    
 
     public static double[] P_CHANGE_RULE_COUNT_VALS = { 0.5 };
     public static double P_CHANGE_RULE_COUNT = 0.5; // P to add or remove a rule from a grammar
@@ -45,7 +52,7 @@ public class Constants {
     public static double P_H = 0.5; // P to make a symbol iterative or optional
 
     public static double[] TOUR_SIZE_VALS = { 0.1, 0.15 };
-    public static int TOUR_SIZE = 7; // Size of tournaments when performing tour selection
+    public static int TOUR_SIZE = 11; // Size of tournaments when performing tour selection
 
     public static int NUM_CROSSOVER_PER_GEN = 10;
 
@@ -61,15 +68,15 @@ public class Constants {
     public static boolean HEURISTIC = true;
     public static boolean CROSSOVER = false;
 
-    public static int INIT_POP_SIZE = 200;
+    public static int INIT_POP_SIZE = 100;
     public static int POP_SIZE = 100;
-    public static int FRESH_POP = 20;
+    public static int FRESH_POP = 10;
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
     public static int NUM_ITERATIONS = 70;
     public static int RULENAME_LEN = 10;
-    public static int MAX_RULE_COUNT = 5;
+    public static int MAX_RULE_COUNT = 4;
     public static int MAX_RHS_SIZE = 5;
 
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";

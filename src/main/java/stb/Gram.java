@@ -59,6 +59,8 @@ public class Gram implements Comparable<Gram> {
     public Boolean[] passNegArr;
     private Stack<String> failingPosTests;
     private Stack<String> failingNegTests;
+    private double partialScoreArr[];
+    private String bestMatchingRule;
     List<String> mutHist = new LinkedList<>();
     StringBuilder currMut = new StringBuilder();
 
@@ -100,6 +102,8 @@ public class Gram implements Comparable<Gram> {
 
         this.posScore = toCopy.posScore;
         this.negScore = toCopy.negScore;
+        partialScoreArr  =  Arrays.copyOf(toCopy.getPartialScoreArr(), toCopy.partialScoreArr.length);
+        bestMatchingRule = toCopy.bestMatchingRule;
     }
 
     /**
@@ -290,6 +294,17 @@ public class Gram implements Comparable<Gram> {
         return out;
     }
 
+    private LinkedList<Rule> getHeurCrossList() {
+        LinkedList<Rule> out = new LinkedList<Rule>();
+        if(bestMatchingRule == null || bestMatchingRule.isEmpty()) {
+            App.blockRead("No bestMatching rule set for\n" +this + "\n"  + getScore() + "\n" + Arrays.toString(partialScoreArr));
+        }
+        Rule baseRule = getRuleByName(bestMatchingRule);
+        ArrayList<String> reachables = baseRule.getReachables(parserRules);
+        parserRules.stream().filter(rule -> reachables.contains(rule.getName())).map(Rule::new).forEach(out::add);
+        return out;
+    }
+
     private void applyCrossover(LinkedList<Rule> toInsert, Rule toReplace, boolean toInsertNullable) {
         parserRules.addAll(toInsert);
         parserRules.remove(toReplace);
@@ -299,9 +314,9 @@ public class Gram implements Comparable<Gram> {
             rule -> rule.replaceReferences(toReplace, toInsert.getFirst().makeMinorCopy(), toInsertNullable));
     }
 
-    private void applyCrossover(Gram toCrossover) {
-        LinkedList<Rule> otherList = toCrossover.getCrossoverRuleList();
-        LinkedList<Rule> myList = getCrossoverRuleList();
+    private void applyCrossover(Gram toCrossover, boolean useHeuristic) {
+        LinkedList<Rule> otherList = useHeuristic ? toCrossover.getHeurCrossList() : toCrossover.getCrossoverRuleList();
+        LinkedList<Rule> myList = useHeuristic ? getHeurCrossList() : getCrossoverRuleList();
         Rule toSend = myList.getFirst();
         Rule toRecv = otherList.getFirst();
         // grammarOut.output("Swapping " +
@@ -317,9 +332,9 @@ public class Gram implements Comparable<Gram> {
     StringBuilder prevCross = new StringBuilder("default prevX");
 
     
-    private void applyLoggedCrossover(Gram toCrossover, StringBuilder out) {
-        LinkedList<Rule> otherList = toCrossover.getCrossoverRuleList();
-        LinkedList<Rule> myList = getCrossoverRuleList();
+    private void applyLoggedCrossover(Gram toCrossover, StringBuilder out, boolean useHeuristic) {
+        LinkedList<Rule> otherList = useHeuristic ? toCrossover.getHeurCrossList() : toCrossover.getCrossoverRuleList();
+        LinkedList<Rule> myList = useHeuristic ? getHeurCrossList() : getCrossoverRuleList();
         Rule toSend = myList.getFirst();
         Rule toRecv = otherList.getFirst();
         out.append("\nSwapping " + myList.stream().map(Rule::getName).collect(Collectors.joining(", ")) + " with "
@@ -338,11 +353,15 @@ public class Gram implements Comparable<Gram> {
     }
 
     public static void Crossover(Gram g0, Gram g1) {
-        g0.applyCrossover(g1);
+        g0.applyCrossover(g1, false);
     }
 
     public static void loggedCrossover(Gram g0, Gram g1, StringBuilder out) {
-        g0.applyLoggedCrossover(g1, out);
+        g0.applyLoggedCrossover(g1, out, false);
+    }
+
+    public static void heuristicCrossover(Gram g0, Gram g1) {
+        g0.applyCrossover(g1, true);
     }
 
     public static int randInt(int bound) {
@@ -375,7 +394,10 @@ public class Gram implements Comparable<Gram> {
     }
 
     public double getScore() {
-        return COMPUTE_F05();
+        double partialSums = Arrays.stream(partialScoreArr).average().getAsDouble();
+        double negs = negScore;
+        return (partialSums + negs)/2.0;
+        // return COMPUTE_F05();
         // return (posScore + negScore) / 2.0;
     }
 
@@ -402,7 +424,7 @@ public class Gram implements Comparable<Gram> {
         // System.err.println("Reachables: " + reachables);
 
         //Which rules can not be reached from start symbol
-        List<String> unreachables = getAllRules().stream().map(Rule::getName).filter(not(reachables::contains))
+        List<String> unreachables = getAllRules().stream().map(Rule::getName).filter(not(reachables::contains).or(r -> Character.isUpperCase(r.toString().charAt(0))))
             .collect(toCollection(ArrayList::new));
         // System.err.println("Unreachables: " + unreachables);
         
@@ -433,6 +455,8 @@ public class Gram implements Comparable<Gram> {
                 ruleA.addAlternative(symbA);
                 ruleB.setSelectable(indexToExtend, ruleA);
             }
+            reachableParserRules = reachables.stream().map(this::getRuleByName).filter(parserRules::contains)
+            .collect(toCollection(ArrayList::new));
         }
 
         // System.err.println("Results in " + this);
@@ -1191,6 +1215,7 @@ public class Gram implements Comparable<Gram> {
             );
         }
         );
+        bestMatchingRule = scrambleMap.getOrDefault(bestMatchingRule, "ScrambleFail");
         // System.err.println("Post scramble " + toString());
     }
 
@@ -1746,6 +1771,11 @@ public class Gram implements Comparable<Gram> {
         passPosArr = vals;
     }
 
+    /**
+     * How simi
+     * @param otherPos
+     * @return
+     */
     public double posPassSimilarity(Boolean[] otherPos) {
         double out = 0.0;
         for (int i = 0; i < otherPos.length; i++) {
@@ -1914,6 +1944,24 @@ public class Gram implements Comparable<Gram> {
 
     public void setFailingNegTests(Stack<String> failingNegTests) {
         this.failingNegTests = failingNegTests;
+    }
+
+    public double[] getPartialScoreArr() {
+        
+        return partialScoreArr;
+    }
+
+    public void setPartialScoreArr(double[] partialScoreArr) {
+        // System.err.println("Setting partial score arr to " +  Arrays.toString(partialScoreArr));
+        this.partialScoreArr = partialScoreArr;
+    }
+
+    public String getBestMatchingRule() {
+        return bestMatchingRule;
+    }
+
+    public void setBestMatchingRule(String bestMatchingRule) {
+        this.bestMatchingRule = bestMatchingRule;
     }
     
 }

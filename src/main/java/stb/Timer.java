@@ -1,11 +1,12 @@
 package stb;
 
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Timer {
     private long startTime;
 
-    private HashMap<String, Long> startTimes = new HashMap<>();
+    private ConcurrentHashMap<String, Long> startTimes = new ConcurrentHashMap<>();
     public Timer() {
         startTime = 0;
     }

@@ -26,7 +26,9 @@ import java.util.stream.Stream;
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Lexer;
+import org.antlr.v4.runtime.ListTokenSource;
 import org.antlr.v4.runtime.Parser;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.Tool;
 
 import org.antlr.v4.runtime.CharStreams;
@@ -46,12 +48,14 @@ public class Chelsea {
     // Generates, compiles and loads parser,lexer classes from the file
     // static Constructor<?> lexerConstructor;
     // static Constructor<?> parserConstructor;
-    static String currPosDir = null;
-    static List<String> posTests = new LinkedList<>();
 
-    static String currNegDir = null;
+    // Sets of learning test cases
+    static List<String> posTests = new LinkedList<>();
     static List<String> negTests = new LinkedList<>();
-    static int numLogs = 0;
+
+    // Sets of validation test cases
+    static List<String> posValTests = new LinkedList<>();
+    static List<String> negValTests = new LinkedList<>();
 
     static List<String> getAllTests() {
         return Stream.of(posTests, negTests).flatMap(List::stream).collect(Collectors.toList());
@@ -123,54 +127,32 @@ public class Chelsea {
 
     // This loads all the tests into memory once and reuses them from there
 
-    public static boolean loadTests(String posDir, String negDir) {
+    public static boolean loadTests(String posDir, String negDir, String validPosDir, String validNegDir) {
+        String[] pathsToTests = { posDir, negDir, validPosDir, validNegDir };
+        List<List<String>> testLists = List.of(posTests, negTests, posValTests, negValTests);
 
-        // Pos tests
-        try (Stream<Path> paths = Files.walk(Paths.get(posDir)).filter(Files::isRegularFile)) {
-            currPosDir = posDir;
-            paths.forEach(path -> {
-                try {
+        for (int i = 0; i < pathsToTests.length; i++) {
+            try {
+                for (Path path : Files.walk(Paths.get(pathsToTests[i])).filter(Files::isRegularFile)
+                        .collect(Collectors.toList())) {
+
                     StringBuilder rawContent = new StringBuilder(Files.readString(path));
+
                     while (rawContent.indexOf("/*") != -1) {
                         rawContent.delete(rawContent.indexOf("/*"), rawContent.indexOf("*/") + 2);
                     }
 
                     String content = rawContent.toString().trim().replaceAll(" ", "");
-                    posTests.add(content);
+                    testLists.get(i).add(content);
 
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
-            });
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            } catch (Exception e) {
+                // e.printStackTrace();
+                System.err.println("Could not load tests in " + pathsToTests[i]);
+                // return false;
+            }
         }
-
-        // Neg tests
-        try (Stream<Path> paths = Files.walk(Paths.get(negDir)).filter(Files::isRegularFile)) {
-
-            currNegDir = negDir;
-
-            paths.forEach(path -> {
-                try {
-                    StringBuilder rawContent = new StringBuilder(Files.readString(path));
-                    while (rawContent.indexOf("/*") != -1) {
-                        rawContent.delete(rawContent.indexOf("/*"), rawContent.indexOf("*/") + 2);
-                    }
-
-                    String content = rawContent.toString().trim().replaceAll(" ", "");
-                    negTests.add(content);
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         return true;
     }
 
@@ -251,7 +233,8 @@ public class Chelsea {
 
             grammar.flagForRemoval();
         }
-        // addToSlowGrammars(new retainedGrammar(stopwatch.elapsedTime(), grammar.toString()));
+        // addToSlowGrammars(new retainedGrammar(stopwatch.elapsedTime(),
+        // grammar.toString()));
 
     }
 
@@ -264,7 +247,7 @@ public class Chelsea {
     public static void Localise(Gram grammar) {
         Map<String, Class<?>> hm = null;
         try {
-            //System.err.println("LOCALISING" + grammar);
+            // System.err.println("LOCALISING" + grammar);
             String toWrite = grammar.toString().replaceFirst(grammar.getName(), "UUT");
             Pipeline.pipeline(toWrite);
             String[] args = { "-o", Constants.LOCALISER_JAVA_DIR, "-DcontextSuperClass=RuleContextWithAltNum" };
@@ -273,7 +256,7 @@ public class Chelsea {
 
             Tool tool = new Tool(args);
             GrammarRootAST grast = tool.parseGrammarFromString(toWrite);
-	    //System.err.println("Tool created using " + Arrays.toString(args));
+            // System.err.println("Tool created using " + Arrays.toString(args));
             // Create a new Grammar object from the tool
             Grammar g = tool.createGrammar(grast);
 
@@ -288,7 +271,8 @@ public class Chelsea {
             dynamicClassCompiler.compile(new File(Constants.LOCALISER_JAVA_DIR));
 
             hm = new DynamicClassLoader().load(new File(Constants.LOCALISER_CLASS_DIR));
-	    //System.err.println(hm.keySet().stream().collect(Collectors.joining(",\n", "[\n", "\n]")));
+            // System.err.println(hm.keySet().stream().collect(Collectors.joining(",\n",
+            // "[\n", "\n]")));
             // Load and call the testRunner class that was just compiled
             Class<?> TR = hm.get("TestRunner");
             Class<?>[] cArg = new Class[3];
@@ -307,7 +291,7 @@ public class Chelsea {
 
             Method parseMethod = TR.getMethod("parse", cArg);
             Object[] argsToPass = { allTests, Logger.noOfRules, Logger.ruleIndices };
-            //System.err.println("Calling testrunner for \n" + grammar.hashString());
+            // System.err.println("Calling testrunner for \n" + grammar.hashString());
             parseMethod.invoke(null, argsToPass);
 
         } catch (Exception e) {
@@ -317,6 +301,8 @@ public class Chelsea {
             cleanDirectory(new File(Constants.LOCALISER_CLASS_DIR));
         }
     }
+
+    static boolean failedFirst = false;
 
     /**
      * Runs the parser on all the files inside the TEST_DIR and returns a hashmap
@@ -330,19 +316,32 @@ public class Chelsea {
      * @throws InstantiationException
      * @throws NoSuchMethodException
      */
-    public static int[] runTestcases(String mode, Gram myReader) throws IOException, IllegalAccessException,
+    public static int[] runTestcases(String mode, Gram myGram) throws IOException, IllegalAccessException,
             InvocationTargetException, InstantiationException, NoSuchMethodException {
 
         // output array {numPasses, numTests}
 
         List<String> tests;
-        if (mode.equals(Constants.POS_MODE)) {
-            tests = posTests;
-        } else if (mode.equals(Constants.NEG_MODE)) {
-            tests = negTests;
-        } else {
-            return null;
+        switch (mode) {
+            case Constants.POS_MODE:
+                tests = posTests;
+                break;
+
+            case Constants.NEG_MODE:
+                tests = negTests;
+                break;
+
+            case Constants.POS_VAL_MODE:
+                tests = posValTests;
+                break;
+
+            case Constants.NEG_VAL_MODE:
+                tests = negValTests;
+                break;
+            default:
+                return null;
         }
+
         int[] out = { 0, tests.size() };
         Stack<String> passingTests = new Stack<String>();
         Stack<String> failingTests = new Stack<String>();
@@ -351,125 +350,117 @@ public class Chelsea {
         // System.err.println("Testing " + myReader.getName());
         int testNum = 0;
         Boolean[] passArr = new Boolean[tests.size()];
+        double[] partialScores = new double[tests.size()];
         Arrays.fill(passArr, false);
-        for (String test : tests) {
-            try {
+        try {
+            Map<String, Class<?>> hm = new DynamicClassLoader()
+                    .load(new File(Constants.ANTLR_DIR + "/" + myGram.getName()));
+
+            // Manually creates lexer.java file in outputDir
+            Class<?> lexerC = hm.get(myGram.getName() + "Lexer");
+            // Manually creates the lexerConstructor for use later
+            // Is initialized as Constructor<?> lexerConstructor
+            Constructor<?> lexerConstructor = lexerC.getConstructor(CharStream.class);
+            String.class.getConstructor(String.class);
+
+            Class<?> parserC = hm.get(myGram.getName() + "Parser");
+
+            // Manually creates the parserConstructor for use later
+            // Is initialized as Constructor<?> parserConstructor
+            Constructor<?> parserConstructor = parserC.getConstructor(TokenStream.class);
+            for (String test : tests) {
                 testNum++;
-                Map<String, Class<?>> hm = new DynamicClassLoader()
-                        .load(new File(Constants.ANTLR_DIR + "/" + myReader.getName()));
-
-                // Manually creates lexer.java file in outputDir
-                Class<?> lexerC = hm.get(myReader.getName() + "Lexer");
-                // Manually creates the lexerConstructor for use later
-                // Is initialized as Constructor<?> lexerConstructor
-                Constructor<?> lexerConstructor = lexerC.getConstructor(CharStream.class);
-                String.class.getConstructor(String.class);
-
-                Class<?> parserC = hm.get(myReader.getName() + "Parser");
-
-                // Manually creates the parserConstructor for use later
-                // Is initialized as Constructor<?> parserConstructor
-                Constructor<?> parserConstructor = parserC.getConstructor(TokenStream.class);
                 Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
-
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
-
-                // Creating a new parser constructor instance using the lexer tokens
                 Parser parser = (Parser) parserConstructor.newInstance(tokens);
-
                 parser.removeErrorListeners();
                 parser.setErrorHandler(new BailErrorStrategy());
-
                 Method parseEntrypoint = parser.getClass().getMethod(Constants.GRAM_START_SYMB);
+                try {
+                    parseEntrypoint.invoke(parser);
 
-                // equiv of UUTParser.program()
-                parseEntrypoint.invoke(parser);
+                    // Creating a new parser constructor instance using the lexer tokens
 
-                passingTests.push(test);
-                out[0]++;
-                passArr[testNum - 1] = true;
-                // If this code is reached the test case was successfully parsed and numPasses
-                // should be incremented
+                    // equiv of UUTParser.program()
 
-            } catch (NoSuchMethodException e) {
-                // System.err.println("No such method exception " + e.getCause());
-                System.err.println("Removing " + myReader.getName() + " from grammarList");
-                myReader.flagForRemoval();
-            } catch (Exception e) {
-                failingTests.push(test);
+                    passingTests.push(test);
+                    out[0]++;
+                    passArr[testNum - 1] = true;
+                    if (mode.equals(Constants.POS_MODE)) {
+                        partialScores[testNum - 1] = 1.0;
+                    }
+                    // If this code is reached the test case was successfully parsed and numPasses
+                    // should be incremented
+                } catch (Exception e) {
+
+                    if (mode.equals(Constants.POS_MODE) && Constants.USE_PARTIAL_SCORING) {
+                        int maxNumTokens = 0;
+                        String bestRuleName = "";
+
+                        lexer.reset();
+                        List<? extends Token> allToks = lexer.getAllTokens();
+                        // System.err.println("Failed " + test);
+                        // List<? extends Token> newTokenSource = allToks.subList(i, allToks.size());
+                        tokens.setTokenSource(new ListTokenSource(allToks, "myTokenSource"));
+                        tokens.fill();
+                        parser = (Parser) parserConstructor.newInstance(tokens);
+                        parser.setErrorHandler(new BailErrorStrategy());
+                        parser.removeErrorListeners();
+                        for (int i = 0; i < allToks.size(); i++) {
+                            for (Rule r : myGram.getParserRules().subList(1, myGram.getParserRules().size())) {
+                                tokens.seek(i);
+                                try {
+                                    // System.err.println("Parsing using " + r + " from index " + i);
+                                    int startIndex = tokens.index();
+                                    parser.getClass().getMethod(r.name).invoke(parser);
+                                    int numTokensParsed = tokens.index() - startIndex;
+                                    if (maxNumTokens <= numTokensParsed) {
+                                        // System.err.println("maxTokensParsed: " + maxNumTokens + " -> " +
+                                        // numTokensParsed);
+                                        // System.err.println("Using rule " + r.name + " from index " + i + " to " +
+                                        // (i+numTokensParsed));
+                                        // System.err.println("Partial score: " + (1.0*maxNumTokens/allToks.size()) + "
+                                        // -> " + (1.0*numTokensParsed/allToks.size()));
+                                        bestRuleName = r.name;
+                                        maxNumTokens = numTokensParsed;
+                                    }
+                                    maxNumTokens = maxNumTokens < numTokensParsed ? numTokensParsed : maxNumTokens;
+                                    // System.err.println("Successfully parsed " + numTokensParsed + " tokens");
+                                } catch (Exception f) {
+                                    // System.err.println("Parsing from " + i + " failed.");
+                                }
+                            }
+                        }
+                        // LinkedList<Token> remainingConfigs = new LinkedList<>(tokens.get(1,
+                        // tokens.size()))
+                        double maxPartialScore = (1.0 * maxNumTokens / allToks.size());
+                        myGram.setBestMatchingRule(bestRuleName);
+                        // System.err.println("Best partial score " + maxPartialScore);
+                        partialScores[testNum - 1] = maxPartialScore;
+                        // System.err.println("The first token in the stream is " +
+                        // tokens.getText(tokens.get(0),tokens.get(0)));
+                    }
+
+                    // List<String> tokens = Arrays.stream(test.split(" ")).collect();
+                    failingTests.push(test);
+                    // findLongest(test);
+                }
             }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
         if (mode.equals(Constants.POS_MODE)) {
-            myReader.setPosPass(passArr);
-            myReader.setPassingPosTests(passingTests);
-            myReader.setFailingPosTests(failingTests);
+            myGram.setPosPass(passArr);
+            myGram.setPassingPosTests(passingTests);
+            myGram.setFailingPosTests(failingTests);
+            myGram.setPartialScoreArr(partialScores);
         } else {
-            myReader.setPassingNegTests(passingTests);
-            myReader.setFailingNegTests(failingTests);
-            myReader.setNegPass(passArr);
+            myGram.setPassingNegTests(passingTests);
+            myGram.setFailingNegTests(failingTests);
+            myGram.setNegPass(passArr);
         }
-        // tests.forEach(test -> {
-
-        // MyListener myListen = new MyListener();
-        // out[1]++;
-        // try {
-        // testNum[0]++;
-        // Map<String, Class<?>> hm = new DynamicClassLoader().load(new
-        // File(Constants.ANTLR_DIR + "/" + myReader.getName()));
-
-        // // Manually creates lexer.java file in outputDir
-        // Class<?> lexerC = hm.get(myReader.getName() + "Lexer");
-        // // Manually creates the lexerConstructor for use later
-        // // Is initialized as Constructor<?> lexerConstructor
-        // lexerConstructor = lexerC.getConstructor(CharStream.class);
-        // String.class.getConstructor(String.class);
-
-        // Class<?> parserC = hm.get(myReader.getName() + "Parser");
-
-        // // Manually creates the parserConstructor for use later
-        // // Is initialized as Constructor<?> parserConstructor
-        // parserConstructor = parserC.getConstructor(TokenStream.class);
-        // Lexer lexer = (Lexer)
-        // lexerConstructor.newInstance(CharStreams.fromString(test));
-
-        // CommonTokenStream tokens = new CommonTokenStream(lexer);
-
-        // // Creating a new parser constructor instance using the lexer tokens
-        // Parser parser = (Parser) parserConstructor.newInstance(tokens);
-
-        // // parser.addErrorListener(myListen);
-        // parser.removeErrorListeners();
-        // myListen.setGrammarName(parser.getGrammarFileName());
-        // parser.setErrorHandler(new BailErrorStrategy());
-
-        // Method parseEntrypoint =
-        // parser.getClass().getMethod(Constants.GRAM_START_SYMB);
-
-        // //equiv of UUTParser.program()
-        // parseEntrypoint.invoke(parser);
-
-        // passingTests.push(test);
-        // out[0]++;
-        // passArr[testNum[0] - 1] = true;
-        // // If this code is reached the test case was successfully parsed and
-        // numPasses
-        // // should be incremented
-
-        // } catch (NoSuchMethodException e) {
-        // // System.err.println("No such method exception " + e.getCause());
-        // System.err.println("Removing " + myReader.getName() + " from grammarList");
-        // myReader.flagForRemoval();
-        // } catch (Exception e) {
-        // failingTests.push(test);
-        // } finally {
-        // if (mode.equals(Constants.POS_MODE)) {
-        // myReader.setPosPass(passArr);
-        // } else {
-        // myReader.setNegPass(passArr);
-        // }
-        // }
-        // });
-
         return out;
 
     }

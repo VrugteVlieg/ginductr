@@ -66,7 +66,7 @@ public class GrammarGenerator {
 
             currGrammar.removeDuplicateProductions();
             
-            if(skeletonBases == null)currGrammar.removeUnreachableBoogaloo();
+            if(!Constants.USE_MLCS) currGrammar.removeUnreachableBoogaloo();
             boolean lrDeriv = currGrammar.containsImmediateLRDeriv();
             if(App.gramAlreadyChecked(currGrammar) || lrDeriv) {
                 i--;
