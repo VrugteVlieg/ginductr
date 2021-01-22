@@ -191,9 +191,9 @@ public class App {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
         } else {
-            // mainWTuning();
+            mainWTuning();
             // clearANTLRfolder();
-            benchmarkMain();
+            // benchmarkMain();
             // GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
             // Gram myGram = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
             // List<Gram> pop = GrammarGenerator.generatePopulation(200);
@@ -379,6 +379,7 @@ public class App {
                 // allMutants.size());
                 stopwatch.startClock("mutTest");
                 System.err.println("Starting mutTesting with " + allMutants.size() + " grams");
+                allMutants.removeIf(g -> g.getParserRules().stream().flatMap(r -> r.getSubRules().stream()).anyMatch(l -> Gram.getTotalSelectables(l) > Constants.MAX_RHS_SIZE*1.5));
                 runTests(allMutants);
                 System.err.println(
                         format("Testing %d grams took %f", allMutants.size(), stopwatch.elapsedTime("mutTest")));
@@ -857,7 +858,6 @@ public class App {
             crossoverPop.add(g2);
 
         }
-        //TODO: cap the size of grammars after crossover to prevent size explosion, remove duplicate parser rules by inspecting rhs/comparing toString() results
         for(Gram base1: pairings.keySet()) {
             Gram base2 = randGet(pairings.get(base1), true);
             Gram g1 = new Gram(base1);
