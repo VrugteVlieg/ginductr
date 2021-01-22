@@ -110,6 +110,7 @@ public class App {
     static String AVG_SCORE_METRIC = "AVG_SCORE_METRIC";
     static String VENTILE_1_METRIC = "VENTILE_1_METRIC";
     static String VENTILE_19_METRIC = "VENTILE_19_METRIC";
+    static String VARIANCE_METRIC = "VARIANCE_METRIC";
     static String MAX_SCORE_METRIC = "MAX_SCORE_METRIC";
     static String SCORE_DELTA_METRIC = "SCORE_DELTA_METRIC";
     static String NUM_PASS_POS_METRIC = "NUM_PASS_POS_METRIC";
@@ -144,6 +145,12 @@ public class App {
             double[] vals = g.mapToDouble(Gram::getScore).sorted().toArray();
             return vals[vals.length - 1 -(int)(vals.length/20)];
         });
+
+        logFuncs.put(VARIANCE_METRIC, g  -> {
+            List<Gram> popScores = g.map(Gram::getScore).collect(toList());
+            double avg = popScores.stream().average().getAsDouble();
+            return getVar(popScores, avg);
+        })
         // logFuncs.put(HASH_TABLE_HITS_METRIC, g -> (double) hashtableHits);
 
     }
@@ -448,8 +455,9 @@ public class App {
             createLogDir(outputID);
             logMetricsJSON(new metricLog());
             if (perfectGrammars.size() > 0) {
-                // perfectGrammars.sort(Comparator.comparing(Gram::getGrammarSize));
-                writePerfectGrammars(perfectGrammars, genNum);
+                perfectGrammars.sort(Comparator.comparing(Gram::getGrammarSize));
+                writePerfectGrammars(perfectGrammars.subList(0, 1), genNum);
+                perfectGrammars.clear();
             } else {
                 writeGrammar(bestGrammar, genNum);
             }
