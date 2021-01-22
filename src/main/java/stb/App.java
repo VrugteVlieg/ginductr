@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.Optional;
 import java.util.Scanner;
@@ -147,10 +148,10 @@ public class App {
         });
 
         logFuncs.put(VARIANCE_METRIC, g  -> {
-            List<Gram> popScores = g.map(Gram::getScore).collect(toList());
-            double avg = popScores.stream().average().getAsDouble();
+            List<Double> popScores = g.map(Gram::getScore).collect(toList());
+            double avg = popScores.stream().mapToDouble(d -> d).average().getAsDouble();
             return getVar(popScores, avg);
-        })
+        });
         // logFuncs.put(HASH_TABLE_HITS_METRIC, g -> (double) hashtableHits);
 
     }
