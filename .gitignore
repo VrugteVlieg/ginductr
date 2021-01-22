@@ -7,6 +7,8 @@ target
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+tests/dyck4/symmetricTesting/*
+tests/slearith/validation
 # Local History for Visual Studio Code
 .history/
 logs
@@ -18,3 +20,4 @@ test
 GUI_TOKENS.out
 grammars/loggedGrammars/
 localiserDependJava/UUT*
+

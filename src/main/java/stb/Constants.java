@@ -20,7 +20,7 @@ public class Constants {
     public static String LOCALISER_CLASS_DIR = "./localiserDependClass";
     public static final String GRAMMARS_PATH = "./grammars/";
     public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
-    public static final String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/mass/test0/pos";
+    public static String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/mass/test0/pos";
     public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
     public static final String VALIDATION_POS_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/symmetricTesting/pos";
     public static final String VALIDATION_NEG_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/symmetricTesting/neg";
@@ -68,8 +68,8 @@ public class Constants {
     public static boolean HEURISTIC = true;
     public static boolean CROSSOVER = false;
 
-    public static int INIT_POP_SIZE = 100;
-    public static int POP_SIZE = 100;
+    public static int INIT_POP_SIZE = 20;
+    public static int POP_SIZE = 20;
     public static int FRESH_POP = 10;
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
@@ -77,7 +77,7 @@ public class Constants {
     public static int NUM_ITERATIONS = 70;
     public static int RULENAME_LEN = 10;
     public static int MAX_RULE_COUNT = 4;
-    public static int MAX_RHS_SIZE = 5;
+    public static int MAX_RHS_SIZE = 8;
 
     public static String localizerGPath = "./antlr-localizer/default/src/main/antlr4/za/ac/sun/cs/localizer/UUT.g4";
     public static String localizerCompilPath = "./antlr-localizer/default/target/generated-sources/antlr4";

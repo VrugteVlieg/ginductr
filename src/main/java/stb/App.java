@@ -199,7 +199,17 @@ public class App {
             // Gram myGram = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
             // List<Gram> pop = GrammarGenerator.generatePopulation(200);
             // stopwatch.startClock();
-            // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
+            // int[] tc = {4, 8, 16, 32};
+            // String[] testPaths = {"./tests/" + Constants.CURR_GRAMMAR_NAME + "/mass/test0/pos", 
+            // "./tests/" + Constants.CURR_GRAMMAR_NAME + "/pos"};
+            // for (String string : testPaths) {
+            //     Constants.POS_TEST_DIR = string;
+            //     Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR, Constants.VALIDATION_POS_DIR, Constants.VALIDATION_NEG_DIR);
+            //     for (int i : tc) {
+            //         Constants.NUM_THREADS= i;
+            //         Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
+            //     }
+            // }
             // System.err.println(stopwatch.split() + " <-- timeTaken");
             // System.err.println(myGram + "\nScores: " + myGram.getScore());
             // System.err.println(Arrays.toString(pop.get(0).getPartialScoreArr()));
@@ -695,7 +705,7 @@ public class App {
 
     public static void runTests(List<Gram> pop) {
         pop.removeIf(Gram::containsInfLoop);
-        boolean printDebug = false;
+        boolean printDebug = true;
         ConcurrentHashMap<Integer, String> times = new ConcurrentHashMap<>();
         class testRunner implements Callable<List<Gram>> {
             private List<Gram> myGrams;
