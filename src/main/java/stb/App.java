@@ -196,19 +196,26 @@ public class App {
             // clearANTLRfolder();
             // benchmarkMain();
             // GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
+            // Chelsea.reverseRR(Chelsea.roundRobin(new LinkedList<>(List.of(0,1,2,3,4,5,6,7,8,9)), 4));
             // Gram myGram = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
+            // runTests(new LinkedList<Gram>(List.of(myGram)));
+            // System.err.println("Grammar scores " + myGram.getScore() + ", BA:" + myGram.COMPUTE_BALANCED_ACCURACY());
             // List<Gram> pop = GrammarGenerator.generatePopulation(200);
-            // stopwatch.startClock();
+            // // stopwatch.startClock();
             // int[] tc = {4, 8, 16, 32};
             // String[] testPaths = {"./tests/" + Constants.CURR_GRAMMAR_NAME + "/mass/test0/pos", 
             // "./tests/" + Constants.CURR_GRAMMAR_NAME + "/pos"};
             // for (String string : testPaths) {
             //     Constants.POS_TEST_DIR = string;
             //     Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR, Constants.VALIDATION_POS_DIR, Constants.VALIDATION_NEG_DIR);
-            //     for (int i : tc) {
-            //         Constants.NUM_THREADS= i;
-            //         Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
+            //     System.err.println("Testing with " + Chelsea.posTests.size() + " tests");
+            //     runTests(pop);
+
+            // //     for (int i : tc) {
+            // //         Constants.NUM_THREADS= i;
+            //         // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
             //     }
+            Chelsea.myExecutors.shutdown();
             // }
             // System.err.println(stopwatch.split() + " <-- timeTaken");
             // System.err.println(myGram + "\nScores: " + myGram.getScore());
@@ -414,8 +421,11 @@ public class App {
                     perfectGrammars.add(toAdd);
                     
                 }
-                if (currScore > getBestScore() || (currScore == getBestScore() && gram.COMPUTE_BALANCED_ACCURACY() > bestGrammar.COMPUTE_BALANCED_ACCURACY()))
+                if (currScore > getBestScore()) {
                     setBestGrammar(gram);
+                    System.err.println("Negs: " + gram.getNegScore());
+                    System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
+                }
             }
 
             // Add crossover grammars
@@ -573,6 +583,8 @@ public class App {
                         rcoSetText(out);
                         setBestGrammar(gram);
                         System.err.println(out);
+                        System.err.println("Negs: " + gram.getNegScore());
+                        System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
                     }
                     if (evaluatedGrammars.containsKey(currScore)) {
                         evaluatedGrammars.get(currScore).add(gram);
@@ -705,7 +717,7 @@ public class App {
 
     public static void runTests(List<Gram> pop) {
         pop.removeIf(Gram::containsInfLoop);
-        boolean printDebug = true;
+        boolean printDebug = false;
         ConcurrentHashMap<Integer, String> times = new ConcurrentHashMap<>();
         class testRunner implements Callable<List<Gram>> {
             private List<Gram> myGrams;
@@ -760,16 +772,8 @@ public class App {
         }
 
         ExecutorService myExecutors = Executors.newFixedThreadPool(Constants.NUM_THREADS);
-        List<List<Gram>> splitPop = new LinkedList<>();
-        for (int i = 0; i < Constants.NUM_THREADS; i++) {
-            splitPop.add(new LinkedList<Gram>());
-        }
-        int counter = 0;
-        // System.err.println("Running on " + Constants.NUM_THREADS + " threads");
-        // System.err.println("Testing " + pop.size() + " grams");
-        while (!pop.isEmpty()) {
-            splitPop.get(counter++ % splitPop.size()).add(pop.remove(0));
-        }
+        List<List<Gram>> splitPop = Chelsea.roundRobin(pop, Constants.NUM_THREADS);
+
         List<Integer> allocation = splitPop.stream().map(List<Gram>::size).collect(toList());
         if (printDebug)
             System.err.println(format("Testing %d grammars using %d threads\nAllocation:%s",
@@ -814,6 +818,8 @@ public class App {
             out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s", genNum, gram.getScore(), gram,
                     Constants.getParamString()));
             System.err.println(String.format("iteration count: %d\nScore: %f\nBalanced Accuracy: %f\n%s", genNum, gram.getScore(), gram.COMPUTE_BALANCED_ACCURACY(), gram));
+            // System.err.println("Negs: " + gram.getNegScore());
+            // System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
         } catch (Exception e) {
             e.printStackTrace();
         }

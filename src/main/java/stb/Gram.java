@@ -59,7 +59,7 @@ public class Gram implements Comparable<Gram> {
     public Boolean[] passNegArr;
     private Stack<String> failingPosTests;
     private Stack<String> failingNegTests;
-    private double partialScoreArr[];
+    private Double[] partialScoreArr;
     private String bestMatchingRule;
     List<String> mutHist = new LinkedList<>();
     StringBuilder currMut = new StringBuilder();
@@ -394,8 +394,9 @@ public class Gram implements Comparable<Gram> {
     }
 
     public double getScore() {
-        double partialSums = Arrays.stream(partialScoreArr).average().getAsDouble();
+        double partialSums = Arrays.stream(partialScoreArr).mapToDouble(v -> v).average().getAsDouble();
         double negs = negScore;
+        // System.err.println("PS: " + partialSums + "\nNegs: " + negs);
         return (partialSums + negs)/2.0;
         // return COMPUTE_F05();
         // return (posScore + negScore) / 2.0;
@@ -1946,12 +1947,12 @@ public class Gram implements Comparable<Gram> {
         this.failingNegTests = failingNegTests;
     }
 
-    public double[] getPartialScoreArr() {
+    public Double[] getPartialScoreArr() {
         
         return partialScoreArr;
     }
 
-    public void setPartialScoreArr(double[] partialScoreArr) {
+    public void setPartialScoreArr(Double[] partialScoreArr) {
         // System.err.println("Setting partial score arr to " +  Arrays.toString(partialScoreArr));
         this.partialScoreArr = partialScoreArr;
     }

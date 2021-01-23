@@ -1,5 +1,7 @@
 package stb;
 
+import java.util.Arrays;
+
 public class Constants {
 
     public static final String CURR_GRAMMAR_NAME = "dyck4";
@@ -68,8 +70,8 @@ public class Constants {
     public static boolean HEURISTIC = true;
     public static boolean CROSSOVER = false;
 
-    public static int INIT_POP_SIZE = 20;
-    public static int POP_SIZE = 20;
+    public static int INIT_POP_SIZE = 50;
+    public static int POP_SIZE = 100;
     public static int FRESH_POP = 10;
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
@@ -92,6 +94,7 @@ public class Constants {
         GUT.truePostives = (int) numPass;
         GUT.falseNegatives = totalTests - (int) numPass;
         double out = numPass * 1.0 / totalTests;
+        System.err.println("Pos scoring with " + Arrays.toString(testResult) + " score: " + out);
 
         GUT.setPosScore(out);
     };
@@ -104,7 +107,7 @@ public class Constants {
         GUT.falsePositives = testResult[0];
 
         double out = numPass * 1.0 / totalTests;
-
+        System.err.println("Neg scoring with " + Arrays.toString(testResult) + " score: " + out);
         GUT.setNegScore(out);
     };
 

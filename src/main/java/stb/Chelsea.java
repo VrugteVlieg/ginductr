@@ -17,6 +17,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -130,6 +134,7 @@ public class Chelsea {
     public static boolean loadTests(String posDir, String negDir, String validPosDir, String validNegDir) {
         String[] pathsToTests = { posDir, negDir, validPosDir, validNegDir };
         List<List<String>> testLists = List.of(posTests, negTests, posValTests, negValTests);
+        testLists.forEach(List::clear);
 
         for (int i = 0; i < pathsToTests.length; i++) {
             try {
@@ -316,19 +321,21 @@ public class Chelsea {
      * @throws InstantiationException
      * @throws NoSuchMethodException
      */
+    static int numTestThreads = 8;
+    static ExecutorService myExecutors = Executors.newFixedThreadPool(numTestThreads);
     public static int[] runTestcases(String mode, Gram myGram) throws IOException, IllegalAccessException,
             InvocationTargetException, InstantiationException, NoSuchMethodException {
 
         // output array {numPasses, numTests}
 
-        List<String> tests;
+        List<String> tests = new LinkedList<>();
         switch (mode) {
             case Constants.POS_MODE:
-                tests = posTests;
+                tests.addAll(posTests);
                 break;
 
             case Constants.NEG_MODE:
-                tests = negTests;
+                tests.addAll(negTests);
                 break;
 
             case Constants.POS_VAL_MODE:
@@ -345,12 +352,12 @@ public class Chelsea {
         int[] out = { 0, tests.size() };
         Stack<String> passingTests = new Stack<String>();
         Stack<String> failingTests = new Stack<String>();
-        // System.out.println("Running " + paths.count() + " tests");
+        // System.out.println("Running " + tests.size() + " tests");
         // App.rgoSetText("Testing " + myReader + "\n");
         // System.err.println("Testing " + myReader.getName());
         int testNum = 0;
         Boolean[] passArr = new Boolean[tests.size()];
-        double[] partialScores = new double[tests.size()];
+        Double[] partialScores = new Double[tests.size()];
         Arrays.fill(passArr, false);
         try {
             Map<String, Class<?>> hm = new DynamicClassLoader()
@@ -368,84 +375,139 @@ public class Chelsea {
             // Manually creates the parserConstructor for use later
             // Is initialized as Constructor<?> parserConstructor
             Constructor<?> parserConstructor = parserC.getConstructor(TokenStream.class);
-            for (String test : tests) {
-                testNum++;
-                Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
-                CommonTokenStream tokens = new CommonTokenStream(lexer);
-                Parser parser = (Parser) parserConstructor.newInstance(tokens);
-                parser.removeErrorListeners();
-                parser.setErrorHandler(new BailErrorStrategy());
-                Method parseEntrypoint = parser.getClass().getMethod(Constants.GRAM_START_SYMB);
-                try {
-                    parseEntrypoint.invoke(parser);
 
-                    // Creating a new parser constructor instance using the lexer tokens
+            int numTestThreads = 4;
+            List<List<String>> testLists = roundRobin(tests, numTestThreads);
 
-                    // equiv of UUTParser.program()
 
-                    passingTests.push(test);
-                    out[0]++;
-                    passArr[testNum - 1] = true;
-                    if (mode.equals(Constants.POS_MODE)) {
-                        partialScores[testNum - 1] = 1.0;
-                    }
-                    // If this code is reached the test case was successfully parsed and numPasses
-                    // should be incremented
-                } catch (Exception e) {
 
-                    if (mode.equals(Constants.POS_MODE) && Constants.USE_PARTIAL_SCORING) {
-                        int maxNumTokens = 0;
-                        String bestRuleName = "";
+            class testRunner implements Callable<List<Double>> {
 
-                        lexer.reset();
-                        List<? extends Token> allToks = lexer.getAllTokens();
-                        // System.err.println("Failed " + test);
-                        // List<? extends Token> newTokenSource = allToks.subList(i, allToks.size());
-                        tokens.setTokenSource(new ListTokenSource(allToks, "myTokenSource"));
-                        tokens.fill();
-                        parser = (Parser) parserConstructor.newInstance(tokens);
-                        parser.setErrorHandler(new BailErrorStrategy());
+                private List<String> tests;
+                private int id;
+                List<Double> out = new LinkedList<>();
+                testRunner(List<String> tests, int id) {
+                    this.tests = tests;
+                    this.id = id;
+                }
+
+                @Override
+                public List<Double> call() throws Exception {
+                    // System.err.println(format("%d: runnning %d tests", id, tests.size()));
+                    for (String test : tests) {
+                        Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
+                        CommonTokenStream tokens = new CommonTokenStream(lexer);
+                        Parser parser = (Parser) parserConstructor.newInstance(tokens);
                         parser.removeErrorListeners();
-                        for (int i = 0; i < allToks.size(); i++) {
-                            for (Rule r : myGram.getParserRules().subList(1, myGram.getParserRules().size())) {
-                                tokens.seek(i);
-                                try {
-                                    // System.err.println("Parsing using " + r + " from index " + i);
-                                    int startIndex = tokens.index();
-                                    parser.getClass().getMethod(r.name).invoke(parser);
-                                    int numTokensParsed = tokens.index() - startIndex;
-                                    if (maxNumTokens <= numTokensParsed) {
-                                        // System.err.println("maxTokensParsed: " + maxNumTokens + " -> " +
-                                        // numTokensParsed);
-                                        // System.err.println("Using rule " + r.name + " from index " + i + " to " +
-                                        // (i+numTokensParsed));
-                                        // System.err.println("Partial score: " + (1.0*maxNumTokens/allToks.size()) + "
-                                        // -> " + (1.0*numTokensParsed/allToks.size()));
-                                        bestRuleName = r.name;
-                                        maxNumTokens = numTokensParsed;
+                        parser.setErrorHandler(new BailErrorStrategy());
+                        Method parseEntrypoint = parser.getClass().getMethod(Constants.GRAM_START_SYMB);
+                        try {
+                            parseEntrypoint.invoke(parser);
+                            out.add(1.0);
+                            
+                        } catch (Exception e) {
+                            if (mode.equals(Constants.POS_MODE) && Constants.USE_PARTIAL_SCORING) {
+                                int maxNumTokens = 0;
+                    
+                                lexer.reset();
+                                List<? extends Token> allToks = lexer.getAllTokens();
+                                tokens.setTokenSource(new ListTokenSource(allToks, "myTokenSource"));
+                                tokens.fill();
+                                parser = (Parser) parserConstructor.newInstance(tokens);
+                                parser.setErrorHandler(new BailErrorStrategy());
+                                parser.removeErrorListeners();
+                                for (int i = 0; i < allToks.size(); i++) {
+                                    for (Rule r : myGram.getParserRules().subList(1, myGram.getParserRules().size())) {
+                                        tokens.seek(i);
+                                        try {
+                                            int startIndex = tokens.index();
+                                            parser.getClass().getMethod(r.name).invoke(parser);
+                                            int numTokensParsed = tokens.index() - startIndex;
+                                            if (maxNumTokens <= numTokensParsed) {
+                                                // System.err.println("Parsing using " + r + " from index " + i);
+                                                // System.err.println("Parsed " + numTokensParsed);
+                                            
+                                                maxNumTokens = numTokensParsed;
+                                            }
+                                        } catch (Exception f) {
+                                        }
                                     }
-                                    maxNumTokens = maxNumTokens < numTokensParsed ? numTokensParsed : maxNumTokens;
-                                    // System.err.println("Successfully parsed " + numTokensParsed + " tokens");
-                                } catch (Exception f) {
-                                    // System.err.println("Parsing from " + i + " failed.");
                                 }
+                                
+                                double maxPartialScore = (1.0 * (maxNumTokens) / allToks.size());
+                                out.add(maxPartialScore);
+                            } else {
+                                out.add(0.0);
                             }
                         }
-                        // LinkedList<Token> remainingConfigs = new LinkedList<>(tokens.get(1,
-                        // tokens.size()))
-                        double maxPartialScore = (1.0 * maxNumTokens / allToks.size());
-                        myGram.setBestMatchingRule(bestRuleName);
-                        // System.err.println("Best partial score " + maxPartialScore);
-                        partialScores[testNum - 1] = maxPartialScore;
-                        // System.err.println("The first token in the stream is " +
-                        // tokens.getText(tokens.get(0),tokens.get(0)));
                     }
-
-                    // List<String> tokens = Arrays.stream(test.split(" ")).collect();
-                    failingTests.push(test);
-                    // findLongest(test);
+                    return out;
                 }
+
+
             }
+
+
+
+
+
+            try  {
+                List<Callable<List<Double>>> toCall = new LinkedList<>();
+                for (int i = 0; i < testLists.size(); i++) {
+                    toCall.add(new testRunner(testLists.get(i), i));
+                }
+                List<Future<List<Double>>> res = myExecutors.invokeAll(toCall);
+                List<List<Double>> results = new LinkedList<>();
+                for (Future<List<Double>> r : res) {
+                    results.add(r.get());
+                }
+                tests.addAll(reverseRR(testLists));
+                List<Double> scores = reverseRR(results);
+                out[0] = (int)scores.stream().filter(v -> v == 1.0).count();
+                out[1] = scores.size();
+                passArr = scores.stream().map(v -> v == 1.0).toArray(Boolean[]::new);
+                partialScores = scores.stream().toArray(Double[]::new);
+                // out.addAll(reverseRR(results));
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+
+            
+            
+            // for (String test : tests) {
+            //     testNum++;
+            //     Lexer lexer = (Lexer) lexerConstructor.newInstance(CharStreams.fromString(test));
+            //     CommonTokenStream tokens = new CommonTokenStream(lexer);
+            //     Parser parser = (Parser) parserConstructor.newInstance(tokens);
+            //     parser.removeErrorListeners();
+            //     parser.setErrorHandler(new BailErrorStrategy());
+            //     Method parseEntrypoint = parser.getClass().getMethod(Constants.GRAM_START_SYMB);
+            //     try {
+            //         parseEntrypoint.invoke(parser);
+
+            //         // Creating a new parser constructor instance using the lexer tokens
+
+            //         // equiv of UUTParser.program()
+
+            //         passingTests.push(test);
+            //         out[0]++;
+            //         passArr[testNum - 1] = true;
+            //         if (mode.equals(Constants.POS_MODE)) {
+            //             partialScores[testNum - 1] = 1.0;
+            //         }
+            //         // If this code is reached the test case was successfully parsed and numPasses
+            //         // should be incremented
+            //     } catch (Exception e) {
+
+            //         partialScoring(mode, myGram, testNum, partialScores, parserConstructor, test, lexer, tokens);
+
+            //         // List<String> tokens = Arrays.stream(test.split(" ")).collect();
+            //         failingTests.push(test);
+            //         // findLongest(test);
+            //     }
+            // }
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -453,16 +515,93 @@ public class Chelsea {
 
         if (mode.equals(Constants.POS_MODE)) {
             myGram.setPosPass(passArr);
-            myGram.setPassingPosTests(passingTests);
-            myGram.setFailingPosTests(failingTests);
+            // myGram.setPassingPosTests(passingTests);
+            // myGram.setFailingPosTests(failingTests);
             myGram.setPartialScoreArr(partialScores);
         } else {
-            myGram.setPassingNegTests(passingTests);
-            myGram.setFailingNegTests(failingTests);
+            // myGram.setPassingNegTests(passingTests);
+            // myGram.setFailingNegTests(failingTests);
             myGram.setNegPass(passArr);
         }
         return out;
 
+    }
+
+    private static void partialScoring(String mode, Gram myGram, int testNum, double[] partialScores,
+            Constructor<?> parserConstructor, String test, Lexer lexer, CommonTokenStream tokens)
+            throws InstantiationException, IllegalAccessException, InvocationTargetException {
+        Parser parser;
+        if (mode.equals(Constants.POS_MODE) && Constants.USE_PARTIAL_SCORING) {
+            int maxNumTokens = 0;
+            String bestRuleName = "";
+            System.err.println("Performing partial scoring for " + test);
+
+            lexer.reset();
+            List<? extends Token> allToks = lexer.getAllTokens();
+            // System.err.println("Failed " + test);
+            // List<? extends Token> newTokenSource = allToks.subList(i, allToks.size());
+            tokens.setTokenSource(new ListTokenSource(allToks, "myTokenSource"));
+            tokens.fill();
+            parser = (Parser) parserConstructor.newInstance(tokens);
+            parser.setErrorHandler(new BailErrorStrategy());
+            parser.removeErrorListeners();
+            for (int i = 0; i < allToks.size(); i++) {
+                for (Rule r : myGram.getParserRules().subList(1, myGram.getParserRules().size())) {
+                    tokens.seek(i);
+                    try {
+                        // System.err.println("Parsing using " + r + " from index " + i);
+                        int startIndex = tokens.index();
+                        parser.getClass().getMethod(r.name).invoke(parser);
+                        int numTokensParsed = tokens.index() - startIndex;
+                        if (maxNumTokens <= numTokensParsed) {
+                            System.err.println("maxTokensParsed: " + maxNumTokens + " -> " +
+                            numTokensParsed);
+                            // System.err.println("Using rule " + r.name + " from index " + i + " to " +
+                            // (i+numTokensParsed));
+                            System.err.println("Partial score: " + (1.0*maxNumTokens/allToks.size()) + " -> " + (1.0*numTokensParsed/allToks.size()));
+                            bestRuleName = r.name;
+                            maxNumTokens = numTokensParsed;
+                        }
+                        maxNumTokens = maxNumTokens < numTokensParsed ? numTokensParsed : maxNumTokens;
+                        // System.err.println("Successfully parsed " + numTokensParsed + " tokens");
+                    } catch (Exception f) {
+                        // System.err.println("Parsing from " + i + " failed.");
+                    }
+                }
+            }
+            // LinkedList<Token> remainingConfigs = new LinkedList<>(tokens.get(1,
+            // tokens.size()))
+            double maxPartialScore = (1.0 * (maxNumTokens) / allToks.size());
+            myGram.setBestMatchingRule(bestRuleName);
+            System.err.println("Best partial score " + maxPartialScore + " from " + bestRuleName);
+            partialScores[testNum - 1] = maxPartialScore;
+            // System.err.println("The first token in the stream is " +
+            // tokens.getText(tokens.get(0),tokens.get(0)));
+        }
+    }
+
+    public static <T> List<List<T>> roundRobin(List<T> input,  int numGroups) {
+        List<List<T>> out = new LinkedList<>();
+
+        for (int i = 0; i < numGroups; i++) {
+            out.add(new LinkedList<T>());
+        }
+        int counter = 0;
+        while (!input.isEmpty()) {
+            out.get(counter++ % out.size()).add(input.remove(0));
+        }
+        return out;
+    }
+
+    public static<T> List<T> reverseRR(List<List<T>> input) {
+        // System.err.println("Reverse RR on " + input.stream().map(List<T>::toString).collect(Collectors.joining(" : ")));
+        List<T> out = new LinkedList<>();
+        int counter = 0;
+        while(!input.stream().allMatch(List::isEmpty)) {
+            out.add(input.get(counter++ % input.size()).remove(0));
+        }
+        // System.err.println("Results in " + out);
+        return out;
     }
 
     public static <T> void removeDuplicates(List<T> input) {
