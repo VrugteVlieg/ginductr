@@ -70,7 +70,7 @@ public class Constants {
     public static boolean HEURISTIC = true;
     public static boolean CROSSOVER = false;
 
-    public static int INIT_POP_SIZE = 50;
+    public static int INIT_POP_SIZE = 100;
     public static int POP_SIZE = 100;
     public static int FRESH_POP = 10;
     // How many grammars from the hall of fame are selected for the next generation

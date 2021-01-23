@@ -423,8 +423,8 @@ public class App {
                 }
                 if (currScore > getBestScore()) {
                     setBestGrammar(gram);
-                    System.err.println("Negs: " + gram.getNegScore());
-                    System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
+                    // System.err.println("Negs: " + gram.getNegScore());
+                    // System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
                 }
             }
 
@@ -583,9 +583,9 @@ public class App {
                         rcoSetText(out);
                         setBestGrammar(gram);
                         System.err.println(out);
-                        System.err.println("Negs: " + gram.getNegScore());
-                        System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
-                    }
+                    //     System.err.println("Negs: " + gram.getNegScore());
+                    //     System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
+                    // }
                     if (evaluatedGrammars.containsKey(currScore)) {
                         evaluatedGrammars.get(currScore).add(gram);
                     } else {
@@ -875,19 +875,19 @@ public class App {
             crossoverPop.add(g2);
 
         }
-        for(Gram base1: pairings.keySet()) {
-            Gram base2 = randGet(pairings.get(base1), true);
-            Gram g1 = new Gram(base1);
-            Gram g2 = new Gram(base2);
+        // for(Gram base1: pairings.keySet()) {
+        //     Gram base2 = randGet(pairings.get(base1), true);
+        //     Gram g1 = new Gram(base1);
+        //     Gram g2 = new Gram(base2);
 
-            Gram.heuristicCrossover(g1, g2);
+        //     Gram.heuristicCrossover(g1, g2);
 
-            g1.setName(Gram.genGramName());
-            g2.setName(Gram.genGramName());
+        //     g1.setName(Gram.genGramName());
+        //     g2.setName(Gram.genGramName());
 
-            crossoverPop.add(g1);
-            crossoverPop.add(g2);
-        }
+        //     crossoverPop.add(g1);
+        //     crossoverPop.add(g2);
+        // }
         // remove all grammars that are already in the generatedGrammars hashset
         crossoverPop.removeIf(g -> gramAlreadyChecked(g) || g.getParserRules().size() > 1.5*Constants.MAX_RULE_COUNT);
         return crossoverPop;
