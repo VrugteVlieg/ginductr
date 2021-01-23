@@ -94,7 +94,7 @@ public class Constants {
         GUT.truePostives = (int) numPass;
         GUT.falseNegatives = totalTests - (int) numPass;
         double out = numPass * 1.0 / totalTests;
-        System.err.println("Pos scoring with " + Arrays.toString(testResult) + " score: " + out);
+        // System.err.println("Pos scoring with " + Arrays.toString(testResult) + " score: " + out);
 
         GUT.setPosScore(out);
     };
@@ -107,7 +107,7 @@ public class Constants {
         GUT.falsePositives = testResult[0];
 
         double out = numPass * 1.0 / totalTests;
-        System.err.println("Neg scoring with " + Arrays.toString(testResult) + " score: " + out);
+        // System.err.println("Neg scoring with " + Arrays.toString(testResult) + " score: " + out);
         GUT.setNegScore(out);
     };
 

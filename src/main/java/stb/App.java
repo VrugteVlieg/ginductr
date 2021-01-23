@@ -583,9 +583,9 @@ public class App {
                         rcoSetText(out);
                         setBestGrammar(gram);
                         System.err.println(out);
-                    //     System.err.println("Negs: " + gram.getNegScore());
-                    //     System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
-                    // }
+                        // System.err.println("Negs: " + gram.getNegScore());
+                        // System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
+                    }
                     if (evaluatedGrammars.containsKey(currScore)) {
                         evaluatedGrammars.get(currScore).add(gram);
                     } else {
