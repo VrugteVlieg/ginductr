@@ -456,8 +456,9 @@ public class Gram implements Comparable<Gram> {
                 ruleA.addAlternative(symbA);
                 ruleB.setSelectable(indexToExtend, ruleA);
             }
-            reachableParserRules = reachables.stream().map(this::getRuleByName).filter(parserRules::contains)
-            .collect(toCollection(ArrayList::new));
+            reachableParserRules.clear();
+            reachableParserRules.addAll(reachables.stream().map(this::getRuleByName).filter(parserRules::contains)
+            .collect(toList()));
         }
 
         // System.err.println("Results in " + this);

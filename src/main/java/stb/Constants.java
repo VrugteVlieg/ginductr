@@ -4,11 +4,11 @@ import java.util.Arrays;
 
 public class Constants {
 
-    public static final String CURR_GRAMMAR_NAME = "dyck4";
+    public static final String CURR_GRAMMAR_NAME = "slearith";
     public static final String CURR_MLCS_PATH = String.join("/", "grammars", CURR_GRAMMAR_NAME, CURR_GRAMMAR_NAME + ".mlcs");
     public static boolean USE_LOCALIZATION = true;
     public static boolean USE_PARTIAL_SCORING = true;
-    public static boolean USE_MLCS = false;
+    public static boolean USE_MLCS = false;;
 
     public static String ANTLR_CLASS = "antlr-localizer/default/target/generated-sources/antlr4/za/ac/sun/cs/localizer";
     public static String ANTLR_JAVA = "antlr-localizer/default/src/main/java/za/ac/sun/cs/localizer/dynamic";
@@ -22,7 +22,7 @@ public class Constants {
     public static String LOCALISER_CLASS_DIR = "./localiserDependClass";
     public static final String GRAMMARS_PATH = "./grammars/";
     public static final String SEEDED_GRAMMAR_PATH = GRAMMARS_PATH + "seeded/seeded.g4";
-    public static String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/mass/test0/pos";
+    public static String POS_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/pos";
     public static final String NEG_TEST_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/neg";
     public static final String VALIDATION_POS_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/symmetricTesting/pos";
     public static final String VALIDATION_NEG_DIR = "./tests/" + CURR_GRAMMAR_NAME + "/symmetricTesting/neg";

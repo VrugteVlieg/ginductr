@@ -119,17 +119,17 @@ public class App {
     static String HASH_TABLE_HITS_METRIC = "HASHTABLE_HITS_METRIC";
     static String MAIN_START_TIME = "MAIN_START_TIME";
 
-
-
     static void setupLogging() {
         logFuncs.clear();
         logFuncs.put(MAX_SCORE_METRIC, (g) -> g.mapToDouble(Gram::getScore).max().getAsDouble());
         logFuncs.put(AVG_SCORE_METRIC, (g) -> g.mapToDouble(Gram::getScore).average().getAsDouble());
         // logFuncs.put(NUM_PASS_POS_METRIC,
-        //         (g) -> (double) g.max(Comparator.comparing(Gram::getScore)).get().numPassPos());
+        // (g) -> (double)
+        // g.max(Comparator.comparing(Gram::getScore)).get().numPassPos());
         // logFuncs.put(NUM_PASS_NEG_METRIC,
-        //         (g) -> (double) g.max(Comparator.comparing(Gram::getScore)).get().numPassNeg());
-        
+        // (g) -> (double)
+        // g.max(Comparator.comparing(Gram::getScore)).get().numPassNeg());
+
         logFuncs.put(SCORE_DELTA_METRIC, g -> {
             if (scores.get(MAX_SCORE_METRIC) == null || scores.get(MAX_SCORE_METRIC).isEmpty())
                 return 0.0;
@@ -140,14 +140,14 @@ public class App {
         });
         logFuncs.put(VENTILE_1_METRIC, g -> {
             double[] vals = g.mapToDouble(Gram::getScore).sorted().toArray();
-            return vals[(int)(vals.length/20)];
+            return vals[(int) (vals.length / 20)];
         });
         logFuncs.put(VENTILE_19_METRIC, g -> {
             double[] vals = g.mapToDouble(Gram::getScore).sorted().toArray();
-            return vals[vals.length - 1 -(int)(vals.length/20)];
+            return vals[vals.length - 1 - (int) (vals.length / 20)];
         });
 
-        logFuncs.put(VARIANCE_METRIC, g  -> {
+        logFuncs.put(VARIANCE_METRIC, g -> {
             List<Double> popScores = g.map(Gram::getScore).collect(toList());
             double avg = popScores.stream().mapToDouble(d -> d).average().getAsDouble();
             return getVar(popScores, avg);
@@ -179,15 +179,15 @@ public class App {
     // Grammars that have been evaluated during the current generation
     static HashMap<Double, LinkedList<Gram>> evaluatedGrammars = new HashMap<Double, LinkedList<Gram>>();
 
-    
-
     static Timer stopwatch = new Timer();
 
     public static void main(String[] args) {
 
-        Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR, Constants.VALIDATION_POS_DIR, Constants.VALIDATION_NEG_DIR);
+        Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR, Constants.VALIDATION_POS_DIR,
+                Constants.VALIDATION_NEG_DIR);
         Gram.loadTerminals(Constants.CURR_TERMINALS_PATH);
-        if(Constants.USE_MLCS) GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
+        if (Constants.USE_MLCS)
+            GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
         if (Constants.USE_GUI && false) {
             Application.launch(Gui.class, new String[] {});
             System.exit(0);
@@ -196,49 +196,55 @@ public class App {
             // clearANTLRfolder();
             // benchmarkMain();
             // GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
-            // Chelsea.reverseRR(Chelsea.roundRobin(new LinkedList<>(List.of(0,1,2,3,4,5,6,7,8,9)), 4));
+            // Chelsea.reverseRR(Chelsea.roundRobin(new
+            // LinkedList<>(List.of(0,1,2,3,4,5,6,7,8,9)), 4));
             // Gram myGram = new Gram(new File(Constants.SEEDED_GRAMMAR_PATH));
             // runTests(new LinkedList<Gram>(List.of(myGram)));
-            // System.err.println("Grammar scores " + myGram.getScore() + ", BA:" + myGram.COMPUTE_BALANCED_ACCURACY());
+            // System.err.println("Grammar scores " + myGram.getScore() + ", BA:" +
+            // myGram.COMPUTE_BALANCED_ACCURACY());
             // List<Gram> pop = GrammarGenerator.generatePopulation(200);
             // // stopwatch.startClock();
             // int[] tc = {4, 8, 16, 32};
-            // String[] testPaths = {"./tests/" + Constants.CURR_GRAMMAR_NAME + "/mass/test0/pos", 
+            // String[] testPaths = {"./tests/" + Constants.CURR_GRAMMAR_NAME +
+            // "/mass/test0/pos",
             // "./tests/" + Constants.CURR_GRAMMAR_NAME + "/pos"};
             // for (String string : testPaths) {
-            //     Constants.POS_TEST_DIR = string;
-            //     Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR, Constants.VALIDATION_POS_DIR, Constants.VALIDATION_NEG_DIR);
-            //     System.err.println("Testing with " + Chelsea.posTests.size() + " tests");
-            //     runTests(pop);
+            // Constants.POS_TEST_DIR = string;
+            // Chelsea.loadTests(Constants.POS_TEST_DIR, Constants.NEG_TEST_DIR,
+            // Constants.VALIDATION_POS_DIR, Constants.VALIDATION_NEG_DIR);
+            // System.err.println("Testing with " + Chelsea.posTests.size() + " tests");
+            // runTests(pop);
 
-            // //     for (int i : tc) {
-            // //         Constants.NUM_THREADS= i;
-            //         // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
-            //     }
+            // // for (int i : tc) {
+            // // Constants.NUM_THREADS= i;
+            // // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
+            // }
             Chelsea.myExecutors.shutdown();
             // }
             // System.err.println(stopwatch.split() + " <-- timeTaken");
             // System.err.println(myGram + "\nScores: " + myGram.getScore());
             // System.err.println(Arrays.toString(pop.get(0).getPartialScoreArr()));
-            // pop.stream().forEach(g -> System.err.println(Arrays.stream(g.getPartialScoreArr()).sum()));
+            // pop.stream().forEach(g ->
+            // System.err.println(Arrays.stream(g.getPartialScoreArr()).sum()));
             // System.err.println("Testing 100 took " + stopwatch.split());
             // String vanillaOut = compareInit(() -> {}, "Vanilla");
             // String vanillaBoogOut = compareInit(() -> {
-            //     generatedGrammars.clear();
-            //     GrammarGenerator.removeUnreachables = true;
+            // generatedGrammars.clear();
+            // GrammarGenerator.removeUnreachables = true;
             // }, "VanillaBoog");
             // String mlcsOut = compareInit(() -> {
-            //     generatedGrammars.clear();
-            //     GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
-            //     GrammarGenerator.removeUnreachables = false;
+            // generatedGrammars.clear();
+            // GrammarGenerator.readFromMLCS(Constants.CURR_MLCS_PATH);
+            // GrammarGenerator.removeUnreachables = false;
             // }, "mlcs");
 
             // String mlcsBoogOut = compareInit(() -> {
-            //     generatedGrammars.clear();
-            //     GrammarGenerator.removeUnreachables = true;
+            // generatedGrammars.clear();
+            // GrammarGenerator.removeUnreachables = true;
             // }, "mlcsBoog");
-            
-            // System.err.println(String.join("\n***\n", vanillaOut, vanillaBoogOut, mlcsOut, mlcsBoogOut));
+
+            // System.err.println(String.join("\n***\n", vanillaOut, vanillaBoogOut,
+            // mlcsOut, mlcsBoogOut));
 
             // benchmarkMain();
             // Gram myGram = GrammarGenerator.generateLocalisablePop(1).getFirst();
@@ -252,69 +258,61 @@ public class App {
         }
     }
 
-    
     /**
-     * Function to compare the average score, maximum score, and population diversity of different initialization strategies
+     * Function to compare the average score, maximum score, and population
+     * diversity of different initialization strategies
+     * 
      * @param setup Function that initializes the system for specific strategy
-     * @param name Name associated with current test
+     * @param name  Name associated with current test
      * @return String summarising results of tests
      */
     public static String compareInit(testSetup setup, String name) {
         setup.setup();
         stopwatch.startClock(name);
         List<Double[]> scores = new LinkedList<>();
-            List<Gram> pop = GrammarGenerator.generateLocalisablePop(100);
-            pop.forEach(g -> {
-                Double f05 = g.getScore();
-                double defScore = (g.getPosScore() + g.getNegScore()) / 2;
-                Double ba = g.COMPUTE_BALANCED_ACCURACY();
-                scores.add(new Double[] { f05, defScore, ba });
-            });
-            Boolean[] passPos = new Boolean[Chelsea.posTests.size()];
-            Boolean[] passNeg = new Boolean[Chelsea.negTests.size()];
-            Arrays.fill(passNeg, false);
-            Arrays.fill(passPos, false);
+        List<Gram> pop = GrammarGenerator.generateLocalisablePop(100);
+        pop.forEach(g -> {
+            Double f05 = g.getScore();
+            double defScore = (g.getPosScore() + g.getNegScore()) / 2;
+            Double ba = g.COMPUTE_BALANCED_ACCURACY();
+            scores.add(new Double[] { f05, defScore, ba });
+        });
+        Boolean[] passPos = new Boolean[Chelsea.posTests.size()];
+        Boolean[] passNeg = new Boolean[Chelsea.negTests.size()];
+        Arrays.fill(passNeg, false);
+        Arrays.fill(passPos, false);
 
-            pop.forEach(g -> {
-                for (int i = 0; i < passPos.length; i++) {
-                    passPos[i] |= g.passPosArr[i];
-                }
-                for (int i = 0; i < passNeg.length; i++) {
-                    passNeg[i] |= g.passNegArr[i];
-                }
-            });
-            int numPassPos = Arrays.stream(passPos).mapToInt(v -> v ? 1 : 0).sum();
-            int numPassNeg = Arrays.stream(passNeg).mapToInt(v -> v ? 0 : 1).sum();
-            double diversity = (1.0 * (numPassNeg + numPassPos)
-                    / (passPos.length + passNeg.length));
+        pop.forEach(g -> {
+            for (int i = 0; i < passPos.length; i++) {
+                passPos[i] |= g.passPosArr[i];
+            }
+            for (int i = 0; i < passNeg.length; i++) {
+                passNeg[i] |= g.passNegArr[i];
+            }
+        });
+        int numPassPos = Arrays.stream(passPos).mapToInt(v -> v ? 1 : 0).sum();
+        int numPassNeg = Arrays.stream(passNeg).mapToInt(v -> v ? 0 : 1).sum();
+        double diversity = (1.0 * (numPassNeg + numPassPos) / (passPos.length + passNeg.length));
 
-            DoubleSummaryStatistics f05Stats = scores.stream().mapToDouble(g -> g[0]).summaryStatistics();
-            Double f05Var = getVar(scores.stream().map(g -> g[0]).collect(toList()), f05Stats.getAverage());
-            DoubleSummaryStatistics defStats = scores.stream().mapToDouble(g -> g[1]).summaryStatistics();
-            Double defVar = getVar(scores.stream().map(g -> g[1]).collect(toList()), defStats.getAverage());
-            DoubleSummaryStatistics baStats = scores.stream().mapToDouble(g -> g[1]).summaryStatistics();
-            Double baVar = getVar(scores.stream().map(g -> g[2]).collect(toList()), baStats.getAverage());
+        DoubleSummaryStatistics f05Stats = scores.stream().mapToDouble(g -> g[0]).summaryStatistics();
+        Double f05Var = getVar(scores.stream().map(g -> g[0]).collect(toList()), f05Stats.getAverage());
+        DoubleSummaryStatistics defStats = scores.stream().mapToDouble(g -> g[1]).summaryStatistics();
+        Double defVar = getVar(scores.stream().map(g -> g[1]).collect(toList()), defStats.getAverage());
+        DoubleSummaryStatistics baStats = scores.stream().mapToDouble(g -> g[1]).summaryStatistics();
+        Double baVar = getVar(scores.stream().map(g -> g[2]).collect(toList()), baStats.getAverage());
 
-            return String.join("\n", 
-                format("%s\nTimeTaken: %f\nNumGramsTested: %d\nDiversity: %f", name, stopwatch.stop(name), generatedGrammars.size(), diversity),
+        return String.join("\n",
+                format("%s\nTimeTaken: %f\nNumGramsTested: %d\nDiversity: %f", name, stopwatch.stop(name),
+                        generatedGrammars.size(), diversity),
 
-                format("default:\n\tavg: %f\n\tvar: %f\n\tmax: %f",    
-                        defStats.getAverage(), 
-                        defVar,
-                        defStats.getMax()),
-                format("05:\n\tavg: %f\n\tvar: %f\n\tmax: %f",    
-                        f05Stats.getAverage(), 
-                        f05Var,
-                        f05Stats.getMax()),
-                format("BA:\n\tavg: %f\n\tvar: %f\n\tmax: %f",    
-                        baStats.getAverage(), 
-                        baVar,
-                        baStats.getMax())
-                );
+                format("default:\n\tavg: %f\n\tvar: %f\n\tmax: %f", defStats.getAverage(), defVar, defStats.getMax()),
+                format("05:\n\tavg: %f\n\tvar: %f\n\tmax: %f", f05Stats.getAverage(), f05Var, f05Stats.getMax()),
+                format("BA:\n\tavg: %f\n\tvar: %f\n\tmax: %f", baStats.getAverage(), baVar, baStats.getMax()));
     }
 
     /**
      * Computes the variance in a population for a given average value
+     * 
      * @param vals
      * @param avg
      * @return
@@ -397,7 +395,10 @@ public class App {
                 // allMutants.size());
                 stopwatch.startClock("mutTest");
                 System.err.println("Starting mutTesting with " + allMutants.size() + " grams");
-                allMutants.removeIf(g -> g.getParserRules().stream().flatMap(r -> r.getSubRules().stream()).anyMatch(l -> Gram.getTotalSelectables(l) > Constants.MAX_RHS_SIZE*1.5));
+                allMutants.removeIf(g -> g.getParserRules().stream().flatMap(r -> r.getSubRules().stream())
+                        .anyMatch(l -> Gram.getTotalSelectables(l) > Constants.MAX_RHS_SIZE * 1.5));
+                allMutants.removeIf(
+                        g -> g.getParserRules().stream().map(r -> r.getSubRules().size()).anyMatch(c -> c > 4));
                 runTests(allMutants);
                 System.err.println(
                         format("Testing %d grams took %f", allMutants.size(), stopwatch.elapsedTime("mutTest")));
@@ -413,19 +414,13 @@ public class App {
                 // System.err.println("TotalPop out: " + totalPop.size());
             }
 
-            for (Gram gram : totalPop) {
-                double currScore = gram.getScore();
-                if (currScore == 1.0) {
-                    Gram toAdd = new Gram(gram);
-                    toAdd.genNum = genNum;
-                    perfectGrammars.add(toAdd);
-                    
-                }
-                if (currScore > getBestScore()) {
-                    setBestGrammar(gram);
-                    // System.err.println("Negs: " + gram.getNegScore());
-                    // System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
-                }
+            totalPop.sort(Comparator.reverseOrder());
+            Gram bestGram = totalPop.get(0);
+            if (bestGram.getScore() == 1.0) {
+                perfectGrammars.add(new Gram(bestGram));
+            }
+            if (bestGram.getScore() > getBestScore()) {
+                setBestGrammar(bestGram);
             }
 
             // Add crossover grammars
@@ -436,22 +431,21 @@ public class App {
                 ArrayList<Gram> crossoverPop = performCrossover(totalPop);
                 runTests(crossoverPop);
                 crossoverPop.removeIf(Gram.passesPosTest.negate());
+                crossoverPop.sort(Comparator.reverseOrder());
+                bestGram = crossoverPop.get(0);
+                double currScore = bestGram.getScore();
 
-                for (Gram gram : crossoverPop) {
-                    double currScore = gram.getScore();
-
-                    if (currScore == 1.0) {
-                        Gram toAdd = new Gram(gram);
-                        toAdd.genNum = genNum;
-                        perfectGrammars.add(toAdd);
-                    }
-                    if (currScore > getBestScore()) {
-                        setBestGrammar(gram);
-                    }
+                if (currScore == 1.0) {
+                    Gram toAdd = new Gram(bestGram);
+                    toAdd.genNum = genNum;
+                    perfectGrammars.add(toAdd);
                 }
+                if (currScore > getBestScore()) {
+                    setBestGrammar(bestGram);
+                }
+
                 totalPop.addAll(crossoverPop);
             }
-            
 
             int nextGenSize = Math.min(totalPop.size(), Constants.POP_SIZE);
             int tourSize = Math.min(totalPop.size(), Constants.TOUR_SIZE);
@@ -750,7 +744,6 @@ public class App {
                         Constants.positiveScoring.eval(testResult, myGram);
                         myGram.stripEOF();
 
-
                         testResult = Chelsea.runTestcases(Constants.NEG_MODE, myGram);
                         Constants.negativeScoring.eval(testResult, myGram);
 
@@ -804,7 +797,7 @@ public class App {
     static void writePerfectGrammars(List<Gram> grammars, int genNum) {
         grammars.forEach(gram -> {
             try (FileWriter out = new FileWriter(new File(Constants.LOG_DIR + "/" + outputID + "/"
-                    + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
+                    + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName() + "_gen" + genNum))) {
                 out.write(String.format("iteration count: %d\n%s\n%s", genNum, gram, Constants.getParamString()));
             } catch (Exception e) {
                 e.printStackTrace();
@@ -817,7 +810,8 @@ public class App {
                 + (Constants.USE_LOCALIZATION ? "local_" : "") + gram.getName()))) {
             out.write(String.format("iteration count: %d\nScore: %f\n%s\n%s", genNum, gram.getScore(), gram,
                     Constants.getParamString()));
-            System.err.println(String.format("iteration count: %d\nScore: %f\nBalanced Accuracy: %f\n%s", genNum, gram.getScore(), gram.COMPUTE_BALANCED_ACCURACY(), gram));
+            System.err.println(String.format("iteration count: %d\nScore: %f\nBalanced Accuracy: %f\n%s", genNum,
+                    gram.getScore(), gram.COMPUTE_BALANCED_ACCURACY(), gram));
             // System.err.println("Negs: " + gram.getNegScore());
             // System.err.println("PS: " + Arrays.toString(gram.getPartialScoreArr()));
         } catch (Exception e) {
@@ -848,23 +842,10 @@ public class App {
         HashMap<Gram, List<Gram>> pairings = new HashMap<>();
 
         for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
-            Gram base = tournamentSelect(grammarPool, Constants.TOUR_SIZE);
-
-            pairings.put(base, grammarPool.stream().sorted((g0, g1) -> base.compAllPassSimil(g0, g1)).limit(10)
-                    .sorted((Comparator.reverseOrder())).limit(3).collect(toList()));
-        }
-
-        pairings.keySet().forEach(grammarPool::add);
-
-        for (int i = 0; i < Constants.NUM_CROSSOVER_PER_GEN; i++) {
-            Gram base1 = randGet(new ArrayList<Gram>(pairings.keySet()), true);
-            Gram base2 = randGet(pairings.get(base1), true);
+            Gram base1 = tournamentSelectSorted(grammarPool, Constants.TOUR_SIZE);
+            Gram base2 = tournamentSelectSorted(grammarPool, Constants.TOUR_SIZE);
             Gram g1 = new Gram(base1);
             Gram g2 = new Gram(base2);
-            g1.setNegScore(0.0);
-            g1.setPosScore(0.0);
-            g2.setNegScore(0.0);
-            g2.setPosScore(0.0);
 
             Gram.Crossover(g1, g2);
 
@@ -874,25 +855,16 @@ public class App {
             crossoverPop.add(g1);
             crossoverPop.add(g2);
 
+            grammarPool.add(base1);
+            grammarPool.add(base2);
         }
-        // for(Gram base1: pairings.keySet()) {
-        //     Gram base2 = randGet(pairings.get(base1), true);
-        //     Gram g1 = new Gram(base1);
-        //     Gram g2 = new Gram(base2);
 
-        //     Gram.heuristicCrossover(g1, g2);
-
-        //     g1.setName(Gram.genGramName());
-        //     g2.setName(Gram.genGramName());
-
-        //     crossoverPop.add(g1);
-        //     crossoverPop.add(g2);
-        // }
-        // remove all grammars that are already in the generatedGrammars hashset
-        crossoverPop.removeIf(g -> gramAlreadyChecked(g) || g.getParserRules().size() > 1.5*Constants.MAX_RULE_COUNT);
+        crossoverPop.removeIf(g -> gramAlreadyChecked(g) || g.getParserRules().size() > 1.5 * Constants.MAX_RULE_COUNT);
         return crossoverPop;
-
     }
+    // remove all grammars that are already in the generatedGrammars hashset
+
+    
 
     public static int randInt(int bound) {
         return ThreadLocalRandom.current().nextInt(bound);
@@ -988,7 +960,8 @@ public class App {
         StringBuilder newBestString = new StringBuilder("Best Score: " + newBest.getScore() + "\n");
         newBestString.append(newBest.fullHashString());
         bestGrammarString = newBestString.toString();
-        bestGrammar.setPartialScoreArr(Arrays.copyOf(newBest.getPartialScoreArr(), newBest.getPartialScoreArr().length));
+        bestGrammar
+                .setPartialScoreArr(Arrays.copyOf(newBest.getPartialScoreArr(), newBest.getPartialScoreArr().length));
     }
 
     static double getBestScore() {
@@ -1002,8 +975,6 @@ public class App {
             return "";
         return bestGrammar.toString();
     }
-
-
 
     public static List<String> getSusList() {
         try (Scanner myScanner = new Scanner(new File(Constants.CSV_PATH))) {
@@ -1093,6 +1064,22 @@ public class App {
         Gram out = tour.stream().max(Comparator.comparing(Gram::getScore)).get();
         pop.remove(out);
         return out;
+    }
+
+    /**
+     * Samples a genome without replacement from a sorted population
+     * 
+     * @param pop      population to sample from
+     * @param tourSize size of the tournament
+     * @return
+     */
+    public static Gram tournamentSelectSorted(List<Gram> pop, int tourSize) {
+        int currChoice = Integer.MAX_VALUE;
+        for (int i = 0; i < tourSize; i++) {
+            int currOption = randInt(pop.size());
+            currChoice = currOption < currChoice ? currOption : currChoice;
+        }
+        return pop.remove(currChoice);
     }
 
     /**
@@ -1283,7 +1270,7 @@ public class App {
             hashtableHits++;
             return true;
         } else {
-            generatedGrammars.add(gram.hashString());
+            // generatedGrammars.add(gram.hashString());
             return false;
         }
     }
