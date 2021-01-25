@@ -221,20 +221,20 @@ public class Chelsea {
             // parserConstructor = parser.getConstructor(TokenStream.class);
 
         } catch (Exception e) {
-            e.printStackTrace(System.err);
-            grammar.mutHist.add(e.toString());
-            grammar.logGrammar(true);
+            // e.printStackTrace(System.err);
+            // grammar.mutHist.add(e.toString());
+            // grammar.logGrammar(true);
 
             // System.err.println(myReader.mutHist.stream().collect(Collectors.joining("\n")));
-            if (hm == null) {
-                System.out.println("Looking for " + grammar + "\n found");
-                List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
-                System.out.println(files.stream().map(File::getName).collect(Collectors.joining("\n")));
+            // if (hm == null) {
+            //     System.out.println("Looking for " + grammar + "\n found");
+            //     List<File> files = getDirectoryFiles(new File(Constants.ANTLR_DIR));
+            //     System.out.println(files.stream().map(File::getName).collect(Collectors.joining("\n")));
 
-            } else {
-                System.err.println(grammar.hashString());
-                // System.out.println(hm.keySet());
-            }
+            // } else {
+            //     System.err.println(grammar.hashString());
+            //     // System.out.println(hm.keySet());
+            // }
 
             grammar.flagForRemoval();
         }
@@ -321,7 +321,7 @@ public class Chelsea {
      * @throws InstantiationException
      * @throws NoSuchMethodException
      */
-    static int numTestThreads = 8;
+    static int numTestThreads = 2;
     static ExecutorService myExecutors = Executors.newFixedThreadPool(numTestThreads);
     public static int[] runTestcases(String mode, Gram myGram) throws IOException, IllegalAccessException,
             InvocationTargetException, InstantiationException, NoSuchMethodException {

@@ -174,7 +174,7 @@ public class GrammarGenerator {
             in.readLine();
             in.lines().forEach(l -> {
                 terminalRules.add(l);
-                String[] data = l.replaceAll("[ ;']", "").split(":",2);
+                String[] data = l.substring(0, l.length()-1).replaceAll("[ ']", "").split(":",2);
                 terminalMappings.put(data[1].trim(), data[0]);
             });
 

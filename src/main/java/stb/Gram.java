@@ -1812,7 +1812,6 @@ public class Gram implements Comparable<Gram> {
                 all.add(currRule + ":" + i);
             }
         });
-
         return all;
 
     }
@@ -1847,8 +1846,8 @@ public class Gram implements Comparable<Gram> {
 
     public void genFakeSuggestions() {
         List<String> toPass = new LinkedList<String>();
-        List<String> allOptions = new LinkedList<>();
-        for (int i = 0; i < NUM_SUGGESTED_MUTANTS; i++) {
+        List<String> allOptions = getAllSuggestions();
+        for (int i = 0; i < allOptions.size(); i++) {
             toPass.add(randGet(allOptions, false));
         }
         setMutationConsideration(toPass);
