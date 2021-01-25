@@ -1,7 +1,7 @@
 #!/bin/bash
 export outLbl=$(date)
-pCrcVals=(0.2 0.4)
-pChangeSymbCountVals=(0.3 0.5)
+testSuites=(0 1 2 3 4)
+runCount=(0 1 2 3 4)
 pMVals=(0.3 0.5)
 pHVals=(0.3 0.5)
 tsVals=(0.1 0.15)
@@ -16,10 +16,17 @@ trap "exit" INT
 #                 export pH=$ph
 #                 for ts in "${tsVals[@]}"; do
 #                     export tS=$ts
+for s in "${testSuites[@]}"; do
+        export suite=$s
+    for r in "${runCount[@]}"; do
+        export currRun=$r
+        ./buildGui.sh
+    done
+done
 #                     ./buildGui.sh
 #                 done
 #             done
 #         done
 #     done
 # done
-./buildGui.sh
+# ./buildGui.sh
