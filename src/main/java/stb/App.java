@@ -86,6 +86,7 @@ public class App {
      */
     private static class metricLog {
         List<Double> AVG_SCORE;
+        List<Double> MEDIAN_SCORE;
         List<Double> MAX_SCORE;
         List<Double> SCORE_DELTA;
         List<Double> VENTILE_1;
@@ -95,6 +96,7 @@ public class App {
         Boolean USE_PARTIAL_SCORING = Constants.USE_PARTIAL_SCORING;
 
         metricLog() {
+            MEDIAN_SCORE = scores.get(MEDIAN_METRIC);
             AVG_SCORE = scores.get(AVG_SCORE_METRIC);
             MAX_SCORE = scores.get(MAX_SCORE_METRIC);
             SCORE_DELTA = scores.get(SCORE_DELTA_METRIC);
@@ -111,6 +113,7 @@ public class App {
     static String AVG_SCORE_METRIC = "AVG_SCORE_METRIC";
     static String VENTILE_1_METRIC = "VENTILE_1_METRIC";
     static String VENTILE_19_METRIC = "VENTILE_19_METRIC";
+    static String MEDIAN_METRIC = "MEDIAN_METRIC";
     static String VARIANCE_METRIC = "VARIANCE_METRIC";
     static String MAX_SCORE_METRIC = "MAX_SCORE_METRIC";
     static String SCORE_DELTA_METRIC = "SCORE_DELTA_METRIC";
@@ -142,6 +145,12 @@ public class App {
             double[] vals = g.mapToDouble(Gram::getScore).sorted().toArray();
             return vals[(int) (vals.length / 20)];
         });
+
+        logFuncs.put(MEDIAN_METRIC, g -> {
+            double[] vals = g.mapToDouble(Gram::getScore).sorted().toArray();
+            return vals[(int) (vals.length / 2)];
+        });
+
         logFuncs.put(VENTILE_19_METRIC, g -> {
             double[] vals = g.mapToDouble(Gram::getScore).sorted().toArray();
             return vals[vals.length - 1 - (int) (vals.length / 20)];
@@ -488,6 +497,11 @@ public class App {
             } else {
                 writeGrammar(bestGrammar, genNum);
             }
+        }
+        int counter = 0;
+        for(Gram g : myGrammars) {
+            g.setName("gram_" + counter++);
+            writeGrammar(g, 200);
         }
 
     }

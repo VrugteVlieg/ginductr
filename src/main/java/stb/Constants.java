@@ -77,7 +77,7 @@ public class Constants {
     // How many grammars from the hall of fame are selected for the next generation
     public static int HALL_OF_FAME_COUNT = 10;
 
-    public static int NUM_ITERATIONS = 70;
+    public static int NUM_ITERATIONS = 200;
     public static int RULENAME_LEN = 10;
     public static int MAX_RULE_COUNT = 4;
     public static int MAX_RHS_SIZE = 6;
