@@ -1,6 +1,6 @@
 #!/bin/bash
 export outLbl=$(date)
-testSuites=(0 1 2 3 4)
+testSuites=(0 1 2)
 runCount=(0 1 2 3 4)
 pMVals=(0.3 0.5)
 pHVals=(0.3 0.5)
