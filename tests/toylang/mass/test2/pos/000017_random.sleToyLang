@@ -1,0 +1,1 @@
+program a = { if a then a = a + a + a = a = a else sleep; } .

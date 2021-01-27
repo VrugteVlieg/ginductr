@@ -1,0 +1,1 @@
+program a = { while((0)) do if((a) + a) then if 0 then a = a + a; } .

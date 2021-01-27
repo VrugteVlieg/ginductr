@@ -1,0 +1,1 @@
+program a = { var a : bool; var a : int; if 0 then { var a : bool; } else while a + a = a + a do sleep; } .

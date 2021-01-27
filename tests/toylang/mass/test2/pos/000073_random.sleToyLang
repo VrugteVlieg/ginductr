@@ -1,0 +1,1 @@
+program a = { var a : int; var a : int; { var a : int; var a : bool; var a : bool; }; if(a = a = a = a) then { var a : bool; sleep; }; { var a : bool; }; { }; a = a; } .

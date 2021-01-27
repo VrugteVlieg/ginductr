@@ -1,0 +1,1 @@
+program a = { var a : int; if(a) then while((a)) do sleep; } .

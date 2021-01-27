@@ -1,0 +1,1 @@
+program a = { var a : bool; a = (0 = a); { var a : bool; var a : bool; }; } .

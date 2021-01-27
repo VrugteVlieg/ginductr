@@ -1,0 +1,1 @@
+program a = { while 0 + a + a = a + a + 0 do while 0 do if a then { }; sleep; while((a)) do while a do sleep; while(a) do a = a; } .

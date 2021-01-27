@@ -1,0 +1,1 @@
+program a = { var a : bool; if 0 = (a + a = a + a) then while a do a = (a) + a = a else a = a = a = 0; while 0 + 0 + a do a = a; } .

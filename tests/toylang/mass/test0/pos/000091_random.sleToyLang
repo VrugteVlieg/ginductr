@@ -1,0 +1,1 @@
+program a = { while 0 + a = a + (a + a) + (a = a + a = a) do sleep; sleep; a = (a); } .

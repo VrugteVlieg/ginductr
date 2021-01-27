@@ -1,0 +1,1 @@
+program a = { if 0 = a = a + a + a = 0 + 0 then while a do if 0 then sleep else while a do sleep; sleep; sleep; } .
